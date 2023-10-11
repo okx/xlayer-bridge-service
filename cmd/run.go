@@ -4,16 +4,16 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/config"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
-	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
-	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/okx/zkevm-bridge-service/bridgectrl"
+	"github.com/okx/zkevm-bridge-service/claimtxman"
+	"github.com/okx/zkevm-bridge-service/config"
+	"github.com/okx/zkevm-bridge-service/db"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	"github.com/okx/zkevm-bridge-service/server"
+	"github.com/okx/zkevm-bridge-service/synchronizer"
+	"github.com/okx/zkevm-bridge-service/utils/gerror"
+	"github.com/okx/zkevm-node/jsonrpc/client"
+	"github.com/okx/zkevm-node/log"
 	"github.com/urfave/cli/v2"
 )
 
@@ -99,7 +99,7 @@ func start(ctx *cli.Context) error {
 		for i := 0; i < len(c.Etherman.L2URLs); i++ {
 			// we should match the orders of L2URLs between etherman and claimtxman
 			// since we are using the networkIDs in the same order
-			claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2PolygonBridgeAddresses[i], bridgeService, storage)
+			claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2XagonBridgeAddresses[i], bridgeService, storage)
 			if err != nil {
 				log.Fatalf("error creating claim tx manager for L2 %s. Error: %v", c.Etherman.L2URLs[i], err)
 			}
@@ -133,15 +133,15 @@ func setupLog(c log.Config) {
 }
 
 func newEthermans(c *config.Config) (*etherman.Client, []*etherman.Client, error) {
-	l1Etherman, err := etherman.NewClient(c.Etherman, c.NetworkConfig.PolygonBridgeAddress, c.NetworkConfig.PolygonZkEVMGlobalExitRootAddress)
+	l1Etherman, err := etherman.NewClient(c.Etherman, c.NetworkConfig.XagonBridgeAddress, c.NetworkConfig.XagonZkEVMGlobalExitRootAddress)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(c.L2PolygonBridgeAddresses) != len(c.Etherman.L2URLs) {
+	if len(c.L2XagonBridgeAddresses) != len(c.Etherman.L2URLs) {
 		log.Fatal("environment configuration error. zkevm bridge addresses and zkevm node urls mismatch")
 	}
 	var l2Ethermans []*etherman.Client
-	for i, addr := range c.L2PolygonBridgeAddresses {
+	for i, addr := range c.L2XagonBridgeAddresses {
 		l2Etherman, err := etherman.NewL2Client(c.Etherman.L2URLs[i], addr)
 		if err != nil {
 			return l1Etherman, nil, err

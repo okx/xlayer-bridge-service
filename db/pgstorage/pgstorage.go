@@ -7,14 +7,14 @@ import (
 	"math/big"
 	"time"
 
-	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
+	ctmtypes "github.com/okx/zkevm-bridge-service/claimtxman/types"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	"github.com/okx/zkevm-bridge-service/utils/gerror"
+	"github.com/okx/zkevm-node/log"
 )
 
 // PostgresStorage implements the Storage interface.
@@ -145,7 +145,7 @@ func (p *PostgresStorage) AddTokenWrapped(ctx context.Context, tokenWrapped *eth
 			return err
 		}
 		// if err == pgx.ErrNoRows, this is due to missing the related deposit in the opposite network in fast sync mode.
-		// ref: https://github.com/0xPolygonHermez/zkevm-bridge-service/issues/230
+		// ref: https://github.com/okx/zkevm-bridge-service/issues/230
 		tokenMetadata = &etherman.TokenMetadata{}
 	} else {
 		tokenMetadata, err = getDecodedToken(metadata)
@@ -285,7 +285,7 @@ func (p *PostgresStorage) GetTokenWrapped(ctx context.Context, originalNetwork u
 	}
 
 	// this is due to missing the related deposit in the opposite network in fast sync mode.
-	// ref: https://github.com/0xPolygonHermez/zkevm-bridge-service/issues/230
+	// ref: https://github.com/okx/zkevm-bridge-service/issues/230
 	if token.Symbol == "" {
 		metadata, err := p.GetTokenMetadata(ctx, token.OriginalNetwork, token.NetworkID, token.OriginalTokenAddress, dbTx)
 		var tokenMetadata *etherman.TokenMetadata

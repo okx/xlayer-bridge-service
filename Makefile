@@ -28,10 +28,10 @@ STOP_ZKPROVER := $(DOCKER_COMPOSE) stop $(DOCKER_COMPOSE_ZKPROVER) && $(DOCKER_C
 STOP_BRIDGE := $(DOCKER_COMPOSE) stop $(DOCKER_COMPOSE_BRIDGE) && $(DOCKER_COMPOSE) rm -f $(DOCKER_COMPOSE_BRIDGE)
 STOP := $(DOCKER_COMPOSE) down --remove-orphans
 
-LDFLAGS += -X 'github.com/0xPolygonHermez/zkevm-bridge-service.Version=$(VERSION)'
-LDFLAGS += -X 'github.com/0xPolygonHermez/zkevm-bridge-service.GitRev=$(GITREV)'
-LDFLAGS += -X 'github.com/0xPolygonHermez/zkevm-bridge-service.GitBranch=$(GITBRANCH)'
-LDFLAGS += -X 'github.com/0xPolygonHermez/zkevm-bridge-service.BuildDate=$(DATE)'
+LDFLAGS += -X 'github.com/okx/zkevm-bridge-service.Version=$(VERSION)'
+LDFLAGS += -X 'github.com/okx/zkevm-bridge-service.GitRev=$(GITREV)'
+LDFLAGS += -X 'github.com/okx/zkevm-bridge-service.GitBranch=$(GITBRANCH)'
+LDFLAGS += -X 'github.com/okx/zkevm-bridge-service.BuildDate=$(DATE)'
 
 GO_BASE := $(shell pwd)
 GO_BIN := $(GO_BASE)/dist

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/jackc/pgx/v4"
+	"github.com/okx/zkevm-bridge-service/utils/gerror"
 )
 
 // zeroHashes is the pre-calculated zero hash array

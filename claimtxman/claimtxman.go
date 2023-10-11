@@ -8,17 +8,17 @@ import (
 	"strings"
 	"time"
 
-	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"github.com/0xPolygonHermez/zkevm-node/log"
-	"github.com/0xPolygonHermez/zkevm-node/state/runtime"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
+	ctmtypes "github.com/okx/zkevm-bridge-service/claimtxman/types"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	"github.com/okx/zkevm-bridge-service/utils"
+	"github.com/okx/zkevm-node/log"
+	"github.com/okx/zkevm-node/state/runtime"
 )
 
 const (

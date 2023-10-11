@@ -1,8 +1,8 @@
 package db
 
 import (
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/okx/zkevm-bridge-service/db/pgstorage"
+	"github.com/okx/zkevm-bridge-service/utils/gerror"
 )
 
 // Storage interface

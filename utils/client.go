@@ -10,15 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/test/mocksmartcontracts/BridgeMessageReceiver"
-	zkevmtypes "github.com/0xPolygonHermez/zkevm-node/config/types"
-	"github.com/0xPolygonHermez/zkevm-node/encoding"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-node/log"
-	"github.com/0xPolygonHermez/zkevm-node/test/contracts/bin/ERC20"
-	ops "github.com/0xPolygonHermez/zkevm-node/test/operations"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -26,6 +17,15 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/okx/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	"github.com/okx/zkevm-bridge-service/test/mocksmartcontracts/BridgeMessageReceiver"
+	zkevmtypes "github.com/okx/zkevm-node/config/types"
+	"github.com/okx/zkevm-node/encoding"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevmbridge"
+	"github.com/okx/zkevm-node/log"
+	"github.com/okx/zkevm-node/test/contracts/bin/ERC20"
+	ops "github.com/okx/zkevm-node/test/operations"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 type Client struct {
 	// Client ethclient
 	*ethclient.Client
-	bridge *polygonzkevmbridge.Polygonzkevmbridge
+	bridge *xagonzkevmbridge.Xagonzkevmbridge
 }
 
 // NewClient creates client.
@@ -51,9 +51,9 @@ func NewClient(ctx context.Context, nodeURL string, bridgeSCAddr common.Address)
 	if err != nil {
 		return nil, err
 	}
-	var br *polygonzkevmbridge.Polygonzkevmbridge
+	var br *xagonzkevmbridge.Xagonzkevmbridge
 	if len(bridgeSCAddr) != 0 {
-		br, err = polygonzkevmbridge.NewPolygonzkevmbridge(bridgeSCAddr, client)
+		br, err = xagonzkevmbridge.NewXagonzkevmbridge(bridgeSCAddr, client)
 	}
 	return &Client{
 		Client: client,

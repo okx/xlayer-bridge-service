@@ -17,5 +17,5 @@ compilegen() {
     abigen --bin ${package}/${package}.bin --abi ${package}/${package}.abi --pkg=${package} --out=${package}/${package}.go
 }
 
-gen polygonzkevmbridge
+gen xagonzkevmbridge
 compilegen BridgeMessageReceiver

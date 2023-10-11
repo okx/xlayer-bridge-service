@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
+	"github.com/okx/zkevm-bridge-service/etherman"
 )
 
 type bridgeServiceStorage interface {

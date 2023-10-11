@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/okx/zkevm-bridge-service/db/pgstorage"
+	"github.com/okx/zkevm-node/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/require"
 )

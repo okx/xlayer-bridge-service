@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	zkevmbridgeservice "github.com/0xPolygonHermez/zkevm-bridge-service"
+	zkevmbridgeservice "github.com/okx/zkevm-bridge-service"
 	"github.com/urfave/cli/v2"
 )
 

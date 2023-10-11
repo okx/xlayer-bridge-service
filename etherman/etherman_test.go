@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"testing"
 
-	mockbridge "github.com/0xPolygonHermez/zkevm-bridge-service/test/mocksmartcontracts/polygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	mockbridge "github.com/okx/zkevm-bridge-service/test/mocksmartcontracts/xagonzkevmbridge"
+	"github.com/okx/zkevm-node/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func init() {
 }
 
 // This function prepare the blockchain, the wallet with funds and deploy the smc
-func newTestingEnv() (ethman *Client, ethBackend *backends.SimulatedBackend, auth *bind.TransactOpts, maticAddr common.Address, bridge *mockbridge.Polygonzkevmbridge) {
+func newTestingEnv() (ethman *Client, ethBackend *backends.SimulatedBackend, auth *bind.TransactOpts, maticAddr common.Address, bridge *mockbridge.Xagonzkevmbridge) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		log.Fatal(err)
@@ -50,7 +50,7 @@ func TestGEREvent(t *testing.T) {
 
 	amount := big.NewInt(1000000000000000)
 	auth.Value = amount
-	_, err = etherman.PolygonBridge.BridgeAsset(auth, 1, auth.From, amount, common.Address{}, true, []byte{})
+	_, err = etherman.XagonBridge.BridgeAsset(auth, 1, auth.From, amount, common.Address{}, true, []byte{})
 	require.NoError(t, err)
 
 	// Mine the tx in a block

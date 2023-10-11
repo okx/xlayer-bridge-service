@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/okx/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/okx/zkevm-node/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"

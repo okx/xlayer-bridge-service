@@ -3,7 +3,7 @@
 package synchronizer
 
 import (
-	etherman "github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	etherman "github.com/okx/zkevm-bridge-service/etherman"
 	mock "github.com/stretchr/testify/mock"
 
 	pgx "github.com/jackc/pgx/v4"

@@ -3,9 +3,9 @@ package operations
 import (
 	"fmt"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
+	"github.com/okx/zkevm-bridge-service/bridgectrl"
+	"github.com/okx/zkevm-bridge-service/db/pgstorage"
+	"github.com/okx/zkevm-bridge-service/server"
 )
 
 // RunMockServer runs mock server

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/okx/zkevm-bridge-service/db/pgstorage"
+	"github.com/okx/zkevm-bridge-service/etherman"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

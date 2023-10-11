@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/okx/zkevm-node/log"
 	"github.com/urfave/cli/v2"
 )
 

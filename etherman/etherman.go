@@ -7,15 +7,15 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmglobalexitroot"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevmbridge"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevmglobalexitroot"
+	"github.com/okx/zkevm-node/log"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -60,14 +60,14 @@ type ethClienter interface {
 
 // Client is a simple implementation of EtherMan.
 type Client struct {
-	EtherClient                ethClienter
-	PolygonBridge              *polygonzkevmbridge.Polygonzkevmbridge
-	PolygonZkEVMGlobalExitRoot *polygonzkevmglobalexitroot.Polygonzkevmglobalexitroot
-	SCAddresses                []common.Address
+	EtherClient              ethClienter
+	XagonBridge              *xagonzkevmbridge.Xagonzkevmbridge
+	XagonZkEVMGlobalExitRoot *xagonzkevmglobalexitroot.Xagonzkevmglobalexitroot
+	SCAddresses              []common.Address
 }
 
 // NewClient creates a new etherman.
-func NewClient(cfg Config, polygonBridgeAddr, polygonZkEVMGlobalExitRootAddress common.Address) (*Client, error) {
+func NewClient(cfg Config, xagonBridgeAddr, xagonZkEVMGlobalExitRootAddress common.Address) (*Client, error) {
 	// Connect to ethereum node
 	ethClient, err := ethclient.Dial(cfg.L1URL)
 	if err != nil {
@@ -75,18 +75,18 @@ func NewClient(cfg Config, polygonBridgeAddr, polygonZkEVMGlobalExitRootAddress 
 		return nil, err
 	}
 	// Create smc clients
-	polygonBridge, err := polygonzkevmbridge.NewPolygonzkevmbridge(polygonBridgeAddr, ethClient)
+	xagonBridge, err := xagonzkevmbridge.NewXagonzkevmbridge(xagonBridgeAddr, ethClient)
 	if err != nil {
 		return nil, err
 	}
-	polygonZkEVMGlobalExitRoot, err := polygonzkevmglobalexitroot.NewPolygonzkevmglobalexitroot(polygonZkEVMGlobalExitRootAddress, ethClient)
+	xagonZkEVMGlobalExitRoot, err := xagonzkevmglobalexitroot.NewXagonzkevmglobalexitroot(xagonZkEVMGlobalExitRootAddress, ethClient)
 	if err != nil {
 		return nil, err
 	}
 	var scAddresses []common.Address
-	scAddresses = append(scAddresses, polygonZkEVMGlobalExitRootAddress, polygonBridgeAddr)
+	scAddresses = append(scAddresses, xagonZkEVMGlobalExitRootAddress, xagonBridgeAddr)
 
-	return &Client{EtherClient: ethClient, PolygonBridge: polygonBridge, PolygonZkEVMGlobalExitRoot: polygonZkEVMGlobalExitRoot, SCAddresses: scAddresses}, nil
+	return &Client{EtherClient: ethClient, XagonBridge: xagonBridge, XagonZkEVMGlobalExitRoot: xagonZkEVMGlobalExitRoot, SCAddresses: scAddresses}, nil
 }
 
 // NewL2Client creates a new etherman for L2.
@@ -98,13 +98,13 @@ func NewL2Client(url string, bridgeAddr common.Address) (*Client, error) {
 		return nil, err
 	}
 	// Create smc clients
-	bridge, err := polygonzkevmbridge.NewPolygonzkevmbridge(bridgeAddr, ethClient)
+	bridge, err := xagonzkevmbridge.NewXagonzkevmbridge(bridgeAddr, ethClient)
 	if err != nil {
 		return nil, err
 	}
 	scAddresses := []common.Address{bridgeAddr}
 
-	return &Client{EtherClient: ethClient, PolygonBridge: bridge, SCAddresses: scAddresses}, nil
+	return &Client{EtherClient: ethClient, XagonBridge: bridge, SCAddresses: scAddresses}, nil
 }
 
 // GetRollupInfoByBlockRange function retrieves the Rollup information that are included in all this ethereum blocks
@@ -180,7 +180,7 @@ func (etherMan *Client) processEvent(ctx context.Context, vLog types.Log, blocks
 
 func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
 	log.Debug("UpdateGlobalExitRoot event detected")
-	globalExitRoot, err := etherMan.PolygonZkEVMGlobalExitRoot.ParseUpdateGlobalExitRoot(vLog)
+	globalExitRoot, err := etherMan.XagonZkEVMGlobalExitRoot.ParseUpdateGlobalExitRoot(vLog)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog type
 
 func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
 	log.Debug("Deposit event detected")
-	d, err := etherMan.PolygonBridge.ParseBridgeEvent(vLog)
+	d, err := etherMan.XagonBridge.ParseBridgeEvent(vLog)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks
 
 func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
 	log.Debug("Claim event detected")
-	c, err := etherMan.PolygonBridge.ParseClaimEvent(vLog)
+	c, err := etherMan.XagonBridge.ParseClaimEvent(vLog)
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *
 
 func (etherMan *Client) tokenWrappedEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
 	log.Debug("TokenWrapped event detected")
-	tw, err := etherMan.PolygonBridge.ParseNewWrappedToken(vLog)
+	tw, err := etherMan.XagonBridge.ParseNewWrappedToken(vLog)
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func (etherMan *Client) EthBlockByNumber(ctx context.Context, blockNumber uint64
 
 // GetNetworkID gets the network ID of the dedicated chain.
 func (etherMan *Client) GetNetworkID(ctx context.Context) (uint, error) {
-	networkID, err := etherMan.PolygonBridge.NetworkID(&bind.CallOpts{Pending: false})
+	networkID, err := etherMan.XagonBridge.NetworkID(&bind.CallOpts{Pending: false})
 	if err != nil {
 		return 0, err
 	}

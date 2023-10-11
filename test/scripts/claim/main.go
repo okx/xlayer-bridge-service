@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	clientUtils "github.com/0xPolygonHermez/zkevm-bridge-service/test/client"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	clientUtils "github.com/okx/zkevm-bridge-service/test/client"
+	"github.com/okx/zkevm-bridge-service/utils"
+	"github.com/okx/zkevm-node/log"
 )
 
 const (

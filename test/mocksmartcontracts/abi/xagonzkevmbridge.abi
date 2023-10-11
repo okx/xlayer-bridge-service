@@ -76,7 +76,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "OnlyPolygonZkEVM",
+		"name": "OnlyXagonZkEVM",
 		"type": "error"
 	},
 	{
@@ -543,10 +543,10 @@
 	},
 	{
 		"inputs": [],
-		"name": "polygonZkEVMGlobalExitRoot",
+		"name": "xagonZkEVMGlobalExitRoot",
 		"outputs": [
 			{
-				"internalType": "contract IBasePolygonZkEVMGlobalExitRoot",
+				"internalType": "contract IBaseXagonZkEVMGlobalExitRoot",
 				"name": "",
 				"type": "address"
 			}
@@ -562,13 +562,13 @@
 				"type": "uint32"
 			},
 			{
-				"internalType": "contract IBasePolygonZkEVMGlobalExitRoot",
-				"name": "_polygonZkEVMGlobalExitRoot",
+				"internalType": "contract IBaseXagonZkEVMGlobalExitRoot",
+				"name": "_xagonZkEVMGlobalExitRoot",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "_polygonZkEVMaddress",
+				"name": "_xagonZkEVMaddress",
 				"type": "address"
 			}
 		],
@@ -637,7 +637,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "polygonZkEVMaddress",
+		"name": "xagonZkEVMaddress",
 		"outputs": [
 			{
 				"internalType": "address",

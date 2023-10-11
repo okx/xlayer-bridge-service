@@ -7,24 +7,24 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
-	"github.com/0xPolygonHermez/zkevm-node/encoding"
-	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/matic"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmglobalexitroot"
-	"github.com/0xPolygonHermez/zkevm-node/log"
-	"github.com/0xPolygonHermez/zkevm-node/test/contracts/bin/ERC20"
-	"github.com/0xPolygonHermez/zkevm-node/test/operations"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/okx/zkevm-bridge-service/bridgectrl"
+	"github.com/okx/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/okx/zkevm-bridge-service/db"
+	"github.com/okx/zkevm-bridge-service/db/pgstorage"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	"github.com/okx/zkevm-bridge-service/server"
+	"github.com/okx/zkevm-bridge-service/utils"
+	"github.com/okx/zkevm-bridge-service/utils/gerror"
+	"github.com/okx/zkevm-node/encoding"
+	erc20 "github.com/okx/zkevm-node/etherman/smartcontracts/matic"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevmbridge"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevmglobalexitroot"
+	"github.com/okx/zkevm-node/log"
+	"github.com/okx/zkevm-node/test/contracts/bin/ERC20"
+	"github.com/okx/zkevm-node/test/operations"
 )
 
 // NetworkSID is used to identify the network.
@@ -576,7 +576,7 @@ func (m *Manager) GetLatestGlobalExitRootFromL1(ctx context.Context) (*etherman.
 // GetCurrentGlobalExitRootFromSmc reads the globalexitroot from the smc
 func (m *Manager) GetCurrentGlobalExitRootFromSmc(ctx context.Context) (*etherman.GlobalExitRoot, error) {
 	client := m.clients[L1]
-	br, err := polygonzkevmbridge.NewPolygonzkevmbridge(common.HexToAddress(l1BridgeAddr), client)
+	br, err := xagonzkevmbridge.NewXagonzkevmbridge(common.HexToAddress(l1BridgeAddr), client)
 	if err != nil {
 		return nil, err
 	}
@@ -584,7 +584,7 @@ func (m *Manager) GetCurrentGlobalExitRootFromSmc(ctx context.Context) (*etherma
 	if err != nil {
 		return nil, err
 	}
-	globalManager, err := polygonzkevmglobalexitroot.NewPolygonzkevmglobalexitroot(GlobalExitRootManAddr, client)
+	globalManager, err := xagonzkevmglobalexitroot.NewXagonzkevmglobalexitroot(GlobalExitRootManAddr, client)
 	if err != nil {
 		return nil, err
 	}

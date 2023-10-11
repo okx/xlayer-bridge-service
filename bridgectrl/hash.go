@@ -3,8 +3,8 @@ package bridgectrl
 import (
 	"encoding/binary"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/iden3/go-iden3-crypto/keccak256"
+	"github.com/okx/zkevm-bridge-service/etherman"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -5,18 +5,18 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	clientUtils "github.com/0xPolygonHermez/zkevm-bridge-service/test/client"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevm"
-	"github.com/0xPolygonHermez/zkevm-node/hex"
-	"github.com/0xPolygonHermez/zkevm-node/log"
-	"github.com/0xPolygonHermez/zkevm-node/state"
-	"github.com/0xPolygonHermez/zkevm-node/test/operations"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/okx/zkevm-bridge-service/etherman"
+	clientUtils "github.com/okx/zkevm-bridge-service/test/client"
+	"github.com/okx/zkevm-bridge-service/utils"
+	"github.com/okx/zkevm-node/etherman/smartcontracts/xagonzkevm"
+	"github.com/okx/zkevm-node/hex"
+	"github.com/okx/zkevm-node/log"
+	"github.com/okx/zkevm-node/state"
+	"github.com/okx/zkevm-node/test/operations"
 )
 
 const (
@@ -135,7 +135,7 @@ func main() {
 	}
 	// Create smc client
 	zkevmAddress := common.HexToAddress(zkevmAddr)
-	zkevm, err := polygonzkevm.NewPolygonzkevm(zkevmAddress, ethClient)
+	zkevm, err := xagonzkevm.NewXagonzkevm(zkevmAddress, ethClient)
 	if err != nil {
 		log.Fatal("error: ", err)
 	}

@@ -5,21 +5,21 @@ pragma solidity 0.8.17;
 import "./lib/DepositContract.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./lib/TokenWrapped.sol";
-import "./interfaces/IBasePolygonZkEVMGlobalExitRoot.sol";
+import "./interfaces/IBaseXagonZkEVMGlobalExitRoot.sol";
 import "./interfaces/IBridgeMessageReceiver.sol";
-import "./interfaces/IPolygonZkEVMBridge.sol";
+import "./interfaces/IXagonZkEVMBridge.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "./lib/EmergencyManager.sol";
 import "./lib/GlobalExitRootLib.sol";
 
 /**
- * PolygonZkEVMBridge that will be deployed on both networks Ethereum and Polygon zkEVM
+ * XagonZkEVMBridge that will be deployed on both networks Ethereum and Xagon zkEVM
  * Contract responsible to manage the token interactions with other networks
  */
-contract PolygonZkEVMBridge is
+contract XagonZkEVMBridge is
     DepositContract,
     EmergencyManager,
-    IPolygonZkEVMBridge
+    IXagonZkEVMBridge
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -51,7 +51,7 @@ contract PolygonZkEVMBridge is
     uint32 public networkID;
 
     // Global Exit Root address
-    IBasePolygonZkEVMGlobalExitRoot public polygonZkEVMGlobalExitRoot;
+    IBaseXagonZkEVMGlobalExitRoot public xagonZkEVMGlobalExitRoot;
 
     // Last updated deposit count to the global exit root manager
     uint32 public lastUpdatedDepositCount;
@@ -65,32 +65,32 @@ contract PolygonZkEVMBridge is
     // Wrapped token Address --> Origin token information
     mapping(address => TokenInformation) public wrappedTokenToTokenInfo;
 
-    // PolygonZkEVM address
-    address public polygonZkEVMaddress;
+    // XagonZkEVM address
+    address public xagonZkEVMaddress;
 
     /**
      * @param _networkID networkID
-     * @param _polygonZkEVMGlobalExitRoot global exit root manager address
-     * @param _polygonZkEVMaddress polygonZkEVM address
-     * @notice The value of `_polygonZkEVMaddress` on the L2 deployment of the contract will be address(0), so
+     * @param _xagonZkEVMGlobalExitRoot global exit root manager address
+     * @param _xagonZkEVMaddress xagonZkEVM address
+     * @notice The value of `_xagonZkEVMaddress` on the L2 deployment of the contract will be address(0), so
      * emergency state is not possible for the L2 deployment of the bridge, intentionally
      */
     function initialize(
         uint32 _networkID,
-        IBasePolygonZkEVMGlobalExitRoot _polygonZkEVMGlobalExitRoot,
-        address _polygonZkEVMaddress
+        IBaseXagonZkEVMGlobalExitRoot _xagonZkEVMGlobalExitRoot,
+        address _xagonZkEVMaddress
     ) external virtual initializer {
         networkID = _networkID;
-        polygonZkEVMGlobalExitRoot = _polygonZkEVMGlobalExitRoot;
-        polygonZkEVMaddress = _polygonZkEVMaddress;
+        xagonZkEVMGlobalExitRoot = _xagonZkEVMGlobalExitRoot;
+        xagonZkEVMaddress = _xagonZkEVMaddress;
 
         // Initialize OZ contracts
         __ReentrancyGuard_init();
     }
 
-    modifier onlyPolygonZkEVM() {
-        if (polygonZkEVMaddress != msg.sender) {
-            revert OnlyPolygonZkEVM();
+    modifier onlyXagonZkEVM() {
+        if (xagonZkEVMaddress != msg.sender) {
+            revert OnlyXagonZkEVM();
         }
         _;
     }
@@ -407,17 +407,17 @@ contract PolygonZkEVMBridge is
 
     /**
      * @notice Function to activate the emergency state
-     " Only can be called by the Polygon ZK-EVM in extreme situations
+     " Only can be called by the Xagon ZK-EVM in extreme situations
      */
-    function activateEmergencyState() external onlyPolygonZkEVM {
+    function activateEmergencyState() external onlyXagonZkEVM {
         _activateEmergencyState();
     }
 
     /**
      * @notice Function to deactivate the emergency state
-     " Only can be called by the Polygon ZK-EVM
+     " Only can be called by the Xagon ZK-EVM
      */
-    function deactivateEmergencyState() external onlyPolygonZkEVM {
+    function deactivateEmergencyState() external onlyXagonZkEVM {
         _deactivateEmergencyState();
     }
 
@@ -489,7 +489,7 @@ contract PolygonZkEVMBridge is
      */
     function _updateGlobalExitRoot() internal {
         lastUpdatedDepositCount = uint32(depositCount);
-        polygonZkEVMGlobalExitRoot.updateExitRoot(getDepositRoot());
+        xagonZkEVMGlobalExitRoot.updateExitRoot(getDepositRoot());
     }
 
     /**
