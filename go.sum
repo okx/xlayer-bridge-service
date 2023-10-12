@@ -543,8 +543,8 @@ github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLA
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
-github.com/okx/zkevm-node v0.2.6-RC3.0.20230913020545-e9ab3d2f93f9 h1:1gXgqDVVRt2nxdSr8DSYFKs30OmxZj2ZDfUeGTJ+1cA=
-github.com/okx/zkevm-node v0.2.6-RC3.0.20230913020545-e9ab3d2f93f9/go.mod h1:ljRDdlzY63MU3cJ0d52V59C57UYLIg+HWM5AQpvaXt4=
+github.com/okx/zkevm-node v0.2.6-RC3.0.20230913121144-4ce0ce9df3c5 h1:q4leUFkDexYM1ANp+hFTzrKA+fLVQdUztHw0SXGuFCo=
+github.com/okx/zkevm-node v0.2.6-RC3.0.20230913121144-4ce0ce9df3c5/go.mod h1:yON3mu0BuOjDS6zhTuoyD608LBTxBPHscZgHbtweSuU=
 github.com/olekukonko/tablewriter v0.0.5 h1:P2Ga83D34wi1o9J6Wh1mRuqd4mF/x/lgBS7N7AbDhec=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
