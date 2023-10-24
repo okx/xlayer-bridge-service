@@ -45,8 +45,8 @@ const (
 
 	// MaticTokenAddress token address
 	MaticTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3" //nolint:gosec
-	l1BridgeAddr      = "0xff0EE8ea08cEf5cb4322777F5CC3E8A584B8A4A0"
-	l2BridgeAddr      = "0xff0EE8ea08cEf5cb4322777F5CC3E8A584B8A4A0"
+	l1BridgeAddr      = "0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0"
+	l2BridgeAddr      = "0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0"
 
 	l1AccHexAddress = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
 

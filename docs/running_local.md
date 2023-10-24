@@ -72,10 +72,10 @@ make test-edge
 | Address | Description |
 |---|---|
 | 0x610178dA211FEF7D417bC0e6FeD39F05609AD788 | Proof of Efficiency |
-| 0xff0EE8ea08cEf5cb4322777F5CC3E8A584B8A4A0 | L1 Bridge |
-| 0xff0EE8ea08cEf5cb4322777F5CC3E8A584B8A4A0 | L2 Bridge |
+| 0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0 | L1 Bridge |
+| 0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0 | L2 Bridge |
 | 0x5FbDB2315678afecb367f032d93F642f64180aa3 | Matic token |
-| 0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6 | GlobalExitRootManager |
+| 0xEd236da21Ff62bC7B62608AdB818da49E8549fa7 | GlobalExitRootManager |
 
 
 ## Fund account on L2 with ETH
