@@ -1,18 +1,18 @@
 package main
 
 import (
-	"github.com/0xPolygonHermez/zkevm-bridge-service/coinmiddleware"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"os"
 	"os/signal"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/coinmiddleware"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
