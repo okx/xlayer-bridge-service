@@ -2,7 +2,7 @@ include version.mk
 
 DOCKER_COMPOSE := docker-compose -f docker-compose.yml
 DOCKER_COMPOSE_STATE_DB := xgon-state-db
-DOCKER_COMPOSE_EVENT_DB := xgon-event-db:
+DOCKER_COMPOSE_EVENT_DB := xgon-event-db
 DOCKER_COMPOSE_POOL_DB := xgon-pool-db
 DOCKER_COMPOSE_RPC_DB := xgon-rpc-db
 DOCKER_COMPOSE_BRIDGE_DB := xgon-bridge-db

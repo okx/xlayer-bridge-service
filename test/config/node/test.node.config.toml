@@ -102,7 +102,7 @@ MaxTxSizeForL1 = 131072
 MaxBatchesForL1 = 10
 SenderAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 L2Coinbase = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-PrivateKey = {Path = "/pk/sequencer.keystore", Password = "testonly"}
+PrivateKey = {Path = "/pk/keystore.sequencer", Password = "testonly"}
 UseValidium = true 
 
 [Aggregator]
@@ -120,8 +120,8 @@ GeneratingProofCleanupThreshold = "10m"
 [EthTxManager]
 ForcedGas = 0
 PrivateKeys = [
-	{Path = "/pk/sequencer.keystore", Password = "testonly"},
-	{Path = "/pk/aggregator.keystore", Password = "testonly"}
+	{Path = "/pk/keystore.sequencer", Password = "testonly"},
+	{Path = "/pk/keystore.aggregator", Password = "testonly"}
 ]
 
 [L2GasPriceSuggester]
