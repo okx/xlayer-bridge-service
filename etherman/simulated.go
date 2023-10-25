@@ -37,7 +37,7 @@ func NewSimulatedEtherman(cfg Config, auth *bind.TransactOpts) (etherman *Client
 	// DAC Setup
 	dataCommitteeAddr, _, da, err := datacommittee.DeployDatacommittee(auth, client)
 	if err != nil {
-		log.Errorf("DeployDatacommittee error")
+		log.Errorf("DeployDatacommittee error, %v", err)
 		return nil, nil, common.Address{}, nil, nil, err
 	}
 	_, err = da.Initialize(auth)
@@ -54,12 +54,12 @@ func NewSimulatedEtherman(cfg Config, auth *bind.TransactOpts) (etherman *Client
 	totalSupply, _ := new(big.Int).SetString("10000000000000000000000000000", 10) //nolint:gomnd
 	maticAddr, _, maticContract, err := matic.DeployMatic(auth, client, "Matic Token", "MATIC", maticDecimalPlaces, totalSupply)
 	if err != nil {
-		log.Errorf("DeployMatic error")
+		log.Errorf("DeployMatic error", err)
 		return nil, nil, common.Address{}, nil, nil, err
 	}
 	rollupVerifierAddr, _, _, err := mockverifier.DeployMockverifier(auth, client)
 	if err != nil {
-		log.Errorf("DeployMockverifier error")
+		log.Errorf("DeployMockverifier error", err)
 		return nil, nil, common.Address{}, nil, nil, err
 	}
 	nonce, err := client.PendingNonceAt(context.TODO(), auth.From)
@@ -77,12 +77,12 @@ func NewSimulatedEtherman(cfg Config, auth *bind.TransactOpts) (etherman *Client
 	}
 	bridgeAddr, _, mockbr, err := mockbridge.DeployPolygonzkevmbridge(auth, client)
 	if err != nil {
-		log.Errorf("DeployPolygonzkevmbridge error")
+		log.Errorf("DeployPolygonzkevmbridge error", err)
 		return nil, nil, common.Address{}, nil, nil, err
 	}
 	polygonZkEVMAddress, _, polygonZkEVMContract, err := polygonzkevm.DeployPolygonzkevm(auth, client, exitManagerAddr, maticAddr, rollupVerifierAddr, bridgeAddr, dataCommitteeAddr, 1000, 1) //nolint
 	if err != nil {
-		log.Errorf("DeployPolygonzkevm error")
+		log.Errorf("DeployPolygonzkevm error", err)
 		return nil, nil, common.Address{}, nil, nil, err
 	}
 	_, err = mockbr.Initialize(auth, 0, exitManagerAddr, polygonZkEVMAddress)
