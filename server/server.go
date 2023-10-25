@@ -22,6 +22,7 @@ import (
 
 func RegisterNacos(cfg nacos.Config) {
 	if cfg.NacosUrls != "" {
+		log.Info("nacos config find")
 		nacos.StartNacosClient(cfg.NacosUrls, cfg.NamespaceId, cfg.ApplicationName, cfg.ExternalListenAddr)
 	} else {
 		log.Error("no nacos config find")
