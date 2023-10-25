@@ -474,6 +474,7 @@ func (m *Manager) CheckAccountBalance(ctx context.Context, network NetworkSID, a
 	if err != nil {
 		return big.NewInt(0), errors.Wrap(err, "eth_getBalance failed")
 	}
+	log.Debugf("CheckAccountBalance success network[%v] account[%v] balance[%v]", network, account.String(), balance.String())
 	return balance, nil
 }
 
@@ -496,6 +497,7 @@ func (m *Manager) CheckAccountTokenBalance(ctx context.Context, network NetworkS
 	if err != nil {
 		return big.NewInt(0), errors.Wrap(err, "balanceOf failed")
 	}
+	log.Debugf("CheckAccountTokenBalance success network[%v] tokenAddr[%v] account[%v] balance[%v]", network, tokenAddr.String(), account.String(), balance.String())
 	return balance, nil
 }
 
