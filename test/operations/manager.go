@@ -464,7 +464,7 @@ func (m *Manager) CheckAccountBalance(ctx context.Context, network NetworkSID, a
 	client := m.clients[network]
 	auth, err := client.GetSigner(ctx, accHexPrivateKeys[network])
 	if err != nil {
-		return big.NewInt(0), nil
+		return big.NewInt(0), errors.Wrap(err, "GetSigner failed")
 	}
 
 	if account == nil {
@@ -472,7 +472,7 @@ func (m *Manager) CheckAccountBalance(ctx context.Context, network NetworkSID, a
 	}
 	balance, err := client.BalanceAt(ctx, *account, nil)
 	if err != nil {
-		return big.NewInt(0), nil
+		return big.NewInt(0), errors.Wrap(err, "eth_getBalance failed")
 	}
 	return balance, nil
 }
@@ -482,7 +482,7 @@ func (m *Manager) CheckAccountTokenBalance(ctx context.Context, network NetworkS
 	client := m.clients[network]
 	auth, err := client.GetSigner(ctx, accHexPrivateKeys[network])
 	if err != nil {
-		return big.NewInt(0), nil
+		return big.NewInt(0), errors.Wrap(err, "GetSigner failed")
 	}
 
 	if account == nil {
@@ -490,11 +490,11 @@ func (m *Manager) CheckAccountTokenBalance(ctx context.Context, network NetworkS
 	}
 	erc20Token, err := erc20.NewMatic(tokenAddr, client)
 	if err != nil {
-		return big.NewInt(0), nil
+		return big.NewInt(0), errors.Wrap(err, "NewMatic failed")
 	}
 	balance, err := erc20Token.BalanceOf(&bind.CallOpts{Pending: false}, *account)
 	if err != nil {
-		return big.NewInt(0), nil
+		return big.NewInt(0), errors.Wrap(err, "balanceOf failed")
 	}
 	return balance, nil
 }
