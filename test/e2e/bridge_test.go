@@ -71,8 +71,8 @@ func TestE2E(t *testing.T) {
 		t.Logf("initial globalExitRootSMC: %+v,", globalExitRootSMC)
 		// Send L1 deposit
 		var destNetwork uint32 = 1
-		amount := new(big.Int).SetUint64(10000000000000000000)
-		mintAmount := new(big.Int).SetUint64(35000000000000000000)
+		amount := new(big.Int).SetUint64(1000000000000000000)
+		mintAmount := new(big.Int).SetUint64(3500000000000000000)
 		tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // OKB ERC-20 token
 		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 
@@ -118,7 +118,7 @@ func TestE2E(t *testing.T) {
 		require.NoError(t, err)
 		// Send L2 Deposit to withdraw the some funds
 		destNetwork = 0
-		amount = new(big.Int).SetUint64(1000000000000000000)
+		amount = new(big.Int).SetUint64(100000000000000000)
 		l2Balance, err := opsman.CheckAccountBalance(ctx, operations.L2, &l2BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L2 Bridge Balance: %v", l2Balance)
@@ -153,11 +153,11 @@ func TestE2E(t *testing.T) {
 		// Check L1 funds to see if the amount has been increased
 		balance, err = opsman.CheckAccountBalance(ctx, operations.L1, &destAddr)
 		require.NoError(t, err)
-		require.Equal(t, big.NewInt(1000000000000000000), balance)
+		require.Equal(t, big.NewInt(100000000000000000), balance)
 		// Check L2 funds to see that the amount has been reduced
 		balance, err = opsman.CheckAccountBalance(ctx, operations.L2, &destAddr)
 		require.NoError(t, err)
-		require.True(t, big.NewInt(9000000000000000000).Cmp(balance) > 0)
+		require.True(t, big.NewInt(900000000000000000).Cmp(balance) > 0)
 	})
 
 	t.Run("L1-L2 token bridge", func(t *testing.T) {
