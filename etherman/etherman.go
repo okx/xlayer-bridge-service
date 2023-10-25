@@ -149,14 +149,22 @@ func (etherMan *Client) readEvents(ctx context.Context, query ethereum.FilterQue
 }
 
 func (etherMan *Client) processEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
+	var blockNumber uint64 = 0
+	if len(*blocks) != 0 {
+		blockNumber = (*blocks)[0].BlockNumber
+	}
 	switch vLog.Topics[0] {
 	case updateGlobalExitRootSignatureHash:
+		log.Debug("====logs====Event updateGlobalExitRootSignatureHash. BlockNumber ", blockNumber)
 		return etherMan.updateGlobalExitRootEvent(ctx, vLog, blocks, blocksOrder)
 	case depositEventSignatureHash:
+		log.Debug("====logs====Event depositEventSignatureHash. BlockNumber ", blockNumber)
 		return etherMan.depositEvent(ctx, vLog, blocks, blocksOrder)
 	case claimEventSignatureHash:
+		log.Debug("====logs====Event claimEventSignatureHash. BlockNumber ", blockNumber)
 		return etherMan.claimEvent(ctx, vLog, blocks, blocksOrder)
 	case newWrappedTokenEventSignatureHash:
+		log.Debug("====logs====Event newWrappedTokenEventSignatureHash. BlockNumber ", blockNumber)
 		return etherMan.tokenWrappedEvent(ctx, vLog, blocks, blocksOrder)
 	case initializedSignatureHash:
 		log.Debug("Initialized event detected")

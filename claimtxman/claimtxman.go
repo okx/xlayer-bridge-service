@@ -146,7 +146,7 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 				log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s", deposit.DepositCount, deposit.LeafType, claimHash)
 				continue
 			}
-			log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
+			log.Infof("create the claim tx for the deposit %d, blockNumber %d", deposit.DepositCount, deposit.BlockNumber)
 			ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
 			if err != nil {
 				log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)

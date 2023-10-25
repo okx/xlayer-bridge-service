@@ -3,6 +3,7 @@
 package synchronizer
 
 import (
+	"fmt"
 	etherman "github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	mock "github.com/stretchr/testify/mock"
 
@@ -16,6 +17,7 @@ type bridgectrlMock struct {
 
 // AddDeposit provides a mock function with given fields: deposit, depositID, dbTx
 func (_m *bridgectrlMock) AddDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
+	fmt.Println("Mock AddDeposit")
 	ret := _m.Called(deposit, depositID, dbTx)
 
 	var r0 error

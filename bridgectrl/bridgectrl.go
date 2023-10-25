@@ -2,6 +2,7 @@ package bridgectrl
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
@@ -51,6 +52,7 @@ func (bt *BridgeController) getNetworkID(networkID uint) (uint8, error) {
 
 // AddDeposit adds deposit information to the bridge tree.
 func (bt *BridgeController) AddDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
+	fmt.Println("BridgeController AddDeposit")
 	leaf := hashDeposit(deposit)
 	tID, err := bt.getNetworkID(deposit.NetworkID)
 	if err != nil {

@@ -255,6 +255,7 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 		if lastKnownBlock.Cmp(new(big.Int).SetUint64(toBlock)) < 1 {
 			waitDuration = s.cfg.SyncInterval.Duration
 			s.synced = true
+			log.Debug("break=====", "lastKnownBlock", lastKnownBlock, "toBlock", toBlock)
 			break
 		}
 		if len(blocks) == 0 { // If there is no events in the checked blocks range and lastKnownBlock > fromBlock.
@@ -498,6 +499,7 @@ func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.Globa
 }
 
 func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID uint64, dbTx pgx.Tx) error {
+	t0 := time.Now()
 	deposit.BlockID = blockID
 	deposit.NetworkID = s.networkID
 	depositID, err := s.storage.AddDeposit(s.ctx, &deposit, dbTx)
@@ -512,6 +514,8 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		return err
 	}
 
+	log.Debugf("AddDeposit before. networkID: %d, BlockNumber: %d,", s.networkID, deposit.BlockNumber)
+	t1 := time.Now()
 	err = s.bridgeCtrl.AddDeposit(&deposit, depositID, dbTx)
 	if err != nil {
 		log.Errorf("networkID: %d, failed to store new deposit in the bridge tree, BlockNumber: %d, Deposit: %+v err: %v", s.networkID, deposit.BlockNumber, deposit, err)
@@ -523,6 +527,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		}
 		return err
 	}
+	log.Debugf("AddDeposit after. networkID: %d, BlockNumber: %d, storage.AddDeposit-time:%v, bridgeCtrl.AddDeposit-time", s.networkID, deposit.BlockNumber, t1.Sub(t0), time.Now().Sub(t1))
 	return nil
 }
 
