@@ -64,7 +64,7 @@ func TestE2E(t *testing.T) {
 	opsman, err := operations.NewManager(ctx, opsCfg)
 	require.NoError(t, err)
 
-	t.Run("L1-L2 eth bridge", func(t *testing.T) {
+	t.Run("L1-L2 okb bridge", func(t *testing.T) {
 		// Check initial globalExitRoot. Must fail because at the beginning, no globalExitRoot event is thrown.
 		globalExitRootSMC, err := opsman.GetCurrentGlobalExitRootFromSmc(ctx)
 		require.NoError(t, err)
@@ -72,15 +72,15 @@ func TestE2E(t *testing.T) {
 		// Send L1 deposit
 		var destNetwork uint32 = 1
 		amount := new(big.Int).SetUint64(10000000000000000000)
-		tokenAddr := common.Address{} // This means is eth
+		tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // OKB ERC-20 token
 		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 
-		l1Balance, err := opsman.CheckAccountBalance(ctx, operations.L1, &l1BridgeAddr)
+		l1Balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &l1BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L1 Bridge Balance: %v", l1Balance)
 		err = opsman.SendL1Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
-		l1Balance, err = opsman.CheckAccountBalance(ctx, operations.L1, &l1BridgeAddr)
+		l1Balance, err = opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &l1BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L1 Bridge Balance: %v", l1Balance)
 
