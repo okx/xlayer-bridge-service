@@ -72,9 +72,13 @@ func TestE2E(t *testing.T) {
 		// Send L1 deposit
 		var destNetwork uint32 = 1
 		amount := new(big.Int).SetUint64(10000000000000000000)
+		mintAmount := new(big.Int).SetUint64(35000000000000000000)
 		tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // OKB ERC-20 token
 		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 
+		// Mint OKB token
+		err = opsman.MintERC20(ctx, tokenAddr, mintAmount, operations.L1)
+		require.NoError(t, err)
 		l1Balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &l1BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L1 Bridge Balance: %v", l1Balance)
