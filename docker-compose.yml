@@ -134,7 +134,7 @@ services:
 
   xgon-mock-l1-network:
     container_name: xgon-local-l1-network
-    image: zjg555543/geth-dac:v0.1.0
+    image: zjg555543/geth:v0.1.0_202310251853
     ports:
       - 8545:8545
       - 8546:8546
