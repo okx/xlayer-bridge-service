@@ -648,6 +648,16 @@ func (m *Manager) MintERC20(ctx context.Context, erc20Addr common.Address, amoun
 	return errors.Wrap(client.MintERC20(ctx, erc20Addr, amount, auth), "MintERC20")
 }
 
+// ApproveERC20OKB approves erc20 tokens
+func (m *Manager) ApproveERC20OKB(ctx context.Context, okbAddress common.Address, amount *big.Int) error {
+	client := m.clients[L1]
+	auth, err := client.GetSigner(ctx, accHexPrivateKeys[L1])
+	if err != nil {
+		return err
+	}
+	return client.ApproveERC20(ctx, okbAddress, common.HexToAddress(l1BridgeAddr), amount, auth)
+}
+
 // ApproveERC20 approves erc20 tokens
 func (m *Manager) ApproveERC20(ctx context.Context, erc20Addr, bridgeAddr common.Address, amount *big.Int, network NetworkSID) error {
 	client := m.clients[network]

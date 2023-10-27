@@ -19,11 +19,14 @@ import (
 
 func depositFromL1(ctx context.Context, opsman *operations.Manager, t *testing.T) {
 	amount := new(big.Int).SetUint64(250000000000000000)
-	tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
+	okbAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
 	destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 	var destNetwork uint32 = 1
 	// L1 Deposit
-	err := opsman.SendL1Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
+	err := opsman.ApproveERC20OKB(ctx, okbAddr, amount)
+	require.NoError(t, err)
+	//ctx context.Context, erc20Addr, bridgeAddr common.Address, amount *big.Int, network NetworkSID
+	err = opsman.SendL1Deposit(ctx, okbAddr, amount, destNetwork, &destAddr)
 	require.NoError(t, err)
 
 	deposits, err := opsman.GetBridgeInfoByDestAddr(ctx, &destAddr)
