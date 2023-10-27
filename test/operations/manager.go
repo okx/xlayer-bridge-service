@@ -48,7 +48,7 @@ const (
 	l1BridgeAddr      = "0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0"
 	l2BridgeAddr      = "0xFc2f92CBFA1b38a4B38B412F582cf08028cBA9e0"
 
-	l1AccHexAddress = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+	l1AccHexAddress = "0x2ecf31ece36ccac2d3222a303b1409233ecbb225"
 
 	sequencerAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
@@ -61,7 +61,7 @@ const (
 var (
 	dbConfig          = pgstorage.NewConfigFromEnv()
 	accHexPrivateKeys = map[NetworkSID]string{
-		L1: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", //0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+		L1: "0xde3ca643a52f5543e84ba984c4419ff40dbabd0e483c31c1d09fee8168d68e38", //0x2ecf31ece36ccac2d3222a303b1409233ecbb225
 		L2: "0xdfd01798f92667dbf91df722434e8fbe96af0211d4d1b82bbbbc8f1def7a814f", //0xc949254d682d8c9ad5682521675b8f43b102aec4
 	}
 )

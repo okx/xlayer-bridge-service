@@ -19,7 +19,7 @@ import (
 
 func depositFromL1(ctx context.Context, opsman *operations.Manager, t *testing.T) {
 	amount := new(big.Int).SetUint64(250000000000000000)
-	tokenAddr := common.Address{} // This means is eth
+	tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
 	destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 	var destNetwork uint32 = 1
 	// L1 Deposit
@@ -37,8 +37,8 @@ func depositFromL2(ctx context.Context, opsman *operations.Manager, t *testing.T
 	// Send L2 Deposit to withdraw the some funds
 	var destNetwork uint32 = 0
 	amount := new(big.Int).SetUint64(100000000000000000)
-	tokenAddr := common.Address{} // This means is eth
-	destAddr := common.HexToAddress("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC")
+	tokenAddr := common.Address{} // This means is okb
+	destAddr := common.HexToAddress("0x2ecf31ece36ccac2d3222a303b1409233ecbb225")
 	err := opsman.SendL2Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 	require.NoError(t, err)
 

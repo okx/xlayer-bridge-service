@@ -166,6 +166,7 @@ func (c *Client) SendBridgeAsset(ctx context.Context, tokenAddr common.Address, 
 	if destAddr == nil {
 		destAddr = &auth.From
 	}
+	log.Infof("token address:%v, amount:%v, destnetwork:%v, dest address:%v", tokenAddr.String(), amount.String(), destNetwork, destAddr.String())
 	tx, err := c.bridge.BridgeAsset(auth, destNetwork, *destAddr, amount, tokenAddr, true, metadata)
 	if err != nil {
 		log.Error("Error: ", err)
