@@ -259,6 +259,12 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 	statusesFilter := []ctmtypes.MonitoredTxStatus{ctmtypes.MonitoredTxStatusCreated}
 	mTxs, err := tm.storage.GetClaimTxsByStatus(ctx, statusesFilter, dbTx)
 	if err != nil {
+		log.Errorf("failed to get created monitored txs: %v", err)
+		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
+			return rollbackErr
+		}
 		return fmt.Errorf("failed to get created monitored txs: %v", err)
 	}
 
