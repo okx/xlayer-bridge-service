@@ -666,10 +666,8 @@ func (m *Manager) ApproveERC20(ctx context.Context, erc20Addr common.Address, am
 		return err
 	}
 
-	bridgeAddr := common.Address{}
-	if network == L1 {
-		bridgeAddr = common.HexToAddress(l1BridgeAddr)
-	} else {
+	bridgeAddr := common.HexToAddress(l1BridgeAddr)
+	if network == L2 {
 		bridgeAddr = common.HexToAddress(l2BridgeAddr)
 	}
 
