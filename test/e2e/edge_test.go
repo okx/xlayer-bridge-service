@@ -19,7 +19,7 @@ import (
 
 func depositFromL1(ctx context.Context, opsman *operations.Manager, t *testing.T) {
 	amount := new(big.Int).SetUint64(250000000000000000)
-	okbAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
+	okbAddr := common.HexToAddress("0x82109a709138A2953C720D3d775168717b668ba6") // This means is okb
 	destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 	var destNetwork uint32 = 1
 	// L1 Deposit

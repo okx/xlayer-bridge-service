@@ -74,7 +74,7 @@ func TestE2E(t *testing.T) {
 		// Send L1 deposit
 		var destNetwork uint32 = 1
 		amount := new(big.Int).SetUint64(10000000000000000000)
-		okbAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
+		okbAddr := common.HexToAddress("0x82109a709138A2953C720D3d775168717b668ba6") // This means is okb
 		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 
 		err = opsman.ApproveERC20OKB(ctx, okbAddr, amount)
@@ -102,18 +102,19 @@ func TestE2E(t *testing.T) {
 		balance, err := opsman.CheckAccountBalance(ctx, operations.L2, &destAddr)
 		require.NoError(t, err)
 		log.Infof("balance:%v", balance.String())
-		//initL2Balance := big.NewInt(0)
-		//require.Equal(t, 0, balance.Cmp(initL2Balance))
+		initL2Balance := big.NewInt(0)
+		require.Equal(t, 0, balance.Cmp(initL2Balance))
 		t.Log("Deposit: ", deposits[0])
 		// Check the claim tx
 		err = opsman.CheckL2Claim(ctx, uint(deposits[0].DestNet), uint(deposits[0].DepositCnt))
 		require.NoError(t, err)
 		// Check L2 funds to see if the amount has been increased
+		log.Infof("destAddr:%v", destAddr.String())
 		balance2, err := opsman.CheckAccountBalance(ctx, operations.L2, &destAddr)
-		result2 := new(big.Int)
-		result2.Sub(balance2, balance)
+		log.Infof("balance:%v, balance2:%v, amount:%v", balance.String(), balance2.String(), amount.String())
 		require.NoError(t, err)
-		require.Equal(t, amount, result2)
+		require.NotEqual(t, balance, balance2)
+		require.Equal(t, amount, balance2)
 
 		// Check globalExitRoot
 		globalExitRoot3, err := opsman.GetCurrentGlobalExitRootFromSmc(ctx)
@@ -124,7 +125,7 @@ func TestE2E(t *testing.T) {
 		l2Balance, err := opsman.CheckAccountBalance(ctx, operations.L2, &l2BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L2 Bridge Balance: %v", l2Balance)
-		err = opsman.SendL2Deposit(ctx, okbAddr, amount, destNetwork, &destAddr)
+		err = opsman.SendL2Deposit(ctx, common.Address{}, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
 		l2Balance, err = opsman.CheckAccountBalance(ctx, operations.L2, &l2BridgeAddr)
 		require.NoError(t, err)

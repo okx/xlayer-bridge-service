@@ -54,7 +54,7 @@ EnableL2SuggestedGasPricePolling = true
 [Synchronizer]
 SyncInterval = "1s"
 SyncChunkSize = 100
-TrustedSequencerURL = "" # If it is empty or not specified, then the value is read from the smc.
+TrustedSequencerURL = "http://xgon-json-rpc:8123" # If it is empty or not specified, then the value is read from the smc.
 
 [Sequencer]
 WaitPeriodPoolIsEmpty = "1s"
@@ -102,7 +102,7 @@ MaxTxSizeForL1 = 131072
 MaxBatchesForL1 = 10
 SenderAddress = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 L2Coinbase = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-PrivateKey = {Path = "/pk/keystore.sequencer", Password = "testonly"}
+PrivateKey = {Path = "/pk/sequencer.keystore", Password = "testonly"}
 UseValidium = true 
 
 [Aggregator]
@@ -120,8 +120,8 @@ GeneratingProofCleanupThreshold = "10m"
 [EthTxManager]
 ForcedGas = 0
 PrivateKeys = [
-	{Path = "/pk/keystore.sequencer", Password = "testonly"},
-	{Path = "/pk/keystore.aggregator", Password = "testonly"}
+	{Path = "/pk/sequencer.keystore", Password = "testonly"},
+	{Path = "/pk/aggregator.keystore", Password = "testonly"}
 ]
 
 [L2GasPriceSuggester]
