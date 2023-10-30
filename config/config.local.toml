@@ -22,7 +22,7 @@ FreeGas = true
 
 [Etherman]
 L1URL = "http://xgon-mock-l1-network:8545"
-L2URLs = ["http://xgon-node:8123"]
+L2URLs = ["http://xgon-json-rpc:8123"]
 L1ChainId = 5
 L2ChainIds = [1001]
 

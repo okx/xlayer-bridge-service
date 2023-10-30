@@ -250,7 +250,7 @@ func TestE2E(t *testing.T) {
 	})
 
 	t.Run("Reversal ERC20", func(t *testing.T) {
-		log.Infof("TestE2E, L1-L2 token bridge start.")
+		log.Infof("TestE2E, Reversal ERC20 start.")
 		// Check initial globalExitRoot.
 		globalExitRootSMC, err := opsman.GetCurrentGlobalExitRootFromSmc(ctx)
 		require.NoError(t, err)
@@ -270,6 +270,8 @@ func TestE2E(t *testing.T) {
 		t.Log("Token balance: ", balance, ". tokenaddress: ", tokenAddr, ". account: ", origAddr)
 		destAddr := common.HexToAddress("0x2ecf31ece36ccac2d3222a303b1409233ecbb225")
 		amount = new(big.Int).SetUint64(1000000000000000000)
+		err = opsman.ApproveERC20(ctx, tokenAddr, amount, operations.L1)
+		require.NoError(t, err)
 		err = opsman.SendL2Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
 		// Check globalExitRoot
@@ -342,7 +344,7 @@ func TestE2E(t *testing.T) {
 		balance, err = opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenWrapped.WrappedTokenAddress, &destAddr)
 		require.NoError(t, err)
 		require.Equal(t, 0, big.NewInt(400000000000000000).Cmp(balance))
-		log.Infof("TestE2E, L1-L2 token bridge end.")
+		log.Infof("TestE2E, Reversal ERC20 end.")
 	})
 
 	t.Run("ERC20", func(t *testing.T) {

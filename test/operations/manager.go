@@ -659,12 +659,20 @@ func (m *Manager) ApproveERC20OKB(ctx context.Context, okbAddress common.Address
 }
 
 // ApproveERC20 approves erc20 tokens
-func (m *Manager) ApproveERC20(ctx context.Context, erc20Addr, bridgeAddr common.Address, amount *big.Int, network NetworkSID) error {
+func (m *Manager) ApproveERC20(ctx context.Context, erc20Addr common.Address, amount *big.Int, network NetworkSID) error {
 	client := m.clients[network]
 	auth, err := client.GetSigner(ctx, accHexPrivateKeys[network])
 	if err != nil {
 		return err
 	}
+
+	bridgeAddr := common.Address{}
+	if network == L1 {
+		bridgeAddr = common.HexToAddress(l1BridgeAddr)
+	} else {
+		bridgeAddr = common.HexToAddress(l2BridgeAddr)
+	}
+
 	return client.ApproveERC20(ctx, erc20Addr, bridgeAddr, amount, auth)
 }
 
