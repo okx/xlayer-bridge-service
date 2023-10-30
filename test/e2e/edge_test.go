@@ -25,7 +25,6 @@ func depositFromL1(ctx context.Context, opsman *operations.Manager, t *testing.T
 	// L1 Deposit
 	err := opsman.ApproveERC20OKB(ctx, okbAddr, amount)
 	require.NoError(t, err)
-	//ctx context.Context, erc20Addr, bridgeAddr common.Address, amount *big.Int, network NetworkSID
 	err = opsman.SendL1Deposit(ctx, okbAddr, amount, destNetwork, &destAddr)
 	require.NoError(t, err)
 
