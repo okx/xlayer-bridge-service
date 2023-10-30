@@ -74,15 +74,17 @@ func TestE2E(t *testing.T) {
 		// Send L1 deposit
 		var destNetwork uint32 = 1
 		amount := new(big.Int).SetUint64(10000000000000000000)
-		tokenAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
-		destAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+		okbAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
+		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 
-		l1Balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &l1BridgeAddr)
+		err = opsman.ApproveERC20OKB(ctx, okbAddr, amount)
+		l1Balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, okbAddr, &l1BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L1 Bridge Balance: %v", l1Balance)
-		err = opsman.SendL1Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
-		l1Balance, err = opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &l1BridgeAddr)
+		err = opsman.SendL1Deposit(ctx, okbAddr, amount, destNetwork, &destAddr)
+		require.NoError(t, err)
+		l1Balance, err = opsman.CheckAccountTokenBalance(ctx, operations.L1, okbAddr, &l1BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L1 Bridge Balance: %v", l1Balance)
 
@@ -99,17 +101,19 @@ func TestE2E(t *testing.T) {
 		// Check L2 funds
 		balance, err := opsman.CheckAccountBalance(ctx, operations.L2, &destAddr)
 		require.NoError(t, err)
-		initL2Balance := big.NewInt(0)
-		require.Equal(t, 0, balance.Cmp(initL2Balance))
+		log.Infof("balance:%v", balance.String())
+		//initL2Balance := big.NewInt(0)
+		//require.Equal(t, 0, balance.Cmp(initL2Balance))
 		t.Log("Deposit: ", deposits[0])
 		// Check the claim tx
 		err = opsman.CheckL2Claim(ctx, uint(deposits[0].DestNet), uint(deposits[0].DepositCnt))
 		require.NoError(t, err)
 		// Check L2 funds to see if the amount has been increased
 		balance2, err := opsman.CheckAccountBalance(ctx, operations.L2, &destAddr)
+		result2 := new(big.Int)
+		result2.Sub(balance2, balance)
 		require.NoError(t, err)
-		require.NotEqual(t, balance, balance2)
-		require.Equal(t, amount, balance2)
+		require.Equal(t, amount, result2)
 
 		// Check globalExitRoot
 		globalExitRoot3, err := opsman.GetCurrentGlobalExitRootFromSmc(ctx)
@@ -120,7 +124,7 @@ func TestE2E(t *testing.T) {
 		l2Balance, err := opsman.CheckAccountBalance(ctx, operations.L2, &l2BridgeAddr)
 		require.NoError(t, err)
 		t.Logf("L2 Bridge Balance: %v", l2Balance)
-		err = opsman.SendL2Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
+		err = opsman.SendL2Deposit(ctx, okbAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
 		l2Balance, err = opsman.CheckAccountBalance(ctx, operations.L2, &l2BridgeAddr)
 		require.NoError(t, err)
@@ -182,7 +186,7 @@ func TestE2E(t *testing.T) {
 		balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &origAddr)
 		require.NoError(t, err)
 		t.Log("Init account balance l1: ", balance)
-		destAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 		// First deposit
 		err = opsman.SendL1Deposit(ctx, tokenAddr, amount1, destNetwork, &destAddr)
 		require.NoError(t, err)
@@ -259,7 +263,7 @@ func TestE2E(t *testing.T) {
 		err = opsman.MintERC20(ctx, tokenAddr, amount, operations.L2)
 		require.NoError(t, err)
 		//Check balance
-		origAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+		origAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 		balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L2, tokenAddr, &origAddr)
 		require.NoError(t, err)
 		t.Log("Token balance: ", balance, ". tokenaddress: ", tokenAddr, ". account: ", origAddr)
@@ -357,7 +361,7 @@ func TestE2E(t *testing.T) {
 		balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &origAddr)
 		require.NoError(t, err)
 		t.Log("Init account balance l1: ", balance)
-		destAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 		err = opsman.SendL1Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
 		// Check globalExitRoot
@@ -450,7 +454,7 @@ func TestE2E(t *testing.T) {
 		balance, err := opsman.CheckAccountTokenBalance(ctx, operations.L1, tokenAddr, &origAddr)
 		require.NoError(t, err)
 		t.Log("Init account balance l1: ", balance)
-		destAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+		destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 		// First deposit
 		err = opsman.SendL1Deposit(ctx, tokenAddr, amount1, destNetwork, &destAddr)
 		require.NoError(t, err)

@@ -62,7 +62,7 @@ var (
 	dbConfig          = pgstorage.NewConfigFromEnv()
 	accHexPrivateKeys = map[NetworkSID]string{
 		L1: "0xde3ca643a52f5543e84ba984c4419ff40dbabd0e483c31c1d09fee8168d68e38", //0x2ecf31ece36ccac2d3222a303b1409233ecbb225
-		L2: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", //0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+		L2: "0xdfd01798f92667dbf91df722434e8fbe96af0211d4d1b82bbbbc8f1def7a814f", //0xc949254d682d8c9ad5682521675b8f43b102aec4
 	}
 )
 
