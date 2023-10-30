@@ -20,7 +20,7 @@ import (
 func depositFromL1(ctx context.Context, opsman *operations.Manager, t *testing.T) {
 	amount := new(big.Int).SetUint64(250000000000000000)
 	okbAddr := common.HexToAddress("0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b") // This means is okb
-	destAddr := common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
+	destAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	var destNetwork uint32 = 1
 	// L1 Deposit
 	err := opsman.ApproveERC20OKB(ctx, okbAddr, amount)
