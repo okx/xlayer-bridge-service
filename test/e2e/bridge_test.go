@@ -154,7 +154,7 @@ func TestE2E(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check L1 funds to see if the amount has been increased
-		balance, err = opsman.CheckAccountBalance(ctx, operations.L1, &destAddr)
+		balance, err = opsman.CheckAccountTokenBalance(ctx, operations.L1, okbAddr, &destAddr)
 		require.NoError(t, err)
 		require.Equal(t, big.NewInt(1000000000000000000), balance)
 		// Check L2 funds to see that the amount has been reduced
@@ -270,8 +270,6 @@ func TestE2E(t *testing.T) {
 		t.Log("Token balance: ", balance, ". tokenaddress: ", tokenAddr, ". account: ", origAddr)
 		destAddr := common.HexToAddress("0x2ecf31ece36ccac2d3222a303b1409233ecbb225")
 		amount = new(big.Int).SetUint64(1000000000000000000)
-		err = opsman.ApproveERC20(ctx, tokenAddr, amount, operations.L1)
-		require.NoError(t, err)
 		err = opsman.SendL2Deposit(ctx, tokenAddr, amount, destNetwork, &destAddr)
 		require.NoError(t, err)
 		// Check globalExitRoot
