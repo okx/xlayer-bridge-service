@@ -167,6 +167,22 @@ func (m *Manager) SendL1Deposit(ctx context.Context, tokenAddr common.Address, a
 	return m.WaitExitRootToBeSynced(ctx, orgExitRoot, false)
 }
 
+// SetL2TokensAllowed set l2 tokens allowed set
+func (m *Manager) SetL2TokensAllowed(ctx context.Context, allowed bool) error {
+	client := m.clients[L2]
+	auth, err := client.GetSigner(ctx, accHexPrivateKeys[L1])
+	if err != nil {
+		return err
+	}
+
+	err = client.SetL2TokensAllowed(ctx, allowed, auth)
+	if err != nil {
+		return errors.Wrap(err, "SetL2TokensAllowed")
+	}
+
+	return nil
+}
+
 // SendL2Deposit sends a deposit from l2 to l1.
 func (m *Manager) SendL2Deposit(ctx context.Context, tokenAddr common.Address, amount *big.Int,
 	destNetwork uint32, destAddr *common.Address,

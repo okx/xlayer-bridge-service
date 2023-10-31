@@ -267,6 +267,24 @@ func (c *Client) SendClaim(ctx context.Context, deposit *pb.Deposit, smtProof [m
 	return WaitTxToBeMined(ctx, c.Client, tx, txTimeout)
 }
 
+// SetL2TokensAllowed set l2 token allowed.
+func (c *Client) SetL2TokensAllowed(ctx context.Context, allowed bool, auth *bind.TransactOpts) error {
+	result, _ := c.bridgeL2.IsAllL2TokensAllowed(&bind.CallOpts{})
+	if result == allowed {
+		log.Infof("Do nothing, allowed:%v", allowed)
+		return nil
+	}
+
+	tx, err := c.bridgeL2.SetAllL2TokensAllowed(auth, allowed)
+	if err != nil {
+		log.Error("Error: ", err)
+		return err
+	}
+	// wait transfer to be included in a batch
+	const txTimeout = 60 * time.Second
+	return WaitTxToBeMined(ctx, c.Client, tx, txTimeout)
+}
+
 // WaitTxToBeMined waits until a tx is mined or forged.
 func WaitTxToBeMined(ctx context.Context, client *ethclient.Client, tx *types.Transaction, timeout time.Duration) error {
 	return ops.WaitTxToBeMined(ctx, client, tx, timeout)
