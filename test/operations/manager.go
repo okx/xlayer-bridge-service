@@ -227,8 +227,8 @@ func (m *Manager) SendL2BridgeMessage(ctx context.Context, destAddr common.Addre
 		return err
 	}
 
-	auth.Value = amount
-	err = client.SendBridgeMessage(ctx, destNetwork, destAddr, metadata, auth)
+	//auth.Value = amount
+	err = client.SendL2BridgeMessage(ctx, destNetwork, amount, destAddr, metadata, auth)
 	if err != nil {
 		return err
 	}

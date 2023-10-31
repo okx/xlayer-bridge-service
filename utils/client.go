@@ -16,6 +16,7 @@ import (
 	zkevmtypes "github.com/0xPolygonHermez/zkevm-node/config/types"
 	"github.com/0xPolygonHermez/zkevm-node/encoding"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
+	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridgel2"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/test/contracts/bin/ERC20"
 	ops "github.com/0xPolygonHermez/zkevm-node/test/operations"
@@ -42,7 +43,8 @@ const (
 type Client struct {
 	// Client ethclient
 	*ethclient.Client
-	bridge *polygonzkevmbridge.Polygonzkevmbridge
+	bridge   *polygonzkevmbridge.Polygonzkevmbridge
+	bridgeL2 *polygonzkevmbridgel2.Polygonzkevmbridgel2
 }
 
 // NewClient creates client.
@@ -52,13 +54,16 @@ func NewClient(ctx context.Context, nodeURL string, bridgeSCAddr common.Address)
 		return nil, err
 	}
 	var br *polygonzkevmbridge.Polygonzkevmbridge
+	var brl2 *polygonzkevmbridgel2.Polygonzkevmbridgel2
 	if len(bridgeSCAddr) != 0 {
 		br, err = polygonzkevmbridge.NewPolygonzkevmbridge(bridgeSCAddr, client)
+		brl2, err = polygonzkevmbridgel2.NewPolygonzkevmbridgel2(bridgeSCAddr, client)
 	}
 	log.Infof("nodeURL:%v, bridgeSCAddr:%v, ", nodeURL, bridgeSCAddr.String())
 	return &Client{
-		Client: client,
-		bridge: br,
+		Client:   client,
+		bridge:   br,
+		bridgeL2: brl2,
 	}, err
 }
 
@@ -183,6 +188,20 @@ func (c *Client) SendBridgeMessage(ctx context.Context, destNetwork uint32, dest
 	auth *bind.TransactOpts,
 ) error {
 	tx, err := c.bridge.BridgeMessage(auth, destNetwork, destAddr, true, metadata)
+	if err != nil {
+		log.Error("Error: ", err)
+		return err
+	}
+	// wait transfer to be included in a batch
+	const txTimeout = 60 * time.Second
+	return WaitTxToBeMined(ctx, c.Client, tx, txTimeout)
+}
+
+// SendL2BridgeMessage sends a bridge message transaction.
+func (c *Client) SendL2BridgeMessage(ctx context.Context, destNetwork uint32, amountWETH *big.Int, destAddr common.Address, metadata []byte,
+	auth *bind.TransactOpts,
+) error {
+	tx, err := c.bridgeL2.BridgeMessage(auth, destNetwork, destAddr, amountWETH, true, metadata)
 	if err != nil {
 		log.Error("Error: ", err)
 		return err
