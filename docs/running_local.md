@@ -79,6 +79,11 @@ make test-edge
 | 0x82109a709138A2953C720D3d775168717b668ba6 | L2 WETH token |
 | 0xEd236da21Ff62bC7B62608AdB818da49E8549fa7 | GlobalExitRootManager |
 
+## Admin Account
+| Address | Private Key |
+|---|---|
+| 0x2ECF31eCe36ccaC2d3222A303b1409233ECBB225 | 0xde3ca643a52f5543e84ba984c4419ff40dbabd0e483c31c1d09fee8168d68e38 |
+
 
 ## Fund account on L2 with ETH
 
