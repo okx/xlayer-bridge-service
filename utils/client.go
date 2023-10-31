@@ -56,7 +56,7 @@ func NewClient(ctx context.Context, nodeURL string, bridgeSCAddr common.Address)
 	var br *polygonzkevmbridge.Polygonzkevmbridge
 	var brl2 *polygonzkevmbridgel2.Polygonzkevmbridgel2
 	if len(bridgeSCAddr) != 0 {
-		br, err = polygonzkevmbridge.NewPolygonzkevmbridge(bridgeSCAddr, client)
+		br, _ = polygonzkevmbridge.NewPolygonzkevmbridge(bridgeSCAddr, client)
 		brl2, err = polygonzkevmbridgel2.NewPolygonzkevmbridgel2(bridgeSCAddr, client)
 	}
 	log.Infof("nodeURL:%v, bridgeSCAddr:%v, ", nodeURL, bridgeSCAddr.String())
