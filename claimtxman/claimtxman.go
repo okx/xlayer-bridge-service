@@ -225,6 +225,7 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 	}
 	// get next nonce
 	nonce, err := tm.getNextNonce(from)
+	log.Debug("addClaimTx, getNextNonce:", nonce)
 	if err != nil {
 		err := fmt.Errorf("failed to get current nonce: %v", err)
 		log.Errorf("error getting next nonce. Error: %s", err.Error())
@@ -497,6 +498,7 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 	if reviewNonce {
 		// check nonce
 		nonce, err := tm.getNextNonce(mTx.From)
+		log.Debug("ReviewMonitoredTx, getNextNonce:", nonce)
 		if err != nil {
 			err := fmt.Errorf("failed to get nonce: %w", err)
 			mTxLog.Errorf(err.Error())
