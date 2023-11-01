@@ -299,6 +299,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 					continue
 				}
 
+				mTxLog.Errorf("tx: %s not mined yet", txHash.String())
 				allHistoryTxMined = false
 				continue
 			}
