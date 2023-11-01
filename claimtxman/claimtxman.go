@@ -178,15 +178,25 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 
 func (tm *ClaimTxManager) getNextNonce(from common.Address) (uint64, error) {
 	nonce, err := tm.l2Node.NonceAt(tm.ctx, from, nil)
+	log.Debug("inside getNextNonce, l2.Nonce:", nonce)
 	if err != nil {
 		return 0, err
 	}
 	if tempNonce, found := tm.nonceCache.Get(from.Hex()); found {
+		log.Debug("inside getNextNonce, cache.Nonce:", tempNonce)
 		if tempNonce >= nonce {
 			nonce = tempNonce + 1
 		}
+	} else {
+		log.Debug("inside getNextNonce, cache.Nonce: not found")
 	}
 	tm.nonceCache.Add(from.Hex(), nonce)
+	if reGetN, found := tm.nonceCache.Get(from.Hex()); found {
+		log.Debugf("inside getNextNonce, nonce:%d, reGetCacheNonce:%d\n", nonce, reGetN)
+	} else {
+		log.Debugf("inside getNextNonce, nonce:%d, reGetCacheNonce:not found\n", nonce)
+	}
+
 	return nonce, nil
 }
 
@@ -210,6 +220,7 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 	}
 	// get next nonce
 	nonce, err := tm.getNextNonce(from)
+	log.Debug("addClaimTx, getNextNonce:", nonce)
 	if err != nil {
 		err := fmt.Errorf("failed to get current nonce: %v", err)
 		log.Errorf("error getting next nonce. Error: %s", err.Error())
@@ -474,6 +485,7 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 	if reviewNonce {
 		// check nonce
 		nonce, err := tm.getNextNonce(mTx.From)
+		log.Debugf("ReviewMonitoredTx, getNextNonce:%d, mtx.Nonce:%d\n", nonce, mTx.Nonce)
 		if err != nil {
 			err := fmt.Errorf("failed to get nonce: %w", err)
 			mTxLog.Errorf(err.Error())
