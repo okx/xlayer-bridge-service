@@ -408,7 +408,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 				err := tm.l2Node.SendTransaction(ctx, signedTx)
 				if err != nil {
 					mTxLog.Errorf("failed to send tx %s to network: %v", signedTx.Hash().String(), err)
-					var reviewNonce bool
+					//var reviewNonce bool
 					if strings.Contains(err.Error(), "nonce") {
 						mTxLog.Infof("nonce error detected, Nonce used: %d", signedTx.Nonce())
 						if !isResetNonce {
@@ -416,11 +416,11 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 							tm.nonceCache.Remove(mTx.From.Hex())
 							mTxLog.Infof("nonce cache cleared for address %v", mTx.From.Hex())
 						}
-						reviewNonce = true
+						//reviewNonce = true
 					}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
-					err := tm.ReviewMonitoredTx(ctx, &mTx, reviewNonce)
+					err := tm.ReviewMonitoredTx(ctx, &mTx, true)
 					if err != nil {
 						mTxLog.Errorf("failed to review monitored tx: %v", err)
 					}
