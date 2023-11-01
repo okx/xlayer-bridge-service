@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
-	"time"
-
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
@@ -19,6 +15,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
+	"math/big"
+	"strings"
+	"time"
 )
 
 const (
@@ -491,7 +490,7 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 			mTxLog.Errorf(err.Error())
 			return err
 		}
-		if nonce > mTx.Nonce {
+		if nonce != mTx.Nonce {
 			mTxLog.Infof("monitored tx nonce updated from %v to %v", mTx.Nonce, nonce)
 			mTx.Nonce = nonce
 		}
