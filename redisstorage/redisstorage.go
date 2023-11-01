@@ -25,11 +25,11 @@ type redisStorageImpl struct {
 }
 
 func NewRedisStorage(cfg Config) (RedisStorage, error) {
-	if len(cfg.Addr) == 0 {
+	if len(cfg.Addrs) == 0 {
 		return nil, errors.New("redis address is empty")
 	}
 	client := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:    cfg.Addr,
+		Addrs:    cfg.Addrs,
 		Username: cfg.Username,
 		Password: cfg.Password,
 	})

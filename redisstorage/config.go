@@ -3,7 +3,7 @@ package redisstorage
 // Config stores the redis connection configs
 type Config struct {
 	// Host:Port address
-	Addr []string `mapstructure:"Addr"`
+	Addrs []string `mapstructure:"Addr"`
 
 	// Username for ACL
 	Username string `mapstructure:"Username"`
