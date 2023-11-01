@@ -170,42 +170,6 @@ func startServer(ctx *cli.Context) error {
 	return nil
 }
 
-func startKafkaConsumer(ctx *cli.Context) error {
-	c, err := initCommon(ctx)
-	if err != nil {
-		return err
-	}
-
-	redisStorage, err := redisstorage.NewRedisStorage(c.BridgeServer.Redis)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	// Start the coin middleware kafka consumer
-	log.Debugf("start initializing kafka consumer...")
-	coinKafkaConsumer, err := coinmiddleware.NewKafkaConsumer(c.CoinKafkaConsumer, redisStorage)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	log.Debugf("finish initializing kafka consumer")
-	go coinKafkaConsumer.Start(ctx.Context)
-	defer func() {
-		err := coinKafkaConsumer.Close()
-		if err != nil {
-			log.Errorf("close kafka consumer error: %v", err)
-		}
-	}()
-
-	// Wait for an in interrupt.
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
-
-	return nil
-}
-
 func initCommon(ctx *cli.Context) (*config.Config, error) {
 	configFilePath := ctx.String(flagCfg)
 	network := ctx.String(flagNetwork)
