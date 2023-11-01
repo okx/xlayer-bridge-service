@@ -71,16 +71,18 @@ func (c *kafkaConsumerImpl) Start(ctx context.Context) {
 		err := c.client.Consume(ctx, c.topics, c.handler)
 		if err != nil {
 			log.Errorf("kafka consumer error: %v", err)
-			if errors.Is(err, sarama.ErrClosedConsumerGroup) {
-				err = nil
-			}
-			err = errors.Wrap(err, "kafka consumer error")
-			panic(err)
+			//if errors.Is(err, sarama.ErrClosedConsumerGroup) {
+			//	err = nil
+			//}
+			//err = errors.Wrap(err, "kafka consumer error")
+			//panic(err)
+			return
 		}
 		if err = ctx.Err(); err != nil {
 			log.Errorf("kafka consumer ctx error: %v", err)
-			err = errors.Wrap(err, "kafka consumer ctx error")
-			panic(err)
+			//err = errors.Wrap(err, "kafka consumer ctx error")
+			//panic(err)
+			return
 		}
 	}
 }
