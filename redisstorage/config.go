@@ -6,7 +6,7 @@ type Config struct {
 	IsClusterMode bool `mapstructure:"IsClusterMode"`
 
 	// Host:Port address
-	Addrs []string `mapstructure:"Addr"`
+	Addrs []string `mapstructure:"Addrs"`
 
 	// Username for ACL
 	Username string `mapstructure:"Username"`
