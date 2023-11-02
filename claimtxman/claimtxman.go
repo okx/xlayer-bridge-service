@@ -241,10 +241,20 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 	}
 
 	// add to storage
-	err = tm.storage.AddClaimTx(tm.ctx, mTx, dbTx)
+	dbTxTmp, err := tm.storage.BeginDBTransaction(tm.ctx)
+	if err != nil {
+		return err
+	}
+	err = tm.storage.AddClaimTx(tm.ctx, mTx, dbTxTmp)
 	if err != nil {
 		err := fmt.Errorf("failed to add tx to get monitored: %v", err)
 		log.Errorf("error adding claim tx to db. Error: %s", err.Error())
+		return err
+	}
+	err = tm.storage.Commit(tm.ctx, dbTxTmp)
+	if err != nil {
+		err := fmt.Errorf("commit, failed to add tx to get monitored: %v", err)
+		log.Errorf("commit, error adding claim tx to db. Error: %s", err.Error())
 		return err
 	}
 
