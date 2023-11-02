@@ -271,6 +271,10 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 	if err != nil {
 		err := fmt.Errorf("commit, failed to add tx to get monitored: %v", err)
 		log.Errorf("commit, error adding claim tx to db. Error: %s", err.Error())
+		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Fatalf("claimtxman adding claim tx error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
+		}
 		return err
 	}
 
