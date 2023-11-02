@@ -31,6 +31,7 @@ type ClientSynchronizer struct {
 	cfg              Config
 	networkID        uint
 	chExitRootEvent  chan *etherman.GlobalExitRoot
+	chSynced         chan uint
 	zkEVMClient      zkEVMClientInterface
 	synced           bool
 	l1RollupExitRoot common.Hash
@@ -44,6 +45,7 @@ func NewSynchronizer(
 	zkEVMClient zkEVMClientInterface,
 	genBlockNumber uint64,
 	chExitRootEvent chan *etherman.GlobalExitRoot,
+	chSynced chan uint,
 	cfg Config) (Synchronizer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	networkID, err := ethMan.GetNetworkID(ctx)
@@ -70,6 +72,7 @@ func NewSynchronizer(
 			cfg:              cfg,
 			networkID:        networkID,
 			chExitRootEvent:  chExitRootEvent,
+			chSynced:         chSynced,
 			zkEVMClient:      zkEVMClient,
 			l1RollupExitRoot: ger.ExitRoots[1],
 		}, nil
@@ -82,6 +85,7 @@ func NewSynchronizer(
 		cancelCtx:      cancel,
 		genBlockNumber: genBlockNumber,
 		cfg:            cfg,
+		chSynced:       chSynced,
 		networkID:      networkID,
 	}, nil
 }
@@ -134,9 +138,11 @@ func (s *ClientSynchronizer) Sync() error {
 					continue
 				}
 				lastKnownBlock := header.Number.Uint64()
-				if lastBlockSynced.BlockNumber == lastKnownBlock {
+				if lastBlockSynced.BlockNumber == lastKnownBlock && !s.synced {
+					log.Infof("NetworkID %d Synced!", s.networkID)
 					waitDuration = s.cfg.SyncInterval.Duration
 					s.synced = true
+					s.chSynced <- s.networkID
 				}
 				if lastBlockSynced.BlockNumber > lastKnownBlock {
 					if s.networkID == 0 {
@@ -253,8 +259,12 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 		fromBlock = toBlock + 1
 
 		if lastKnownBlock.Cmp(new(big.Int).SetUint64(toBlock)) < 1 {
-			waitDuration = s.cfg.SyncInterval.Duration
-			s.synced = true
+			if !s.synced {
+				log.Infof("NetworkID %d Synced!", s.networkID)
+				waitDuration = s.cfg.SyncInterval.Duration
+				s.synced = true
+				s.chSynced <- s.networkID
+			}
 			break
 		}
 		if len(blocks) == 0 { // If there is no events in the checked blocks range and lastKnownBlock > fromBlock.
