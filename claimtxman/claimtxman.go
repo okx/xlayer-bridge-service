@@ -620,7 +620,7 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 			mTxLog.Errorf(err.Error())
 			return err
 		}
-		if nonce > mTx.Nonce {
+		if nonce != mTx.Nonce {
 			mTxLog.Infof("monitored tx nonce updated from %v to %v", mTx.Nonce, nonce)
 			mTx.Nonce = nonce
 		}
