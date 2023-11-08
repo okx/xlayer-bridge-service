@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
@@ -151,44 +152,65 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
 			return err
 		}
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(deposits))
+		wg.Add(len(deposits))
 		for _, deposit := range deposits {
-			claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
-			if err != nil {
-				log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
-				return err
-			}
-			if len(claimHash) > 0 || deposit.LeafType == LeafTypeMessage {
-				log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s", deposit.DepositCount, deposit.LeafType, claimHash)
-				continue
-			}
-			log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
-			ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
-			if err != nil {
-				log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
-				return err
-			}
-			var mtProves [mtHeight][keyLen]byte
-			for i := 0; i < mtHeight; i++ {
-				mtProves[i] = proves[i]
-			}
-			tx, err := tm.l2Node.BuildSendClaim(tm.ctx, deposit, mtProves,
-				&etherman.GlobalExitRoot{
-					ExitRoots: []common.Hash{
-						ger.ExitRoots[0],
-						ger.ExitRoots[1],
-					}}, 1, 1, 1,
-				tm.auth)
-			if err != nil {
-				log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
-				return err
-			}
-			if err = tm.addClaimTx(deposit.DepositCount, deposit.BlockID, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
-				log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
-				return err
-			}
+			go tm.handleDeposit(deposit, dbTx, &wg, errChan)
 		}
+		wg.Wait()
+		var finalErr error
+		if len(errChan) != 0 {
+			for err := range errChan {
+				finalErr = err
+			}
+			return finalErr
+		}
+
 	}
 	return nil
+}
+
+func (tm *ClaimTxManager) handleDeposit(deposit *etherman.Deposit, dbTx pgx.Tx, wg *sync.WaitGroup, errChan chan error) {
+	defer wg.Done()
+	claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
+	if err != nil {
+		log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
+		errChan <- err
+		return
+	}
+	if len(claimHash) > 0 || deposit.LeafType == LeafTypeMessage {
+		log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s", deposit.DepositCount, deposit.LeafType, claimHash)
+		return
+	}
+	log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
+	ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
+	if err != nil {
+		log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
+		errChan <- err
+		return
+	}
+	var mtProves [mtHeight][keyLen]byte
+	for i := 0; i < mtHeight; i++ {
+		mtProves[i] = proves[i]
+	}
+	tx, err := tm.l2Node.BuildSendClaim(tm.ctx, deposit, mtProves,
+		&etherman.GlobalExitRoot{
+			ExitRoots: []common.Hash{
+				ger.ExitRoots[0],
+				ger.ExitRoots[1],
+			}}, 1, 1, 1,
+		tm.auth)
+	if err != nil {
+		log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
+		errChan <- err
+		return
+	}
+	if err = tm.addClaimTx(deposit.DepositCount, deposit.BlockID, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
+		log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
+		errChan <- err
+		return
+	}
 }
 
 func (tm *ClaimTxManager) getNextNonce(from common.Address) (uint64, error) {
