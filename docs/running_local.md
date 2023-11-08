@@ -6,12 +6,12 @@
 
 This documentation will help you running the following components:
 
-- Xgon Node Databases
-- Xgon Bridge Database
+- XGON Node Databases
+- XGON Bridge Database
 - L1 Network
 - Prover
-- Xgon Node
-- Xgon Bridge Service
+- XGON Node
+- XGON Bridge Service
 
 ## Requirements
 
@@ -53,7 +53,7 @@ make test-edge
 
 ## Accessing the environment
 
-- Xgon Bridge Database 
+- XGON Bridge Database 
   - `Type:` Postgres DB
   - `User:` test_user
   - `Password:` test_password
@@ -61,7 +61,7 @@ make test-edge
   - `Host:` localhost
   - `Port:` 5435
   - `Url:` <postgres://test_user:test_password@localhost:5435/test_db>
-- Xgon Bridge Service
+- XGON Bridge Service
   - `Type:` Web
   - `Host:` localhost
   - `Port:` 8080
