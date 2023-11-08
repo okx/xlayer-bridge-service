@@ -139,6 +139,10 @@ func (tm *ClaimTxManager) updateDepositsStatus(ger *etherman.GlobalExitRoot) err
 }
 
 func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbTx pgx.Tx) error {
+	t0 := time.Now()
+	defer func() {
+		log.Debug("processDepositStatus time:", time.Since(t0))
+	}()
 	if ger.BlockID != 0 { // L2 exit root is updated
 		log.Infof("Rollup exitroot %v is updated", ger.ExitRoots[1])
 		if err := tm.storage.UpdateL2DepositsStatus(tm.ctx, ger.ExitRoots[1][:], tm.l2NetworkID, dbTx); err != nil {
