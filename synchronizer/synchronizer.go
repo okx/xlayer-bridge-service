@@ -199,6 +199,8 @@ func (s *ClientSynchronizer) syncTrustedState() error {
 		return err
 	}
 	if isUpdated {
+		log.Debug("syncTrustedState chan")
+
 		s.chExitRootEvent <- ger
 	}
 	return nil
@@ -317,6 +319,7 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 			}
 			return err
 		}
+
 		for _, element := range order[blocks[i].BlockHash] {
 			switch element.Name {
 			case etherman.GlobalExitRootsOrder:
@@ -488,6 +491,7 @@ func (s *ClientSynchronizer) checkReorg(latestBlock *etherman.Block) (*etherman.
 
 func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.GlobalExitRoot, blockID uint64, dbTx pgx.Tx) error {
 	// Store GlobalExitRoot
+	log.Debug("processGlobalExitRoot begin")
 	globalExitRoot.BlockID = blockID
 	err := s.storage.AddGlobalExitRoot(s.ctx, &globalExitRoot, dbTx)
 	if err != nil {
@@ -501,6 +505,8 @@ func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.Globa
 		return err
 	}
 	if s.l1RollupExitRoot != globalExitRoot.ExitRoots[1] {
+		log.Debug("processGlobalExitRoot chan")
+
 		s.l1RollupExitRoot = globalExitRoot.ExitRoots[1]
 		s.chExitRootEvent <- &globalExitRoot
 	}
