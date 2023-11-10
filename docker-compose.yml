@@ -371,9 +371,6 @@ services:
   xgon-bridge-service-task:
     container_name: xgon-bridge-service-task
     image: xgon-bridge-service
-    ports:
-      - 8080:8080
-      - 9090:9090
     environment:
       - ZKEVM_BRIDGE_DATABASE_USER=test_user
       - ZKEVM_BRIDGE_DATABASE_PASSWORD=test_password
