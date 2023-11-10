@@ -47,8 +47,22 @@ func main() {
 		{
 			Name:    "run",
 			Aliases: []string{},
-			Usage:   "Run the zkevm bridge",
-			Action:  startServer,
+			Usage:   "Run the xgon bridge, including API, synchronizer, claimtxman, kafka consumer, etc.",
+			Action:  runAll,
+			Flags:   flags,
+		},
+		{
+			Name:    "runAPI",
+			Aliases: []string{},
+			Usage:   "Run the xgon bridge API server",
+			Action:  runAPI,
+			Flags:   flags,
+		},
+		{
+			Name:    "runTask",
+			Aliases: []string{},
+			Usage:   "Run the xgon bridge tasks, including synchronizer, claimtxman, kafka consumer",
+			Action:  runTask,
 			Flags:   flags,
 		},
 	}
