@@ -184,7 +184,7 @@ services:
 
   x1-mock-l1-network:
     container_name: x1-mock-l1-network
-    image: okexchain/x1-geth:e2e_v0.1.0_20231030
+    image: zjg555543/geth:v0.1.0_20231113_01
     ports:
       - 8545:8545
       - 8546:8546
