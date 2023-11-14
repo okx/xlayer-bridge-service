@@ -2,19 +2,38 @@ package sentinel
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/alibaba/sentinel-golang/api"
+	"github.com/alibaba/sentinel-golang/core/config"
 	"github.com/alibaba/sentinel-golang/core/flow"
 	"github.com/alibaba/sentinel-golang/ext/datasource"
 	"github.com/alibaba/sentinel-golang/ext/datasource/file"
 	"github.com/pkg/errors"
 )
 
+var (
+	initOnce sync.Once
+)
+
+func initSentinel() {
+	initOnce.Do(func() {
+		conf := config.NewDefaultConfig()
+		err := api.InitWithConfig(conf)
+		if err != nil {
+			log.Errorf("initSentinel error: %v, ignored", err)
+		}
+	})
+}
+
 func InitFileDataSource(filePath string) error {
 	if filePath == "" {
 		log.Info("No sentinel config file name, ignored")
 		return nil
 	}
+
+	initSentinel()
 
 	// Handler to handle the config update
 	propertyHandler := datasource.NewDefaultPropertyHandler(
