@@ -101,6 +101,13 @@ service BridgeService {
             get: "/monitored-txs/status/{status}",
         };
     }
+
+    /// Return the total number of deposits in a time range
+    rpc GetDepositCountByTime(GetCountStatsByTime) returns (CommonCountStatsResponse) {
+        option (google.api.http) = {
+            get: "/summary/count-stats",
+        };
+    }
 }
 
 // TokenWrapped message
@@ -273,6 +280,11 @@ message GetMonitoredTxsByStatusRequest {
     uint32 limit = 3;
 }
 
+message GetCountStatsByTime {
+    uint64 fromTime = 1; // Unix milliseconds
+    uint64 toTime = 2; // Unix milliseconds
+}
+
 // Get responses
 
 message CheckAPIResponse {
@@ -381,4 +393,18 @@ message CommonMonitoredTxsResponse {
 message MonitoredTxsDetail {
     bool hasNext = 1;
     repeated MonitoredTx transactions = 2;
+}
+
+message CommonCountStatsResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
+    repeated CountStatsDetail data = 6; // 2 stat objects for 2 networks
+}
+
+message CountStatsDetail {
+    uint64 depositCount = 1;
+    uint64 claimCount = 2;
 }

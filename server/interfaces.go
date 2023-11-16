@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
@@ -17,9 +18,11 @@ type BridgeServiceStorage interface {
 	GetClaim(ctx context.Context, index uint, networkID uint, dbTx pgx.Tx) (*etherman.Claim, error)
 	GetClaims(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Claim, error)
 	GetClaimCount(ctx context.Context, destAddr string, dbTx pgx.Tx) (uint64, error)
+	GetClaimCountByTime(ctx context.Context, networkId uint32, fromTime time.Time, toTime time.Time, dbTx pgx.Tx) (uint64, error)
 	GetDeposit(ctx context.Context, depositCnt uint, networkID uint, dbTx pgx.Tx) (*etherman.Deposit, error)
 	GetDeposits(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	GetDepositCount(ctx context.Context, destAddr string, dbTx pgx.Tx) (uint64, error)
+	GetDepositCountByTime(ctx context.Context, networkId uint32, fromTime time.Time, toTime time.Time, dbTx pgx.Tx) (uint64, error)
 	GetTokenWrapped(ctx context.Context, originalNetwork uint, originalTokenAddress common.Address, dbTx pgx.Tx) (*etherman.TokenWrapped, error)
 	GetPendingTransactions(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	GetNotReadyTransactions(ctx context.Context, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)

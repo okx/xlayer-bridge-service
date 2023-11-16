@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -12,6 +13,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
@@ -659,5 +661,40 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 	return &pb.CommonMonitoredTxsResponse{
 		Code: defaultSuccessCode,
 		Data: &pb.MonitoredTxsDetail{HasNext: hasNext, Transactions: pbTransactions},
+	}, nil
+}
+
+func (s *bridgeService) GetCountStatsByTime(ctx context.Context, req *pb.GetCountStatsByTime) (*pb.CommonCountStatsResponse, error) {
+	if req.ToTime < req.FromTime {
+		return &pb.CommonCountStatsResponse{
+			Code: defaultErrorCode,
+			Msg:  "fromTime must be before toTime",
+		}, nil
+	}
+	fromTime := time.UnixMilli(int64(req.FromTime))
+	toTime := time.UnixMilli(int64(req.ToTime))
+
+	data := make([]*pb.CountStatsDetail, 2)
+
+	for i := uint32(0); i < 2; i++ {
+		depositCnt, err := s.storage.GetDepositCountByTime(ctx, i, fromTime, toTime, nil)
+		if err != nil {
+			log.Errorf("GetDepositCountByTime err: %v", err)
+			return &pb.CommonCountStatsResponse{
+				Code: defaultErrorCode,
+			}, nil
+		}
+		claimCnt, err := s.storage.GetClaimCountByTime(ctx, i, fromTime, toTime, nil)
+		if err != nil {
+			log.Errorf("GetClaimCountByTime err: %v", err)
+			return &pb.CommonCountStatsResponse{
+				Code: defaultErrorCode,
+			}, nil
+		}
+		data[i] = &pb.CountStatsDetail{DepositCount: depositCnt, ClaimCount: claimCnt}
+	}
+	return &pb.CommonCountStatsResponse{
+		Code: defaultSuccessCode,
+		Data: data,
 	}, nil
 }

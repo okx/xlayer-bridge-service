@@ -532,6 +532,26 @@ func (p *PostgresStorage) GetDepositCount(ctx context.Context, destAddr string, 
 	return depositCount, err
 }
 
+func (p *PostgresStorage) GetDepositCountByTime(ctx context.Context, networkId uint32, fromTime time.Time, toTime time.Time, dbTx pgx.Tx) (uint64, error) {
+	getDepositCountSQL := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id 
+		WHERE d.network_id = $1 AND b.received_at BETWEEN $2 AND $3`, p.tableSuffix)
+	var depositCount uint64
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositCountSQL, networkId, fromTime, toTime).Scan(&depositCount)
+	return depositCount, err
+}
+
+func (p *PostgresStorage) GetClaimCountByTime(ctx context.Context, networkId uint32, fromTime time.Time, toTime time.Time, dbTx pgx.Tx) (uint64, error) {
+	getClaimCountSQL := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM sync.claim%[1]v as c INNER JOIN sync.block%[1]v as b ON c.network_id = b.network_id AND c.block_id = b.id 
+		WHERE c.network_id = $1 AND b.received_at BETWEEN $2 AND $3`, p.tableSuffix)
+	var claimCount uint64
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getClaimCountSQL, networkId, fromTime, toTime).Scan(&claimCount)
+	return claimCount, err
+}
+
 // UpdateBlocksForTesting updates the hash of blocks.
 func (p *PostgresStorage) UpdateBlocksForTesting(ctx context.Context, networkID uint, blockNum uint64, dbTx pgx.Tx) error {
 	updateBlocksSQL := fmt.Sprintf("UPDATE sync.block%[1]v SET block_hash = SUBSTRING(block_hash FROM 1 FOR LENGTH(block_hash)-1) || '\x61' WHERE network_id = $1 AND block_num >= $2", p.tableSuffix)
