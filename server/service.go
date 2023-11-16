@@ -653,7 +653,7 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 	}, nil
 }
 
-func (s *bridgeService) GetCountStatsByTime(ctx context.Context, req *pb.GetCountStatsByTime) (*pb.CommonCountStatsResponse, error) {
+func (s *bridgeService) GetCountStatsByTime(ctx context.Context, req *pb.GetCountStatsByTimeRequest) (*pb.CommonCountStatsResponse, error) {
 	if req.ToTime < req.FromTime {
 		return &pb.CommonCountStatsResponse{
 			Code: defaultErrorCode,

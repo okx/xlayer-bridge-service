@@ -103,7 +103,7 @@ service BridgeService {
     }
 
     /// Return the total number of deposits in a time range
-    rpc GetDepositCountByTime(GetCountStatsByTime) returns (CommonCountStatsResponse) {
+    rpc GetCountStatsByTime(GetCountStatsByTimeRequest) returns (CommonCountStatsResponse) {
         option (google.api.http) = {
             get: "/summary/count-stats",
         };
@@ -287,7 +287,7 @@ message GetMonitoredTxsByStatusRequest {
     uint32 limit = 3;
 }
 
-message GetCountStatsByTime {
+message GetCountStatsByTimeRequest {
     uint64 fromTime = 1; // Unix milliseconds
     uint64 toTime = 2; // Unix milliseconds
 }
