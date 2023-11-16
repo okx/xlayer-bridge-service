@@ -108,6 +108,13 @@ service BridgeService {
             get: "/summary/count-stats",
         };
     }
+
+    /// Return the estimated deposit wait time for L1 and L2
+    rpc GetEstimateTime(GetEstimateTimeRequest) returns (CommonEstimateTimeResponse) {
+        option (google.api.http) = {
+            get: "/estimate-time",
+        };
+    }
 }
 
 // TokenWrapped message
@@ -285,6 +292,8 @@ message GetCountStatsByTime {
     uint64 toTime = 2; // Unix milliseconds
 }
 
+message GetEstimateTimeRequest {}
+
 // Get responses
 
 message CheckAPIResponse {
@@ -402,6 +411,15 @@ message CommonCountStatsResponse {
     string error_message = 4;
     string detailMsg = 5;
     repeated CountStatsDetail data = 6; // 2 stat objects for 2 networks
+}
+
+message CommonEstimateTimeResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
+    repeated uint32 data = 6; // Has 2 numbers which are the estimate time of L1 and L2
 }
 
 message CountStatsDetail {

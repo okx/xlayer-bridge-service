@@ -50,6 +50,8 @@ type BridgeServiceClient interface {
 	GetMonitoredTxsByStatus(ctx context.Context, in *GetMonitoredTxsByStatusRequest, opts ...grpc.CallOption) (*CommonMonitoredTxsResponse, error)
 	// / Return the total number of deposits in a time range
 	GetDepositCountByTime(ctx context.Context, in *GetCountStatsByTime, opts ...grpc.CallOption) (*CommonCountStatsResponse, error)
+	// / Return the estimated deposit wait time for L1 and L2
+	GetEstimateTime(ctx context.Context, in *GetEstimateTimeRequest, opts ...grpc.CallOption) (*CommonEstimateTimeResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -186,6 +188,15 @@ func (c *bridgeServiceClient) GetDepositCountByTime(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *bridgeServiceClient) GetEstimateTime(ctx context.Context, in *GetEstimateTimeRequest, opts ...grpc.CallOption) (*CommonEstimateTimeResponse, error) {
+	out := new(CommonEstimateTimeResponse)
+	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/GetEstimateTime", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -218,6 +229,8 @@ type BridgeServiceServer interface {
 	GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error)
 	// / Return the total number of deposits in a time range
 	GetDepositCountByTime(context.Context, *GetCountStatsByTime) (*CommonCountStatsResponse, error)
+	// / Return the estimated deposit wait time for L1 and L2
+	GetEstimateTime(context.Context, *GetEstimateTimeRequest) (*CommonEstimateTimeResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -266,6 +279,9 @@ func (UnimplementedBridgeServiceServer) GetMonitoredTxsByStatus(context.Context,
 }
 func (UnimplementedBridgeServiceServer) GetDepositCountByTime(context.Context, *GetCountStatsByTime) (*CommonCountStatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDepositCountByTime not implemented")
+}
+func (UnimplementedBridgeServiceServer) GetEstimateTime(context.Context, *GetEstimateTimeRequest) (*CommonEstimateTimeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEstimateTime not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -532,6 +548,24 @@ func _BridgeService_GetDepositCountByTime_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_GetEstimateTime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEstimateTimeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).GetEstimateTime(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/bridge.v1.BridgeService/GetEstimateTime",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).GetEstimateTime(ctx, req.(*GetEstimateTimeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -594,6 +628,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDepositCountByTime",
 			Handler:    _BridgeService_GetDepositCountByTime_Handler,
+		},
+		{
+			MethodName: "GetEstimateTime",
+			Handler:    _BridgeService_GetEstimateTime_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
