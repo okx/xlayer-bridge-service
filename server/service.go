@@ -680,7 +680,7 @@ func (s *bridgeService) GetCountStatsByTime(ctx context.Context, req *pb.GetCoun
 				Code: defaultErrorCode,
 			}, nil
 		}
-		data[i] = &pb.CountStatsDetail{DepositCount: depositCnt, ClaimCount: claimCnt}
+		data[i] = &pb.CountStatsDetail{NetworkId: i, DepositCount: depositCnt, ClaimCount: claimCnt}
 	}
 	return &pb.CommonCountStatsResponse{
 		Code: defaultSuccessCode,

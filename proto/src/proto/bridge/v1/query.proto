@@ -423,6 +423,7 @@ message CommonEstimateTimeResponse {
 }
 
 message CountStatsDetail {
-    uint64 depositCount = 1;
-    uint64 claimCount = 2;
+    uint32 networkId = 1;
+    uint64 depositCount = 2;
+    uint64 claimCount = 3;
 }
