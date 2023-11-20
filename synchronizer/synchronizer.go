@@ -322,7 +322,9 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 		} else {
 			log.Infof("NetworkID: %d. add block success: %d", s.networkID, blocks[i].BlockNumber)
 		}
+		counter := 0
 		for _, element := range order[blocks[i].BlockHash] {
+			counter++
 			switch element.Name {
 			case etherman.GlobalExitRootsOrder:
 				log.Infof("NetworkID: %d. block %d GlobalExitRootsOrder", s.networkID, blocks[i].BlockNumber)
@@ -350,6 +352,7 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 				}
 			}
 		}
+		log.Infof("NetworkID: %d. block %d element number %d", s.networkID, blocks[i].BlockNumber, counter)
 		err = s.storage.Commit(s.ctx, dbTx)
 		if err != nil {
 			log.Errorf("networkID: %d, error committing state to store block. BlockNumber: %d, err: %v",
