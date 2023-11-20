@@ -128,8 +128,11 @@ func (tm *ClaimTxManager) updateDepositsStatus(ger *etherman.GlobalExitRoot) err
 		}
 		return err
 	}
+	log.Infof("giskook updateDepositsStatus step 1")
 	err = tm.storage.Commit(tm.ctx, dbTx)
+	log.Infof("giskook updateDepositsStatus step 2")
 	if err != nil {
+		log.Infof("giskook updateDepositsStatus step 3")
 		log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 		if rollbackErr != nil {
@@ -166,6 +169,7 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			}
 			log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
 			ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
+			log.Infof("giskook step 1 %d", deposit.DepositCount)
 			if err != nil {
 				log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
@@ -174,6 +178,7 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			for i := 0; i < mtHeight; i++ {
 				mtProves[i] = proves[i]
 			}
+			log.Infof("giskook step 2 %d", deposit.DepositCount)
 			tx, err := tm.l2Node.BuildSendClaim(tm.ctx, deposit, mtProves,
 				&etherman.GlobalExitRoot{
 					ExitRoots: []common.Hash{
@@ -185,10 +190,12 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 				log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
+			log.Infof("giskook step 3 %d", deposit.DepositCount)
 			if err = tm.addClaimTx(deposit.DepositCount, deposit.BlockID, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 				log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
+			log.Infof("giskook step 4 %d", deposit.DepositCount)
 		}
 	}
 	return nil
@@ -216,7 +223,9 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 		Value: value,
 		Data:  data,
 	}
+	log.Infof("giskook addClaimTx step 1")
 	gas, err := tm.l2Node.EstimateGas(tm.ctx, tx)
+	log.Infof("giskook addClaimTx step 2")
 	for i := 1; err != nil && err.Error() != runtime.ErrExecutionReverted.Error() && i < tm.cfg.RetryNumber; i++ {
 		log.Warnf("error while doing gas estimation. Retrying... Error: %v, Data: %s", err, common.Bytes2Hex(data))
 		time.Sleep(tm.cfg.RetryInterval.Duration)
@@ -227,12 +236,14 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 		return nil
 	}
 	// get next nonce
+	log.Infof("giskook addClaimTx step 3")
 	nonce, err := tm.getNextNonce(from)
 	if err != nil {
 		err := fmt.Errorf("failed to get current nonce: %v", err)
 		log.Errorf("error getting next nonce. Error: %s", err.Error())
 		return err
 	}
+	log.Infof("giskook addClaimTx step 4")
 
 	// create monitored tx
 	mTx := ctmtypes.MonitoredTx{
@@ -248,6 +259,7 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 		log.Errorf("error adding claim tx to db. Error: %s", err.Error())
 		return err
 	}
+	log.Infof("giskook addClaimTx step 5")
 
 	return nil
 }
