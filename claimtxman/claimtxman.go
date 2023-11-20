@@ -103,10 +103,12 @@ func (tm *ClaimTxManager) Start() {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
 		case <-ticker.C:
+			log.Infof("MonitorTxs begin", tm.l2NetworkID)
 			err := tm.monitorTxs(tm.ctx)
 			if err != nil {
 				log.Errorf("failed to monitor txs: %v", err)
 			}
+			log.Infof("MonitorTxs end", tm.l2NetworkID)
 		}
 	}
 }
