@@ -7,11 +7,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 )
 
 // Synchronizer connects L1 and L2
@@ -308,6 +309,7 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 		blocks[i].NetworkID = s.networkID
 		log.Infof("NetworkID: %d. Syncing block: %d", s.networkID, blocks[i].BlockNumber)
 		blockID, err := s.storage.AddBlock(s.ctx, &blocks[i], dbTx)
+		log.Infof("NetworkID: %d. add block: %d", s.networkID, blocks[i].BlockNumber)
 		if err != nil {
 			log.Errorf("networkID: %d, error storing block. BlockNumber: %d, error: %v", s.networkID, blocks[i].BlockNumber, err)
 			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
@@ -317,25 +319,31 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 				return rollbackErr
 			}
 			return err
+		} else {
+			log.Infof("NetworkID: %d. add block success: %d", s.networkID, blocks[i].BlockNumber)
 		}
 		for _, element := range order[blocks[i].BlockHash] {
 			switch element.Name {
 			case etherman.GlobalExitRootsOrder:
+				log.Infof("NetworkID: %d. block %d GlobalExitRootsOrder", s.networkID, blocks[i].BlockNumber)
 				err = s.processGlobalExitRoot(blocks[i].GlobalExitRoots[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.DepositsOrder:
+				log.Infof("NetworkID: %d. block %d DepositsOrder", s.networkID, blocks[i].BlockNumber)
 				err = s.processDeposit(blocks[i].Deposits[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.ClaimsOrder:
+				log.Infof("NetworkID: %d. block %d ClaimsOrder", s.networkID, blocks[i].BlockNumber)
 				err = s.processClaim(blocks[i].Claims[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.TokensOrder:
+				log.Infof("NetworkID: %d. block %d TokensOrder", s.networkID, blocks[i].BlockNumber)
 				err = s.processTokenWrapped(blocks[i].Tokens[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
@@ -354,6 +362,7 @@ func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order ma
 			}
 			return err
 		}
+		log.Infof("NetworkID: %d. block %d Commit", s.networkID, blocks[i].BlockNumber)
 	}
 	return nil
 }
