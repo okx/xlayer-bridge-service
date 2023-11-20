@@ -157,6 +157,7 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
 			return err
 		}
+		log.Infof("giskook step 0 counter", len(deposits))
 		for _, deposit := range deposits {
 			claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
 			if err != nil {
