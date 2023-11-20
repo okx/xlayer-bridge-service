@@ -187,10 +187,6 @@ func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman
 	log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
 	deposits, err := tm.storage.UpdateL1DepositsStatus(tm.ctx, ger.ExitRoots[0][:], dbTx)
 	if err != nil {
-		log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
-		return nil, err
-	}
-	if err != nil {
 		log.Errorf("error processing ger. Error: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 		if rollbackErr != nil {
