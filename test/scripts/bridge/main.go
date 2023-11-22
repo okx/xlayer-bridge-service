@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	clientUtils "github.com/0xPolygonHermez/zkevm-bridge-service/test/client"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
@@ -35,7 +37,6 @@ const (
 
 func main() {
 	args := os.Args
-	fmt.Println(args)
 	if len(args) != 2 {
 		fmt.Println(usage)
 		return
@@ -76,7 +77,7 @@ func bridgeL1ToL2OKB() {
 	}
 
 	// deposit OKB
-	log.Info("Bridge OKB...")
+	log.Info("Deposit OKB...")
 	err = client.SendBridgeAsset(ctx, okbAddress, amount, l2Network, &userAddress, []byte{}, userAuth)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -102,7 +103,7 @@ func bridgeL1ToL2ETH() {
 	}
 
 	// deposit ETH
-	log.Info("Bridge ETH...")
+	log.Info("Deposit ETH...")
 	err = client.SendBridgeAsset(ctx, common.Address{}, amount, l2Network, &userAddress, []byte{}, userAuth)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -115,12 +116,113 @@ func bridgeL1ToL2ETH() {
 
 func bridgeL2ToL1OKB() {
 	// deposit OKB
+	log.Info("Start L2->L1 OKB ...")
+	ctx := context.Background()
+	bridgeAddress := common.HexToAddress(bridgeAddr)
+	userAddress := common.HexToAddress(accHexAddress)
+	amount := big.NewInt(funds)
+
+	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress)
+	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	// deposit ETH
+	log.Info("Deposit OKB...")
+	err = client.SendBridgeAsset(ctx, common.Address{}, amount, l1Network, &userAddress, []byte{}, userAuth)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	time.Sleep(30 * time.Second)
+	claimL1()
+
+	log.Info("Success! L1->L2 ETH")
 }
 
 func bridgeL2ToL1ETH() {
 	// deposit ETH
+	ctx := context.Background()
+	bridgeAddress := common.HexToAddress(bridgeAddr)
+	ethAddress := common.HexToAddress(ethAddress)
+	userAddress := common.HexToAddress(accHexAddress)
+	amount := big.NewInt(funds)
+
+	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress)
+	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	// approve ETH
+	log.Info("Approve ETH to bridge ...")
+	err = client.ApproveERC20(ctx, ethAddress, bridgeAddress, amount, userAuth)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	// deposit OKB
+	log.Info("Deposit OKB...")
+	err = client.SendBridgeAsset(ctx, ethAddress, amount, l1Network, &userAddress, []byte{}, userAuth)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	time.Sleep(30 * time.Second)
+	claimL1()
+
+	log.Info("Success! L1->L2 OKB")
 }
 
-func waiting() {
-	// waiting for bridge service to claim
+func claimL1() {
+	ctx := context.Background()
+	c, err := utils.NewClient(ctx, l1NetworkURL, common.HexToAddress(bridgeAddr))
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+	auth, err := c.GetSigner(ctx, accHexPrivateKey)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
+	// Get Claim data
+	cfg := clientUtils.Config{
+		L1NodeURL:    l1NetworkURL,
+		L2NodeURL:    l1NetworkURL,
+		BridgeURL:    bridgeURL,
+		L2BridgeAddr: common.HexToAddress(bridgeAddr),
+		L1BridgeAddr: common.HexToAddress(bridgeAddr),
+	}
+	client, err := clientUtils.NewClient(ctx, cfg)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+	deposits, _, err := client.GetBridges(accHexAddress, 0, 10) //nolint
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+	bridgeData := deposits[0]
+	proof, err := client.GetMerkleProof(deposits[0].NetworkId, deposits[0].DepositCnt)
+	if err != nil {
+		log.Fatal("error: ", err)
+	}
+	log.Info("bridge: ", bridgeData)
+	log.Info("mainnetExitRoot: ", proof.MainExitRoot)
+	log.Info("rollupExitRoot: ", proof.RollupExitRoot)
+
+	var smt [mtHeight][32]byte
+	for i := 0; i < len(proof.MerkleProof); i++ {
+		log.Info("smt: ", proof.MerkleProof[i])
+		smt[i] = common.HexToHash(proof.MerkleProof[i])
+	}
+	globalExitRoot := &etherman.GlobalExitRoot{
+		ExitRoots: []common.Hash{common.HexToHash(proof.MainExitRoot), common.HexToHash(proof.RollupExitRoot)},
+	}
+	log.Info("Sending claim tx...")
+	err = c.SendClaim(ctx, bridgeData, smt, globalExitRoot, auth)
+	if err != nil {
+		log.Fatal("error: ", err)
+	}
+	log.Info("Claim Success!")
 }
