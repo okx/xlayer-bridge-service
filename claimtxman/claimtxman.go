@@ -428,6 +428,20 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 		mTxLog := log.WithFields("monitoredTx", mTx.ID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
 
+		// Check the claim table to see whether the transaction has already been claimed by some other methods
+		claim, err := tm.storage.GetClaim(ctx, mTx.ID, tm.l2NetworkID, dbTx)
+		if err == nil {
+			mTxLog.Infof("Tx has already been claimed")
+			mTx.BlockID = claim.BlockID
+			mTx.Status = ctmtypes.MonitoredTxStatusConfirmed
+			// Update monitored txs status to confirmed
+			err = tm.storage.UpdateClaimTx(ctx, mTx, dbTx)
+			if err != nil {
+				mTxLog.Errorf("failed to update tx status to confirmed: %v", err)
+			}
+			continue
+		}
+
 		// check if any of the txs in the history was mined
 		mined := false
 		var receipt *types.Receipt
