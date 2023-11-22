@@ -37,18 +37,18 @@ const (
 
 func main() {
 	args := os.Args
-	if len(args) != 2 {
+	if len(args) != 2 { //nolint
 		fmt.Println(usage)
 		return
 	}
 	bridgeType := args[1]
-	if bridgeType == "0" {
+	if bridgeType == "0" { //nolint
 		bridgeL1ToL2OKB()
-	} else if bridgeType == "1" {
+	} else if bridgeType == "1" { //nolint
 		bridgeL1ToL2ETH()
-	} else if bridgeType == "2" {
+	} else if bridgeType == "2" { //nolint
 		bridgeL2ToL1OKB()
-	} else if bridgeType == "3" {
+	} else if bridgeType == "3" { //nolint
 		bridgeL2ToL1ETH()
 	} else {
 		fmt.Println(usage)
@@ -63,7 +63,7 @@ func bridgeL1ToL2OKB() {
 	userAddress := common.HexToAddress(accHexAddress)
 	amount := big.NewInt(funds)
 
-	client, err := utils.NewClient(ctx, l1NetworkURL, bridgeAddress)
+	client, err := utils.NewClient(ctx, l1NetworkURL, bridgeAddress) //nolint
 	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -83,7 +83,7 @@ func bridgeL1ToL2OKB() {
 		log.Fatal("Error: ", err)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second) //nolint
 
 	log.Info("Success! L1->L2 OKB")
 }
@@ -96,7 +96,7 @@ func bridgeL1ToL2ETH() {
 	userAddress := common.HexToAddress(accHexAddress)
 	amount := big.NewInt(funds)
 
-	client, err := utils.NewClient(ctx, l1NetworkURL, bridgeAddress)
+	client, err := utils.NewClient(ctx, l1NetworkURL, bridgeAddress) //nolint
 	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -109,7 +109,7 @@ func bridgeL1ToL2ETH() {
 		log.Fatal("Error: ", err)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second) //nolint
 
 	log.Info("Success! L1->L2 ETH")
 }
@@ -122,7 +122,7 @@ func bridgeL2ToL1OKB() {
 	userAddress := common.HexToAddress(accHexAddress)
 	amount := big.NewInt(funds)
 
-	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress)
+	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress) //nolint
 	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -135,7 +135,7 @@ func bridgeL2ToL1OKB() {
 		log.Fatal("Error: ", err)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(30 * time.Second) //nolint
 	claimL1()
 
 	log.Info("Success! L1->L2 ETH")
@@ -149,7 +149,7 @@ func bridgeL2ToL1ETH() {
 	userAddress := common.HexToAddress(accHexAddress)
 	amount := big.NewInt(funds)
 
-	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress)
+	client, err := utils.NewClient(ctx, l2NetworkURL, bridgeAddress) //nolint
 	userAuth, err := client.GetSigner(ctx, accHexPrivateKey)
 	if err != nil {
 		log.Fatal("Error: ", err)
@@ -169,7 +169,7 @@ func bridgeL2ToL1ETH() {
 		log.Fatal("Error: ", err)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(30 * time.Second) //nolint
 	claimL1()
 
 	log.Info("Success! L1->L2 OKB")
