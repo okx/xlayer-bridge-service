@@ -2,8 +2,14 @@ package utils
 
 import (
 	"crypto/sha256"
+	"math/big"
 	"math/rand"
 	"time"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-node/encoding"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func generateRandomString(length int) string {
@@ -20,4 +26,25 @@ func GenerateRandomHash() [sha256.Size]byte {
 	rand.Seed(time.Now().UnixNano())
 	rs := generateRandomString(10) //nolint:gomnd
 	return sha256.Sum256([]byte(rs))
+}
+
+func PbToEthermanDeposit(pbDeposit *pb.Deposit) *etherman.Deposit {
+	if pbDeposit == nil {
+		return nil
+	}
+	amount, _ := new(big.Int).SetString(pbDeposit.Amount, encoding.Base10)
+	return &etherman.Deposit{
+		LeafType:           uint8(pbDeposit.LeafType),
+		OriginalNetwork:    uint(pbDeposit.OrigNet),
+		OriginalAddress:    common.HexToAddress(pbDeposit.OrigAddr),
+		Amount:             amount,
+		DestinationNetwork: uint(pbDeposit.DestNet),
+		DestinationAddress: common.HexToAddress(pbDeposit.DestAddr),
+		DepositCount:       uint(pbDeposit.DepositCnt),
+		BlockNumber:        pbDeposit.BlockNum,
+		NetworkID:          uint(pbDeposit.NetworkId),
+		TxHash:             common.HexToHash(pbDeposit.TxHash),
+		Metadata:           common.FromHex(pbDeposit.Metadata),
+		ReadyForClaim:      pbDeposit.ReadyForClaim,
+	}
 }

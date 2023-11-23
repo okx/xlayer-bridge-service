@@ -48,6 +48,7 @@ type BridgeServiceClient interface {
 	GetNotReadyTransactions(ctx context.Context, in *GetNotReadyTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error)
 	// / Get list of monitored transactions, filtered by status
 	GetMonitoredTxsByStatus(ctx context.Context, in *GetMonitoredTxsByStatusRequest, opts ...grpc.CallOption) (*CommonMonitoredTxsResponse, error)
+	ManualClaim(ctx context.Context, in *ManualClaimRequest, opts ...grpc.CallOption) (*CommonManualClaimResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -175,6 +176,15 @@ func (c *bridgeServiceClient) GetMonitoredTxsByStatus(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *bridgeServiceClient) ManualClaim(ctx context.Context, in *ManualClaimRequest, opts ...grpc.CallOption) (*CommonManualClaimResponse, error) {
+	out := new(CommonManualClaimResponse)
+	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/ManualClaim", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -205,6 +215,7 @@ type BridgeServiceServer interface {
 	GetNotReadyTransactions(context.Context, *GetNotReadyTransactionsRequest) (*CommonTransactionsResponse, error)
 	// / Get list of monitored transactions, filtered by status
 	GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error)
+	ManualClaim(context.Context, *ManualClaimRequest) (*CommonManualClaimResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -250,6 +261,9 @@ func (UnimplementedBridgeServiceServer) GetNotReadyTransactions(context.Context,
 }
 func (UnimplementedBridgeServiceServer) GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMonitoredTxsByStatus not implemented")
+}
+func (UnimplementedBridgeServiceServer) ManualClaim(context.Context, *ManualClaimRequest) (*CommonManualClaimResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ManualClaim not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -498,6 +512,24 @@ func _BridgeService_GetMonitoredTxsByStatus_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_ManualClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ManualClaimRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).ManualClaim(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/bridge.v1.BridgeService/ManualClaim",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).ManualClaim(ctx, req.(*ManualClaimRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -556,6 +588,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMonitoredTxsByStatus",
 			Handler:    _BridgeService_GetMonitoredTxsByStatus_Handler,
+		},
+		{
+			MethodName: "ManualClaim",
+			Handler:    _BridgeService_ManualClaim_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

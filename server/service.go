@@ -11,7 +11,9 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
@@ -23,6 +25,7 @@ const (
 	defaultL1TxEstimateTime = 15
 	defaultErrorCode        = 1
 	defaultSuccessCode      = 0
+	mtHeight                = 32 // For sending mtProof to bridge contract, it requires constant-sized array...
 )
 
 type bridgeService struct {
@@ -31,6 +34,8 @@ type bridgeService struct {
 	mainCoinsCache   localcache.MainCoinsCache
 	networkIDs       map[uint]uint8
 	chainIDs         map[uint]uint32
+	nodeClients      map[uint]*utils.Client
+	auths            map[uint]*bind.TransactOpts
 	height           uint8
 	defaultPageLimit uint32
 	maxPageLimit     uint32
@@ -40,12 +45,19 @@ type bridgeService struct {
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, storage interface{}, redisStorage redisstorage.RedisStorage, mainCoinsCache localcache.MainCoinsCache) *bridgeService {
+func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, l2Clients []*utils.Client, l2Auths []*bind.TransactOpts,
+	storage interface{}, redisStorage redisstorage.RedisStorage, mainCoinsCache localcache.MainCoinsCache) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
 	var chainIDs = make(map[uint]uint32)
+	var nodeClients = make(map[uint]*utils.Client, len(networks))
+	var authMap = make(map[uint]*bind.TransactOpts, len(networks))
 	for i, network := range networks {
 		networkIDs[network] = uint8(i)
 		chainIDs[network] = uint32(chainIds[i])
+		if i > 0 {
+			nodeClients[network] = l2Clients[i-1]
+			authMap[network] = l2Auths[i-1]
+		}
 	}
 	cache, err := lru.New[string, [][]byte](cfg.CacheSize)
 	if err != nil {
@@ -58,6 +70,8 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		height:           height,
 		networkIDs:       networkIDs,
 		chainIDs:         chainIDs,
+		nodeClients:      nodeClients,
+		auths:            authMap,
 		defaultPageLimit: cfg.DefaultPageLimit,
 		maxPageLimit:     cfg.MaxPageLimit,
 		version:          cfg.BridgeVersion,

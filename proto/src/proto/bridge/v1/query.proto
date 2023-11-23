@@ -101,6 +101,12 @@ service BridgeService {
             get: "/monitored-txs/status/{status}",
         };
     }
+
+    rpc ManualClaim(ManualClaimRequest) returns (CommonManualClaimResponse) {
+        option (google.api.http) = {
+            get: "/manual-claim/{destAddr}",
+        };
+    }
 }
 
 // TokenWrapped message
@@ -273,6 +279,12 @@ message GetMonitoredTxsByStatusRequest {
     uint32 limit = 3;
 }
 
+message ManualClaimRequest {
+    uint32 fromChain = 1; // L1: 0; L2: 1
+    string destAddr = 2;
+    string depositTxHash = 3;
+}
+
 // Get responses
 
 message CheckAPIResponse {
@@ -381,4 +393,17 @@ message CommonMonitoredTxsResponse {
 message MonitoredTxsDetail {
     bool hasNext = 1;
     repeated MonitoredTx transactions = 2;
+}
+
+message ManualClaimResponse {
+    string claimTxHash = 1; // Claim tx hash
+}
+
+message CommonManualClaimResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
+    ManualClaimResponse data = 6;
 }
