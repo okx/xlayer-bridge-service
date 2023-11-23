@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"math/big"
 	"math/rand"
 	"time"
@@ -46,5 +47,23 @@ func PbToEthermanDeposit(pbDeposit *pb.Deposit) *etherman.Deposit {
 		TxHash:             common.HexToHash(pbDeposit.TxHash),
 		Metadata:           common.FromHex(pbDeposit.Metadata),
 		ReadyForClaim:      pbDeposit.ReadyForClaim,
+	}
+}
+
+func EthermanDepositToPbTransaction(deposit *etherman.Deposit) *pb.Transaction {
+	if deposit == nil {
+		return nil
+	}
+
+	return &pb.Transaction{
+		FromChain:   uint32(deposit.NetworkID),
+		ToChain:     uint32(deposit.DestinationNetwork),
+		BridgeToken: deposit.OriginalAddress.Hex(),
+		TokenAmount: deposit.Amount.String(),
+		Time:        uint64(deposit.Time.UnixMilli()),
+		TxHash:      deposit.TxHash.String(),
+		Id:          deposit.Id,
+		Index:       uint64(deposit.DepositCount),
+		Metadata:    "0x" + hex.EncodeToString(deposit.Metadata),
 	}
 }

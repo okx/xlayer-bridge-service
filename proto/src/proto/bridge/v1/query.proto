@@ -115,6 +115,13 @@ service BridgeService {
             body: "*",
         };
     }
+
+    /// Returns all transactions from a network that are ready_for_claim but not claimed
+    rpc GetReadyPendingTransactions(GetReadyPendingTransactionsRequest) returns (CommonTransactionsResponse) {
+        option (google.api.http) = {
+            get: "/ready-pending/{networkId}",
+        };
+    }
 }
 
 // TokenWrapped message
@@ -206,6 +213,7 @@ message Transaction {
     uint64 id = 13;
     uint64 index = 14;
     string metadata = 15;
+    string destAddr = 16;
 }
 
 // Monitored tx
@@ -293,6 +301,12 @@ message ManualClaimRequest {
     uint32 fromChain = 1; // L1: 0; L2: 1
     string destAddr = 2;
     string depositTxHash = 3;
+}
+
+message GetReadyPendingTransactionsRequest {
+    uint32 networkId = 1;
+    uint64 offset = 2;
+    uint32 limit = 3;
 }
 
 // Get responses

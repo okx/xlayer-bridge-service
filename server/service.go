@@ -457,20 +457,10 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: s.estTimeCalculator.Get(deposit.NetworkID),
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  s.chainIDs[deposit.NetworkID],
-			ToChainId:    s.chainIDs[deposit.DestinationNetwork],
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		transaction.Status = 0
 		if deposit.ReadyForClaim {
 			transaction.Status = 1
@@ -517,20 +507,10 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: s.estTimeCalculator.Get(deposit.NetworkID),
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		transaction.Status = 0 // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
@@ -591,21 +571,11 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: s.estTimeCalculator.Get(deposit.NetworkID),
-			Status:       0,
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
+		transaction.Status = 0
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
@@ -748,5 +718,44 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 		Data: &pb.ManualClaimResponse{
 			ClaimTxHash: tx.Hash().String(),
 		},
+	}, nil
+}
+
+// GetReadyPendingTransactions returns all transactions from a network which are ready_for_claim but not claimed
+func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb.GetReadyPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
+	limit := req.Limit
+	if limit == 0 {
+		limit = s.defaultPageLimit
+	}
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
+	}
+
+	deposits, err := s.storage.GetReadyPendingTransactions(ctx, uint(req.NetworkId), uint(limit+1), uint(req.Offset), nil)
+	if err != nil {
+		return &pb.CommonTransactionsResponse{
+			Code: defaultErrorCode,
+			Data: nil,
+		}, nil
+	}
+
+	hasNext := len(deposits) > int(limit)
+	if hasNext {
+		deposits = deposits[:limit]
+	}
+
+	var pbTransactions []*pb.Transaction
+	for _, deposit := range deposits {
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
+		transaction.Status = 1
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
+		pbTransactions = append(pbTransactions, transaction)
+	}
+
+	return &pb.CommonTransactionsResponse{
+		Code: defaultSuccessCode,
+		Data: &pb.TransactionDetail{HasNext: hasNext, Transactions: pbTransactions},
 	}, nil
 }

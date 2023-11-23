@@ -51,6 +51,8 @@ type BridgeServiceClient interface {
 	// / Return the estimated deposit wait time for L1 and L2
 	GetEstimateTime(ctx context.Context, in *GetEstimateTimeRequest, opts ...grpc.CallOption) (*CommonEstimateTimeResponse, error)
 	ManualClaim(ctx context.Context, in *ManualClaimRequest, opts ...grpc.CallOption) (*CommonManualClaimResponse, error)
+	// / Returns all transactions from a network that are ready_for_claim but not claimed
+	GetReadyPendingTransactions(ctx context.Context, in *GetReadyPendingTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -196,6 +198,15 @@ func (c *bridgeServiceClient) ManualClaim(ctx context.Context, in *ManualClaimRe
 	return out, nil
 }
 
+func (c *bridgeServiceClient) GetReadyPendingTransactions(ctx context.Context, in *GetReadyPendingTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error) {
+	out := new(CommonTransactionsResponse)
+	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/GetReadyPendingTransactions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -229,6 +240,8 @@ type BridgeServiceServer interface {
 	// / Return the estimated deposit wait time for L1 and L2
 	GetEstimateTime(context.Context, *GetEstimateTimeRequest) (*CommonEstimateTimeResponse, error)
 	ManualClaim(context.Context, *ManualClaimRequest) (*CommonManualClaimResponse, error)
+	// / Returns all transactions from a network that are ready_for_claim but not claimed
+	GetReadyPendingTransactions(context.Context, *GetReadyPendingTransactionsRequest) (*CommonTransactionsResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -280,6 +293,9 @@ func (UnimplementedBridgeServiceServer) GetEstimateTime(context.Context, *GetEst
 }
 func (UnimplementedBridgeServiceServer) ManualClaim(context.Context, *ManualClaimRequest) (*CommonManualClaimResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ManualClaim not implemented")
+}
+func (UnimplementedBridgeServiceServer) GetReadyPendingTransactions(context.Context, *GetReadyPendingTransactionsRequest) (*CommonTransactionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetReadyPendingTransactions not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -564,6 +580,24 @@ func _BridgeService_ManualClaim_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_GetReadyPendingTransactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReadyPendingTransactionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).GetReadyPendingTransactions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/bridge.v1.BridgeService/GetReadyPendingTransactions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).GetReadyPendingTransactions(ctx, req.(*GetReadyPendingTransactionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -630,6 +664,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ManualClaim",
 			Handler:    _BridgeService_ManualClaim_Handler,
+		},
+		{
+			MethodName: "GetReadyPendingTransactions",
+			Handler:    _BridgeService_GetReadyPendingTransactions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
