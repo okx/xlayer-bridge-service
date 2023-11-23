@@ -663,7 +663,7 @@ func (s *bridgeService) GetCountStatsByTime(ctx context.Context, req *pb.GetCoun
 	fromTime := time.UnixMilli(int64(req.FromTime))
 	toTime := time.UnixMilli(int64(req.ToTime))
 
-	data := make([]*pb.CountStatsDetail, 2)
+	data := make([]*pb.CountStatsDetail, 2) //nolint:gomnd
 
 	for i := uint32(0); i < 2; i++ {
 		depositCnt, err := s.storage.GetDepositCountByTime(ctx, i, fromTime, toTime, nil)
