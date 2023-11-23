@@ -111,7 +111,8 @@ service BridgeService {
 
     rpc ManualClaim(ManualClaimRequest) returns (CommonManualClaimResponse) {
         option (google.api.http) = {
-            get: "/manual-claim/{destAddr}",
+            post: "/manual-claim",
+            body: "*",
         };
     }
 }
