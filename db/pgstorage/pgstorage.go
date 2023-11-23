@@ -461,6 +461,27 @@ func (p *PostgresStorage) GetDeposits(ctx context.Context, destAddr string, limi
 	return deposits, nil
 }
 
+// GetDepositByHash returns a deposit from a specific account and tx hash
+func (p *PostgresStorage) GetDepositByHash(ctx context.Context, destAddr string, networkID uint, txHash string, dbTx pgx.Tx) (*etherman.Deposit, error) {
+	var (
+		deposit etherman.Deposit
+		amount  string
+	)
+	getDepositSQL := fmt.Sprintf(`
+		SELECT leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim
+		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
+		WHERE d.dest_addr = $1 AND d.network_id = $2 AND d.tx_hash = $3`, p.tableSuffix)
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositSQL, common.HexToAddress(destAddr), networkID, common.HexToHash(txHash)).Scan(
+		&deposit.LeafType, &deposit.OriginalNetwork, &deposit.OriginalAddress, &amount, &deposit.DestinationNetwork, &deposit.DestinationAddress,
+		&deposit.DepositCount, &deposit.BlockID, &deposit.BlockNumber, &deposit.NetworkID, &deposit.TxHash, &deposit.Metadata, &deposit.ReadyForClaim)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, gerror.ErrStorageNotFound
+	}
+	deposit.Amount, _ = new(big.Int).SetString(amount, 10) //nolint:gomnd
+
+	return &deposit, err
+}
+
 // GetPendingTransactions gets all the deposit transactions of a user that have not been claimed
 func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	getDepositsSQL := fmt.Sprintf(`SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
