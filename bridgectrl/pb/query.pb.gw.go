@@ -665,35 +665,39 @@ func local_request_BridgeService_GetMonitoredTxsByStatus_0(ctx context.Context, 
 
 }
 
+<<<<<<< HEAD
 var (
 	filter_BridgeService_ManualClaim_0 = &utilities.DoubleArray{Encoding: map[string]int{"destAddr": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
 )
+=======
+func request_BridgeService_GetEstimateTime_0(ctx context.Context, marshaler runtime.Marshaler, client BridgeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetEstimateTimeRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := client.GetEstimateTime(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_BridgeService_GetEstimateTime_0(ctx context.Context, marshaler runtime.Marshaler, server BridgeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetEstimateTimeRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetEstimateTime(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+>>>>>>> 3c0ad47 (Change method to POST)
 
 func request_BridgeService_ManualClaim_0(ctx context.Context, marshaler runtime.Marshaler, client BridgeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ManualClaimRequest
 	var metadata runtime.ServerMetadata
 
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["destAddr"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "destAddr")
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-
-	protoReq.DestAddr, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "destAddr", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_BridgeService_ManualClaim_0); err != nil {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -706,27 +710,11 @@ func local_request_BridgeService_ManualClaim_0(ctx context.Context, marshaler ru
 	var protoReq ManualClaimRequest
 	var metadata runtime.ServerMetadata
 
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["destAddr"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "destAddr")
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
 	}
-
-	protoReq.DestAddr, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "destAddr", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_BridgeService_ManualClaim_0); err != nil {
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -1066,7 +1054,10 @@ func RegisterBridgeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 
 	})
 
+<<<<<<< HEAD
 	mux.Handle("GET", pattern_BridgeService_ManualClaim_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+=======
+	mux.Handle("GET", pattern_BridgeService_GetEstimateTime_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1074,7 +1065,33 @@ func RegisterBridgeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/bridge.v1.BridgeService/ManualClaim", runtime.WithHTTPPathPattern("/manual-claim/{destAddr}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/bridge.v1.BridgeService/GetEstimateTime", runtime.WithHTTPPathPattern("/estimate-time"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_BridgeService_GetEstimateTime_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_BridgeService_GetEstimateTime_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_BridgeService_ManualClaim_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+>>>>>>> 3c0ad47 (Change method to POST)
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/bridge.v1.BridgeService/ManualClaim", runtime.WithHTTPPathPattern("/manual-claim"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1418,13 +1435,39 @@ func RegisterBridgeServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 
 	})
 
+<<<<<<< HEAD
 	mux.Handle("GET", pattern_BridgeService_ManualClaim_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+=======
+	mux.Handle("GET", pattern_BridgeService_GetEstimateTime_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/bridge.v1.BridgeService/ManualClaim", runtime.WithHTTPPathPattern("/manual-claim/{destAddr}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/bridge.v1.BridgeService/GetEstimateTime", runtime.WithHTTPPathPattern("/estimate-time"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_BridgeService_GetEstimateTime_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_BridgeService_GetEstimateTime_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_BridgeService_ManualClaim_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+>>>>>>> 3c0ad47 (Change method to POST)
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/bridge.v1.BridgeService/ManualClaim", runtime.WithHTTPPathPattern("/manual-claim"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1470,7 +1513,13 @@ var (
 
 	pattern_BridgeService_GetMonitoredTxsByStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1}, []string{"monitored-txs", "status"}, ""))
 
+<<<<<<< HEAD
 	pattern_BridgeService_ManualClaim_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"manual-claim", "destAddr"}, ""))
+=======
+	pattern_BridgeService_GetEstimateTime_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"estimate-time"}, ""))
+
+	pattern_BridgeService_ManualClaim_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"manual-claim"}, ""))
+>>>>>>> 3c0ad47 (Change method to POST)
 )
 
 var (
