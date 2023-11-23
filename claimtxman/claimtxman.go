@@ -235,6 +235,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 			tm.rollbackStore(dbTx)
 			return err
 		}
+		log.Infof("get the claim proof for the deposit %d successfully", deposit.DepositCount)
 		var mtProves [mtHeight][keyLen]byte
 		for i := 0; i < mtHeight; i++ {
 			mtProves[i] = proves[i]
@@ -268,6 +269,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 			log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
 			return err
 		}
+		log.Infof("add claim tx for the deposit %d blockID %d successfully", deposit.DepositCount, deposit.BlockID)
 	}
 	return nil
 }
