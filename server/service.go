@@ -13,6 +13,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -455,24 +456,13 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		defaultTxEstimateTime := defaultL1TxEstimateTime
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = defaultL1TxEstimateTime
 		if deposit.NetworkID == 1 {
-			defaultTxEstimateTime = defaultL2TxEstimateTime
+			transaction.EstimateTime = defaultL2TxEstimateTime
 		}
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: uint32(defaultTxEstimateTime),
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  s.chainIDs[deposit.NetworkID],
-			ToChainId:    s.chainIDs[deposit.DestinationNetwork],
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		transaction.Status = 0
 		if deposit.ReadyForClaim {
 			transaction.Status = 1
@@ -519,24 +509,13 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		defaultTxEstimateTime := defaultL1TxEstimateTime
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = defaultL1TxEstimateTime
 		if deposit.NetworkID == 1 {
-			defaultTxEstimateTime = defaultL2TxEstimateTime
+			transaction.EstimateTime = defaultL2TxEstimateTime
 		}
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: uint32(defaultTxEstimateTime),
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		transaction.Status = 0 // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
@@ -597,25 +576,14 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
-		defaultTxEstimateTime := defaultL1TxEstimateTime
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = defaultL1TxEstimateTime
 		if deposit.NetworkID == 1 {
-			defaultTxEstimateTime = defaultL2TxEstimateTime
+			transaction.EstimateTime = defaultL2TxEstimateTime
 		}
-		transaction := &pb.Transaction{
-			FromChain:    uint32(deposit.NetworkID),
-			ToChain:      uint32(deposit.DestinationNetwork),
-			BridgeToken:  deposit.OriginalAddress.Hex(),
-			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: uint32(defaultTxEstimateTime),
-			Status:       0,
-			Time:         uint64(deposit.Time.UnixMilli()),
-			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
-			Id:           deposit.Id,
-			Index:        uint64(deposit.DepositCount),
-			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
-		}
+		transaction.Status = 0
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
@@ -673,5 +641,124 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 	return &pb.CommonMonitoredTxsResponse{
 		Code: defaultSuccessCode,
 		Data: &pb.MonitoredTxsDetail{HasNext: hasNext, Transactions: pbTransactions},
+	}, nil
+}
+
+// ManualClaim manually sends a claim transaction for a specific deposit
+func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequest) (*pb.CommonManualClaimResponse, error) {
+	// Only allow L1->L2
+	if req.FromChain != 0 {
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+			Msg:  "only allow L1->L2 claim",
+		}, nil
+	}
+
+	// Query the deposit info from storage
+	deposit, err := s.storage.GetDepositByHash(ctx, req.DestAddr, uint(req.FromChain), req.DepositTxHash, nil)
+	if err != nil {
+		log.Errorf("Failed to get deposit: %v", err)
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+			Msg:  "failed to get deposit info",
+		}, nil
+	}
+
+	// Only allow to claim ready transactions
+	if !deposit.ReadyForClaim {
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+			Msg:  "transaction is not ready for claim",
+		}, nil
+	}
+
+	// Check whether the deposit has already been claimed
+	_, err = s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
+	if err == nil {
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+			Msg:  "transaction has already been claimed",
+		}, nil
+	}
+	if !errors.Is(err, gerror.ErrStorageNotFound) {
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+		}, nil
+	}
+
+	destNet := deposit.DestinationNetwork
+	client, ok := s.nodeClients[destNet]
+	if !ok || client == nil {
+		log.Errorf("node client for networkID %v not found", destNet)
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+		}, nil
+	}
+	// Get the claim proof
+	ger, proves, err := s.GetClaimProof(deposit.DepositCount, deposit.NetworkID, nil)
+	if err != nil {
+		log.Errorf("failed to get claim proof for deposit %v networkID %v: %v", deposit.DepositCount, deposit.NetworkID, err)
+	}
+	var mtProves [mtHeight][bridgectrl.KeyLen]byte
+	for i := 0; i < mtHeight; i++ {
+		mtProves[i] = proves[i]
+	}
+	// Send claim transaction to the node
+	tx, err := client.SendClaim(ctx, deposit, mtProves, ger, s.auths[destNet])
+	if err != nil {
+		log.Errorf("failed to send claim transaction: %v", err)
+		return &pb.CommonManualClaimResponse{
+			Code: defaultErrorCode,
+			Msg:  "failed to send claim transaction",
+		}, nil
+	}
+
+	return &pb.CommonManualClaimResponse{
+		Code: defaultSuccessCode,
+		Data: &pb.ManualClaimResponse{
+			ClaimTxHash: tx.Hash().String(),
+		},
+	}, nil
+}
+
+// GetReadyPendingTransactions returns all transactions from a network which are ready_for_claim but not claimed
+func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb.GetReadyPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
+	limit := req.Limit
+	if limit == 0 {
+		limit = s.defaultPageLimit
+	}
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
+	}
+
+	deposits, err := s.storage.GetReadyPendingTransactions(ctx, uint(req.NetworkId), uint(limit+1), uint(req.Offset), nil)
+	if err != nil {
+		return &pb.CommonTransactionsResponse{
+			Code: defaultErrorCode,
+			Data: nil,
+		}, nil
+	}
+
+	hasNext := len(deposits) > int(limit)
+	if hasNext {
+		deposits = deposits[:limit]
+	}
+
+	var pbTransactions []*pb.Transaction
+	for _, deposit := range deposits {
+		transaction := utils.EthermanDepositToPbTransaction(deposit)
+		transaction.EstimateTime = defaultL1TxEstimateTime
+		if deposit.NetworkID == 1 {
+			transaction.EstimateTime = defaultL2TxEstimateTime
+		}
+		transaction.Status = 1
+		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
+		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
+		pbTransactions = append(pbTransactions, transaction)
+	}
+
+	return &pb.CommonTransactionsResponse{
+		Code: defaultSuccessCode,
+		Data: &pb.TransactionDetail{HasNext: hasNext, Transactions: pbTransactions},
 	}, nil
 }
