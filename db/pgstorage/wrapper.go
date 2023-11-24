@@ -37,11 +37,11 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 	log.Debug(i, queryCnt.Load())
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("Exec begin, sql[%v], arguments[%v]", removeNewLine(sql), arguments)
+	logger.Debugf("DB query begin, method[Exec], sql[%v], arguments[%v]", removeNewLine(sql), arguments)
 
 	tag, err := w.execQuerier.Exec(dbCtx, sql, arguments...)
 
-	logger.Debugf("Exec end, err[%v] processTime[%v]", err, time.Since(startTime).String())
+	logger.Debugf("DB query end, method[Exec], err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return tag, err
 }
 
@@ -56,11 +56,11 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("Query begin, sql[%v], arguments[%v]", removeNewLine(sql), args)
+	logger.Debugf("DB query begin, method[Query], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
 	rows, err := w.execQuerier.Query(dbCtx, sql, args...)
 
-	logger.Debugf("Query end, err[%v] processTime[%v]", err, time.Since(startTime).String())
+	logger.Debugf("DB query end, method[Query], err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return rows, err
 }
 
@@ -75,11 +75,11 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("QueryRow begin, sql[%v], arguments[%v]", removeNewLine(sql), args)
+	logger.Debugf("DB query begin, method[QueryRow], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
 	row := w.execQuerier.QueryRow(dbCtx, sql, args...)
 
-	logger.Debugf("QueryRow end, processTime[%v]", time.Since(startTime).String())
+	logger.Debugf("DB query end, method[QueryRow], processTime[%v]", time.Since(startTime).String())
 	return row
 }
 
@@ -94,11 +94,11 @@ func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identif
 	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("CopyFrom begin, tableName[%v]", tableName)
+	logger.Debugf("DB query begin, method[CopyFrom], tableName[%v]", tableName)
 
 	res, err := w.execQuerier.CopyFrom(dbCtx, tableName, columnNames, rowSrc)
 
-	logger.Debugf("CopyFrom end, res[%v] err[%v] processTime[%v]", res, err, time.Since(startTime).String())
+	logger.Debugf("DB query end, method[CopyFrom], res[%v] err[%v] processTime[%v]", res, err, time.Since(startTime).String())
 	return res, err
 }
 
