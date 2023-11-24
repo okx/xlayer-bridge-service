@@ -65,5 +65,7 @@ func EthermanDepositToPbTransaction(deposit *etherman.Deposit) *pb.Transaction {
 		Id:          deposit.Id,
 		Index:       uint64(deposit.DepositCount),
 		Metadata:    "0x" + hex.EncodeToString(deposit.Metadata),
+		DestAddr:    deposit.DestinationAddress.Hex(),
+		LeafType:    uint32(deposit.LeafType),
 	}
 }
