@@ -393,8 +393,8 @@ message ProofDetail {
 }
 
 message GetSmtProofRequest {
-    uint32 index = 1;
-    uint64 fromChain = 2;
+    uint64 index = 1;
+    uint32 fromChain = 2;
 }
 
 message CommonMonitoredTxsResponse {
