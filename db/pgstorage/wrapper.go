@@ -34,7 +34,7 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 	startTime := time.Now()
 	logger.Debugf("Exec begin, sql[%v], arguments[%v]", sql, arguments)
 
-	tag, err := w.execQuerier.Exec(dbCtx, sql, arguments)
+	tag, err := w.execQuerier.Exec(dbCtx, sql, arguments...)
 
 	logger.Debugf("Exec end, err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return tag, err
@@ -53,7 +53,7 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 	startTime := time.Now()
 	logger.Debugf("Query begin, sql[%v], arguments[%v]", sql, args)
 
-	rows, err := w.execQuerier.Query(dbCtx, sql, args)
+	rows, err := w.execQuerier.Query(dbCtx, sql, args...)
 
 	logger.Debugf("Query end, err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return rows, err
@@ -72,7 +72,7 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 	startTime := time.Now()
 	logger.Debugf("QueryRow begin, sql[%v], arguments[%v]", sql, args)
 
-	row := w.execQuerier.QueryRow(dbCtx, sql, args)
+	row := w.execQuerier.QueryRow(dbCtx, sql, args...)
 
 	logger.Debugf("QueryRow end, processTime[%v]", time.Since(startTime).String())
 	return row
