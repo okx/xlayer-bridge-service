@@ -214,6 +214,7 @@ message Transaction {
     uint64 index = 14;
     string metadata = 15;
     string destAddr = 16;
+    uint32 leafType = 17;
 }
 
 // Monitored tx
