@@ -3,6 +3,7 @@ package pgstorage
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -15,10 +16,13 @@ const (
 	defaultDBTimeout = 5 * time.Second
 )
 
+var (
+	queryCnt atomic.Int64
+)
+
 // execQuerierWrapper automatically adds a ctx timeout for the querier, also add before and after logs
 type execQuerierWrapper struct {
 	execQuerier
-	queryCnt atomic.Int64
 }
 
 func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...interface{}) (commandTag pgconn.CommandTag, err error) {
@@ -29,10 +33,11 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 		}
 	}()
 
-	i := w.queryCnt.Add(1)
+	i := queryCnt.Add(1)
+	log.Debug(i, queryCnt.Load())
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("Exec begin, sql[%v], arguments[%v]", sql, arguments)
+	logger.Debugf("Exec begin, sql[%v], arguments[%v]", removeNewLine(sql), arguments)
 
 	tag, err := w.execQuerier.Exec(dbCtx, sql, arguments...)
 
@@ -48,10 +53,10 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 		}
 	}()
 
-	i := w.queryCnt.Add(1)
+	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("Query begin, sql[%v], arguments[%v]", sql, args)
+	logger.Debugf("Query begin, sql[%v], arguments[%v]", removeNewLine(sql), args)
 
 	rows, err := w.execQuerier.Query(dbCtx, sql, args...)
 
@@ -67,10 +72,10 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 		}
 	}()
 
-	i := w.queryCnt.Add(1)
+	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
-	logger.Debugf("QueryRow begin, sql[%v], arguments[%v]", sql, args)
+	logger.Debugf("QueryRow begin, sql[%v], arguments[%v]", removeNewLine(sql), args)
 
 	row := w.execQuerier.QueryRow(dbCtx, sql, args...)
 
@@ -86,7 +91,7 @@ func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identif
 		}
 	}()
 
-	i := w.queryCnt.Add(1)
+	i := queryCnt.Add(1)
 	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
 	startTime := time.Now()
 	logger.Debugf("CopyFrom begin, tableName[%v]", tableName)
@@ -102,4 +107,8 @@ func getCtxWithTimeout(ctx context.Context, timeout time.Duration) (context.Cont
 		return ctx, nil
 	}
 	return context.WithTimeout(ctx, timeout)
+}
+
+func removeNewLine(s string) string {
+	return strings.Replace(s, "\n", " ", -1)
 }

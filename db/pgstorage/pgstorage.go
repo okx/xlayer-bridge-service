@@ -27,9 +27,9 @@ type PostgresStorage struct {
 // getExecQuerier determines which execQuerier to use, dbTx or the main pgxpool
 func (p *PostgresStorage) getExecQuerier(dbTx pgx.Tx) execQuerier {
 	if dbTx != nil {
-		return &execQuerierWrapper{execQuerier: dbTx}
+		return &execQuerierWrapper{dbTx}
 	}
-	return &execQuerierWrapper{execQuerier: p}
+	return &execQuerierWrapper{p}
 }
 
 // NewPostgresStorage creates a new Storage DB
