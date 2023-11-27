@@ -191,30 +191,11 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 }
 
 func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
-	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
-	deposits, err := tm.storage.UpdateL1DepositsStatus(tm.ctx, ger.ExitRoots[0][:], dbTx)
+	deposits, err := tm.storage.GetL1Deposits(tm.ctx, ger.ExitRoots[0][:], nil)
 	if err != nil {
 		log.Errorf("error processing ger. Error: %v", err)
-		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-		if rollbackErr != nil {
-			log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
-			return nil, rollbackErr
-		}
 		return nil, err
-	}
-	err = tm.storage.Commit(tm.ctx, dbTx)
-	if err != nil {
-		log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
-		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-		if rollbackErr != nil {
-			log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
-		}
-		log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
 	}
 	return deposits, nil
 }
@@ -267,6 +248,13 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 		}
 		if err = tm.addClaimTx(deposit.DepositCount, deposit.BlockID, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 			log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
+			tm.rollbackStore(dbTx)
+			return err
+		}
+
+		err = tm.storage.UpdateL1DepositStatus(tm.ctx, deposit.DepositCount, dbTx)
+		if err != nil {
+			log.Errorf("error update deposit %d status. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
 			return err
 		}
