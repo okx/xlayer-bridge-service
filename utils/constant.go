@@ -3,6 +3,10 @@ package utils
 type contextKey string
 
 const (
-	TraceID    contextKey = "traceID"
-	traceIDLen            = 16
+	CtxTraceID contextKey = "traceID"
+)
+
+const (
+	TraceID    = "traceID"
+	traceIDLen = 16
 )

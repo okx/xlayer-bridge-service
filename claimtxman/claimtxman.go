@@ -115,7 +115,7 @@ func (tm *ClaimTxManager) startMonitorTxs() {
 			return
 		}
 		traceID := utils.GenerateTraceID()
-		ctx := context.WithValue(tm.ctx, utils.TraceID, traceID)
+		ctx := context.WithValue(tm.ctx, utils.CtxTraceID, traceID)
 		logger := log.WithFields(utils.TraceID, traceID)
 		logger.Infof("MonitorTxs begin %d", tm.l2NetworkID)
 		err := tm.monitorTxs(ctx)
@@ -404,7 +404,7 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 func (tm *ClaimTxManager) monitorTxs(ctxTraceID context.Context) error {
 	ctx, cancel := context.WithTimeout(ctxTraceID, monitorTxsTimeout)
 	defer cancel()
-	mLog := log.WithFields(utils.TraceID, ctxTraceID.Value(utils.TraceID))
+	mLog := log.WithFields(utils.TraceID, ctxTraceID.Value(utils.CtxTraceID))
 
 	dbTx, err := tm.storage.BeginDBTransaction(ctx)
 	if err != nil {

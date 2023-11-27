@@ -28,7 +28,7 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 		}
 	}()
 
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Exec], sql[%v], arguments[%v]", removeNewLine(sql), arguments)
 
@@ -46,7 +46,7 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 		}
 	}()
 
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Query], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -64,7 +64,7 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 		}
 	}()
 
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[QueryRow], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -82,7 +82,7 @@ func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identif
 		}
 	}()
 
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[CopyFrom], tableName[%v]", tableName)
 
