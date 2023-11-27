@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultDBTimeout = 5 * time.Second
+	defaultDBTimeout = 10 * time.Second
 )
 
 // execQuerierWrapper automatically adds a ctx timeout for the querier, also add before and after logs
