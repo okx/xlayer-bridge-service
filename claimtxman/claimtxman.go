@@ -105,12 +105,13 @@ func (tm *ClaimTxManager) Start() {
 		case <-ticker.C:
 			traceID := utils.GenerateTraceID()
 			ctx := context.WithValue(tm.ctx, utils.TraceID, traceID)
-			log.WithFields(utils.TraceID, traceID).Infof("MonitorTxs begin %d", tm.l2NetworkID)
+			logger := log.WithFields(utils.TraceID, traceID)
+			logger.Infof("MonitorTxs begin %d", tm.l2NetworkID)
 			err := tm.monitorTxs(ctx)
 			if err != nil {
-				log.Errorf("failed to monitor txs: %v", err)
+				logger.Errorf("failed to monitor txs: %v", err)
 			}
-			log.WithFields(utils.TraceID, traceID).Infof("MonitorTxs end %d", tm.l2NetworkID)
+			logger.WithFields(utils.TraceID, traceID).Infof("MonitorTxs end %d", tm.l2NetworkID)
 		}
 	}
 }

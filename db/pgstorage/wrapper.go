@@ -2,11 +2,10 @@ package pgstorage
 
 import (
 	"context"
-	"fmt"
 	"strings"
-	"sync/atomic"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -14,10 +13,6 @@ import (
 
 const (
 	defaultDBTimeout = 5 * time.Second
-)
-
-var (
-	queryCnt atomic.Int64
 )
 
 // execQuerierWrapper automatically adds a ctx timeout for the querier, also add before and after logs
@@ -33,9 +28,7 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 		}
 	}()
 
-	i := queryCnt.Add(1)
-	log.Debug(i, queryCnt.Load())
-	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Exec], sql[%v], arguments[%v]", removeNewLine(sql), arguments)
 
@@ -53,8 +46,7 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 		}
 	}()
 
-	i := queryCnt.Add(1)
-	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Query], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -72,8 +64,7 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 		}
 	}()
 
-	i := queryCnt.Add(1)
-	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[QueryRow], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -91,8 +82,7 @@ func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identif
 		}
 	}()
 
-	i := queryCnt.Add(1)
-	logger := log.WithFields("logid", fmt.Sprintf("db_query_%v", i))
+	logger := log.WithFields(utils.TraceID, ctx.Value(utils.TraceID))
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[CopyFrom], tableName[%v]", tableName)
 
