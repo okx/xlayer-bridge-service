@@ -1,6 +1,8 @@
 package utils
 
+type contextKey string
+
 const (
-	TraceID    = "traceID"
-	traceIDLen = 16
+	TraceID    contextKey = "traceID"
+	traceIDLen            = 16
 )
