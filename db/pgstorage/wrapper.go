@@ -36,6 +36,7 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 
 	tag, err := w.execQuerier.Exec(dbCtx, sql, arguments...)
 
+	logger.Debugf("Context deadline: [%v]; Context err: [%v], Time now: [%v]", deadline, dbCtx.Err(), time.Now())
 	logger.Debugf("DB query end, method[Exec], err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return tag, err
 }
@@ -56,6 +57,7 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 
 	rows, err := w.execQuerier.Query(dbCtx, sql, args...)
 
+	logger.Debugf("Context deadline: [%v]; Context err: [%v], Time now: [%v]", deadline, dbCtx.Err(), time.Now())
 	logger.Debugf("DB query end, method[Query], err[%v] processTime[%v]", err, time.Since(startTime).String())
 	return rows, err
 }
@@ -76,6 +78,7 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 
 	row := w.execQuerier.QueryRow(dbCtx, sql, args...)
 
+	logger.Debugf("Context deadline: [%v]; Context err: [%v], Time now: [%v]", deadline, dbCtx.Err(), time.Now())
 	logger.Debugf("DB query end, method[QueryRow], processTime[%v]", time.Since(startTime).String())
 	return row
 }
@@ -96,6 +99,7 @@ func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identif
 
 	res, err := w.execQuerier.CopyFrom(dbCtx, tableName, columnNames, rowSrc)
 
+	logger.Debugf("Context deadline: [%v]; Context err: [%v], Time now: [%v]", deadline, dbCtx.Err(), time.Now())
 	logger.Debugf("DB query end, method[CopyFrom], res[%v] err[%v] processTime[%v]", res, err, time.Since(startTime).String())
 	return res, err
 }
