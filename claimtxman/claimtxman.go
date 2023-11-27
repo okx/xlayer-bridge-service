@@ -110,7 +110,7 @@ func (tm *ClaimTxManager) Start() {
 			if err != nil {
 				logger.Errorf("failed to monitor txs: %v", err)
 			}
-			logger.WithFields(utils.TraceID, traceID).Infof("MonitorTxs end %d", tm.l2NetworkID)
+			logger.Infof("MonitorTxs end %d", tm.l2NetworkID)
 		}
 	}
 }
