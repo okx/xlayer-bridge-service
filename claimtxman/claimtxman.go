@@ -103,12 +103,14 @@ func (tm *ClaimTxManager) Start() {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
 		case <-ticker.C:
-			log.Infof("MonitorTxs begin", tm.l2NetworkID)
-			err := tm.monitorTxs(tm.ctx)
+			traceID := utils.GenerateTraceID()
+			ctx := context.WithValue(tm.ctx, utils.TraceID, traceID)
+			log.WithFields(utils.TraceID, traceID).Infof("MonitorTxs begin %d", tm.l2NetworkID)
+			err := tm.monitorTxs(ctx)
 			if err != nil {
 				log.Errorf("failed to monitor txs: %v", err)
 			}
-			log.Infof("MonitorTxs end", tm.l2NetworkID)
+			log.WithFields(utils.TraceID, traceID).Infof("MonitorTxs end %d", tm.l2NetworkID)
 		}
 	}
 }
@@ -400,29 +402,34 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 }
 
 // monitorTxs process all pending monitored tx
-func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
-	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
+func (tm *ClaimTxManager) monitorTxs(ctxTraceID context.Context) error {
+	ctx, cancel := context.WithTimeout(ctxTraceID, 60*time.Second)
+	defer cancel()
+	mLog := log.WithFields(utils.TraceID, ctxTraceID.Value(utils.TraceID))
+
+	dbTx, err := tm.storage.BeginDBTransaction(ctx)
 	if err != nil {
 		return err
 	}
+	mLog.Infof("monitorTxs begin")
 
 	statusesFilter := []ctmtypes.MonitoredTxStatus{ctmtypes.MonitoredTxStatusCreated}
 	mTxs, err := tm.storage.GetClaimTxsByStatus(ctx, statusesFilter, dbTx)
 	if err != nil {
-		log.Errorf("failed to get created monitored txs: %v", err)
+		mLog.Errorf("failed to get created monitored txs: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
+			mLog.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
 			return rollbackErr
 		}
 		return fmt.Errorf("failed to get created monitored txs: %v", err)
 	}
+	mLog.Infof("found %v monitored tx to process", len(mTxs))
 
 	isResetNonce := false // it will reset the nonce in one cycle
-	log.Infof("found %v monitored tx to process", len(mTxs))
 	for _, mTx := range mTxs {
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
-		mTxLog := log.WithFields("monitoredTx", mTx.ID)
+		mTxLog := mLog.WithFields("monitoredTx", mTx.ID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
 
 		// check if any of the txs in the history was mined
@@ -600,17 +607,20 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			mTxLog.Infof("signed tx %s added to the monitored tx history", signedTx.Hash().String())
 		}
 	}
+	mLog.Infof("monitorTxs end")
 
 	err = tm.storage.Commit(tm.ctx, dbTx)
 	if err != nil {
-		log.Errorf("UpdateClaimTx committing dbTx, err: %v", err)
+		mLog.Errorf("UpdateClaimTx committing dbTx, err: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
+			mLog.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
 			return rollbackErr
 		}
 		return err
 	}
+
+	mLog.Infof("monitorTxs committed")
 	return nil
 }
 
