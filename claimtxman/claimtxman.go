@@ -22,11 +22,12 @@ import (
 )
 
 const (
-	maxHistorySize  = 10
-	keyLen          = 32
-	mtHeight        = 32
-	cacheSize       = 1000
-	LeafTypeMessage = uint8(1)
+	maxHistorySize    = 10
+	keyLen            = 32
+	mtHeight          = 32
+	cacheSize         = 1000
+	LeafTypeMessage   = uint8(1)
+	monitorTxsTimeout = 60 * time.Second
 )
 
 // ClaimTxManager is the claim transaction manager for L2.
@@ -403,7 +404,7 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 
 // monitorTxs process all pending monitored tx
 func (tm *ClaimTxManager) monitorTxs(ctxTraceID context.Context) error {
-	ctx, cancel := context.WithTimeout(ctxTraceID, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctxTraceID, monitorTxsTimeout)
 	defer cancel()
 	mLog := log.WithFields(utils.TraceID, ctxTraceID.Value(utils.TraceID))
 
