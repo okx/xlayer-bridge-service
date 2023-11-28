@@ -11,10 +11,6 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-const (
-	defaultDBTimeout = 10 * time.Second
-)
-
 // execQuerierWrapper automatically adds a ctx timeout for the querier, also add before and after logs
 type execQuerierWrapper struct {
 	execQuerier
