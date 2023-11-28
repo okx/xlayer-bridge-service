@@ -8,9 +8,6 @@ import (
 	"strings"
 	"time"
 
-	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/state/runtime"
 	"github.com/ethereum/go-ethereum"
@@ -19,15 +16,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
+
+	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 )
 
 const (
-	maxHistorySize    = 10
-	keyLen            = 32
-	mtHeight          = 32
-	cacheSize         = 1000
-	LeafTypeMessage   = uint8(1)
-	monitorTxsTimeout = 60 * time.Second
+	maxHistorySize  = 10
+	keyLen          = 32
+	mtHeight        = 32
+	cacheSize       = 1000
+	LeafTypeMessage = uint8(1)
 )
 
 // ClaimTxManager is the claim transaction manager for L2.
@@ -401,10 +401,8 @@ func (tm *ClaimTxManager) addClaimTx(depositCount uint, blockID uint64, from com
 }
 
 // monitorTxs process all pending monitored tx
-func (tm *ClaimTxManager) monitorTxs(ctxTraceID context.Context) error {
-	ctx, cancel := context.WithTimeout(ctxTraceID, monitorTxsTimeout)
-	defer cancel()
-	mLog := log.WithFields(utils.TraceID, ctxTraceID.Value(utils.CtxTraceID))
+func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
+	mLog := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
 
 	dbTx, err := tm.storage.BeginDBTransaction(ctx)
 	if err != nil {
