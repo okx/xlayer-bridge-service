@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -561,7 +562,7 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 		limit = s.maxPageLimit
 	}
 
-	deposits, err := s.storage.GetNotReadyTransactions(ctx, uint(limit+1), uint(req.Offset), nil)
+	deposits, err := s.storage.GetNotReadyTransactions(ctx, uint(req.NetworkId), time.UnixMilli(int64(req.MaxTime)), uint(limit+1), uint(req.Offset), nil)
 	if err != nil {
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,

@@ -494,13 +494,13 @@ func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr s
 }
 
 // GetNotReadyTransactions returns all the deposit transactions with ready_for_claim = false
-func (p *PostgresStorage) GetNotReadyTransactions(ctx context.Context, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+func (p *PostgresStorage) GetNotReadyTransactions(ctx context.Context, networkID uint, maxTime time.Time, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	getDepositsSQL := fmt.Sprintf(`SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE ready_for_claim = false
-		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $1 OFFSET $2`, p.tableSuffix)
+		WHERE ready_for_claim = false AND d.network_id = $1 AND b.received_at <= $2
+		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $3 OFFSET $4`, p.tableSuffix)
 
-	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, limit, offset)
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, networkID, maxTime, limit, offset)
 	if err != nil {
 		return nil, err
 	}
