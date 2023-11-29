@@ -14,6 +14,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/jackc/pgx/v4"
@@ -553,7 +554,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 }
 
 // GetNotReadyTransactions returns all deposit transactions with ready_for_claim = false
-func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.GetNotReadyTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
+func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.GetNotReadyTransactionsRequest) (*pb.CommonTransactionsWithCountResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit
@@ -563,8 +564,11 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 	}
 
 	deposits, err := s.storage.GetNotReadyTransactions(ctx, uint(req.NetworkId), time.UnixMilli(int64(req.MaxTime)), uint(limit+1), uint(req.Offset), nil)
-	if err != nil {
-		return &pb.CommonTransactionsResponse{
+	cnt, cntErr := s.storage.GetNotReadyTransactionsCount(ctx, uint(req.NetworkId), time.UnixMilli(int64(req.MaxTime)), uint(limit+1), uint(req.Offset), nil)
+
+	if err != nil || cntErr != nil {
+		log.Errorf("GetNotReadyTransactions err[%v] errCnt[%v]", err, cntErr)
+		return &pb.CommonTransactionsWithCountResponse{
 			Code: defaultErrorCode,
 			Data: nil,
 		}, nil
@@ -595,9 +599,9 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
-	return &pb.CommonTransactionsResponse{
+	return &pb.CommonTransactionsWithCountResponse{
 		Code: defaultSuccessCode,
-		Data: &pb.TransactionDetail{HasNext: hasNext, Transactions: pbTransactions},
+		Data: &pb.TransactionWithCountDetail{HasNext: hasNext, Transactions: pbTransactions, TotalCount: cnt},
 	}, nil
 }
 

@@ -89,7 +89,7 @@ service BridgeService {
     }
 
     /// Get all transactions with ready_for_claim = false
-    rpc GetNotReadyTransactions(GetNotReadyTransactionsRequest) returns (CommonTransactionsResponse) {
+    rpc GetNotReadyTransactions(GetNotReadyTransactionsRequest) returns (CommonTransactionsWithCountResponse) {
         option (google.api.http) = {
             get: "/not-ready/{networkId}",
         };
@@ -337,6 +337,15 @@ message CommonTransactionsResponse {
     TransactionDetail data = 6;
 }
 
+message CommonTransactionsWithCountResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
+    TransactionWithCountDetail data = 6;
+}
+
 message CommonCoinsResponse {
     uint32 code = 1;
     string msg = 2;
@@ -358,6 +367,12 @@ message CommonCoinPricesResponse {
 message TransactionDetail {
     bool hasNext = 1;
     repeated Transaction transactions = 2;
+}
+
+message TransactionWithCountDetail {
+    bool hasNext = 1;
+    repeated Transaction transactions = 2;
+    uint64 totalCount = 3;
 }
 
 message CommonProofResponse {

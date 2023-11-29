@@ -45,7 +45,7 @@ type BridgeServiceClient interface {
 	GetAllTransactions(ctx context.Context, in *GetAllTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error)
 	GetSmtProof(ctx context.Context, in *GetSmtProofRequest, opts ...grpc.CallOption) (*CommonProofResponse, error)
 	// / Get all transactions with ready_for_claim = false
-	GetNotReadyTransactions(ctx context.Context, in *GetNotReadyTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error)
+	GetNotReadyTransactions(ctx context.Context, in *GetNotReadyTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsWithCountResponse, error)
 	// / Get list of monitored transactions, filtered by status
 	GetMonitoredTxsByStatus(ctx context.Context, in *GetMonitoredTxsByStatusRequest, opts ...grpc.CallOption) (*CommonMonitoredTxsResponse, error)
 	// / Return the estimated deposit wait time for L1 and L2
@@ -159,8 +159,8 @@ func (c *bridgeServiceClient) GetSmtProof(ctx context.Context, in *GetSmtProofRe
 	return out, nil
 }
 
-func (c *bridgeServiceClient) GetNotReadyTransactions(ctx context.Context, in *GetNotReadyTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error) {
-	out := new(CommonTransactionsResponse)
+func (c *bridgeServiceClient) GetNotReadyTransactions(ctx context.Context, in *GetNotReadyTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsWithCountResponse, error) {
+	out := new(CommonTransactionsWithCountResponse)
 	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/GetNotReadyTransactions", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ type BridgeServiceServer interface {
 	GetAllTransactions(context.Context, *GetAllTransactionsRequest) (*CommonTransactionsResponse, error)
 	GetSmtProof(context.Context, *GetSmtProofRequest) (*CommonProofResponse, error)
 	// / Get all transactions with ready_for_claim = false
-	GetNotReadyTransactions(context.Context, *GetNotReadyTransactionsRequest) (*CommonTransactionsResponse, error)
+	GetNotReadyTransactions(context.Context, *GetNotReadyTransactionsRequest) (*CommonTransactionsWithCountResponse, error)
 	// / Get list of monitored transactions, filtered by status
 	GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error)
 	// / Return the estimated deposit wait time for L1 and L2
@@ -258,7 +258,7 @@ func (UnimplementedBridgeServiceServer) GetAllTransactions(context.Context, *Get
 func (UnimplementedBridgeServiceServer) GetSmtProof(context.Context, *GetSmtProofRequest) (*CommonProofResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSmtProof not implemented")
 }
-func (UnimplementedBridgeServiceServer) GetNotReadyTransactions(context.Context, *GetNotReadyTransactionsRequest) (*CommonTransactionsResponse, error) {
+func (UnimplementedBridgeServiceServer) GetNotReadyTransactions(context.Context, *GetNotReadyTransactionsRequest) (*CommonTransactionsWithCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNotReadyTransactions not implemented")
 }
 func (UnimplementedBridgeServiceServer) GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error) {
