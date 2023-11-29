@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
@@ -31,8 +32,10 @@ const (
 
 // ClaimTxManager is the claim transaction manager for L2.
 type ClaimTxManager struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	updateDepositsL1Mutex sync.Mutex
+	updateDepositsL2Mutex sync.Mutex
 
 	// client is the ethereum client
 	l2Node          *utils.Client
@@ -94,10 +97,12 @@ func (tm *ClaimTxManager) Start() {
 		case ger := <-tm.chExitRootEvent:
 			if tm.synced {
 				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot)
-				err := tm.updateDepositsStatus(ger)
-				if err != nil {
-					log.Errorf("failed to update deposits status: %v", err)
-				}
+				go func() {
+					err := tm.updateDepositsStatus(ger)
+					if err != nil {
+						log.Errorf("failed to update deposits status: %v", err)
+					}
+				}()
 			} else {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
@@ -126,8 +131,12 @@ func (tm *ClaimTxManager) startMonitorTxs() {
 func (tm *ClaimTxManager) updateDepositsStatus(ger *etherman.GlobalExitRoot) error {
 	if tm.cfg.OptClaim {
 		if ger.BlockID != 0 {
+			tm.updateDepositsL2Mutex.Lock()
+			defer tm.updateDepositsL2Mutex.Unlock()
 			return tm.processDepositStatusL2(ger)
 		} else {
+			tm.updateDepositsL1Mutex.Lock()
+			defer tm.updateDepositsL1Mutex.Unlock()
 			return tm.processDepositStatusL1(ger)
 		}
 	}
