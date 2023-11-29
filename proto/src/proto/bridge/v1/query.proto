@@ -91,7 +91,7 @@ service BridgeService {
     /// Get all transactions with ready_for_claim = false
     rpc GetNotReadyTransactions(GetNotReadyTransactionsRequest) returns (CommonTransactionsResponse) {
         option (google.api.http) = {
-            get: "/not-ready",
+            get: "/not-ready/{networkId}",
         };
     }
 
@@ -272,6 +272,8 @@ message GetAllTransactionsRequest {
 message GetNotReadyTransactionsRequest {
     uint64 offset = 1;
     uint32 limit = 2;
+    uint64 maxTime = 3; // Only query transactions before this timestamp (unix milliseconds)
+    uint32 networkId = 4;
 }
 
 message GetMonitoredTxsByStatusRequest {
