@@ -94,12 +94,10 @@ func (tm *ClaimTxManager) Start() {
 		case ger := <-tm.chExitRootEvent:
 			if tm.synced {
 				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot)
-				go func() {
-					err := tm.updateDepositsStatus(ger)
-					if err != nil {
-						log.Errorf("failed to update deposits status: %v", err)
-					}
-				}()
+				err := tm.updateDepositsStatus(ger)
+				if err != nil {
+					log.Errorf("failed to update deposits status: %v", err)
+				}
 			} else {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
