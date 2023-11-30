@@ -192,7 +192,7 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 	return nil
 }
 
-func (tm *ClaimTxManager) getDeposits(ger, lastGer *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
+func (tm *ClaimTxManager) getDeposits(lastGer, ger *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
 	log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
 	var lastExitRoot []byte
 	if lastGer != nil {
