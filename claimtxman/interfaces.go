@@ -11,7 +11,7 @@ import (
 
 type storageInterface interface {
 	AddBlock(ctx context.Context, block *etherman.Block, dbTx pgx.Tx) (uint64, error)
-	GetL1Deposits(ctx context.Context, exitRoot []byte, dbTx pgx.Tx) ([]*etherman.Deposit, error)
+	GetL1Deposits(ctx context.Context, exitRoot1, exitRoot2 []byte, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	UpdateL1DepositStatus(ctx context.Context, depositCount uint, dbTx pgx.Tx) error
 	UpdateL1DepositsStatus(ctx context.Context, exitRoot []byte, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	UpdateL2DepositsStatus(ctx context.Context, exitRoot []byte, networkID uint, dbTx pgx.Tx) error
