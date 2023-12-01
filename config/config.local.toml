@@ -2,6 +2,9 @@
 Level = "debug"
 Outputs = ["stdout"]
 
+[Apollo]
+Enabled = false
+
 [SyncDB]
 Database = "postgres"
 User = "test_user"

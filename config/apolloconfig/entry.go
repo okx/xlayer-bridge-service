@@ -19,6 +19,9 @@ type entryImpl[T any] struct {
 	convertFn    convertFunction[T]
 }
 
+// NewEntry is a generic constructor for apolloconfig.Entry
+// convertFn is the function to convert the config from type string to the config value type
+// Most of the time we should use the specific constructor NewXxxEntry instead (Xxx is the type name)
 func NewEntry[T any](key string, defaultValue T, convertFn convertFunction[T]) Entry[T] {
 	return &entryImpl[T]{
 		key:          key,
