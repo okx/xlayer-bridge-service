@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	enabled       = false
 	defaultClient agollo.Client
 )
 
@@ -20,7 +21,8 @@ func Init(c Config) error {
 		log.Info("Apollo config is not enabled")
 		return nil
 	}
-	agollo.SetLogger(log.WithFields(loggerFieldKey, loggerFieldValue))
+	enabled = true
+	agollo.SetLogger(getLogger())
 	cfg := &agolloConfig.AppConfig{
 		AppID:          c.AppID,
 		Cluster:        c.Cluster,
