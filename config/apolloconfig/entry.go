@@ -27,6 +27,10 @@ func NewEntry[T any](key string, defaultValue T, convertFn convertFunction[T]) E
 	}
 }
 
+func NewUint32SliceEntry(key string, defaultValue []uint32) Entry[[]uint32] {
+	return NewEntry(key, defaultValue, ToUint32Slice)
+}
+
 func (e *entryImpl[T]) Get() T {
 	// If Apollo config is not enabled, just return the default value
 	if !enabled {
