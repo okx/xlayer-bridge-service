@@ -8,6 +8,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/coinmiddleware"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
@@ -190,6 +191,12 @@ func initCommon(ctx *cli.Context) (*config.Config, error) {
 		return nil, err
 	}
 	setupLog(c.Log)
+	if c.Apollo.Enabled {
+		err = apolloconfig.Init(c.Apollo)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return c, nil
 }
 
