@@ -1,6 +1,7 @@
 package apolloconfig
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -18,7 +19,7 @@ type entryImpl[T any] struct {
 	convertFn    convertFunction[T]
 }
 
-func NewEntry[T any](key string, defaultValue interface{}, convertFn convertFunction[T]) Entry[T] {
+func NewEntry[T any](key string, defaultValue T, convertFn convertFunction[T]) Entry[T] {
 	return &entryImpl[T]{
 		key:          key,
 		defaultValue: defaultValue,
@@ -42,7 +43,7 @@ func (e *entryImpl[T]) Get() T {
 	}
 
 	// Get the string value and convert it to type T
-	s := client.GetValue(e.key)
+	s := client.GetStringValue(e.key, fmt.Sprint(e.defaultValue))
 
 	if e.convertFn == nil {
 		logger.Debugf("convertFn is nil")
@@ -59,6 +60,10 @@ func (e *entryImpl[T]) Get() T {
 
 // ----- Convert functions -----
 
+func ToString(s string) (string, error) {
+	return s, nil
+}
+
 func ToInt(s string) (int, error) {
 	return strconv.Atoi(s)
 }
@@ -71,7 +76,7 @@ func ToUint32Slice(s string) ([]uint32, error) {
 	sArr := strings.Split(s, comma)
 	result := make([]uint32, len(sArr))
 	for i := range sArr {
-		v, err := ToInt(sArr[i])
+		v, err := ToInt64(sArr[i])
 		if err != nil {
 			return nil, err
 		}
