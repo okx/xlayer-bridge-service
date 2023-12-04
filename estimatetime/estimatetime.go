@@ -12,20 +12,23 @@ import (
 )
 
 const (
-	// Number of deposits to get from DB to predict the estimate time
-	sampleLimit           = 10
-	refreshInterval       = 5 * time.Minute
+	refreshInterval = 5 * time.Minute
+	estTimeSize     = 2
+
+	estTimeConfigKey      = "estimateTime.defaultTime"
 	defaultL1EstimateTime = 15
 	defaultL2EstimateTime = 60
-	estTimeSize           = 2
 
-	estTimeConfigKey = "estimateTime"
+	// Number of deposits to get from DB to predict the estimate time
+	sampleLimitConfigKey = "estimateTime.sampleLimit"
+	defaultSampleLimit   = 10
 )
 
 type calculatorImpl struct {
 	storage              DBStorage
 	estimateTime         []uint32 // In minutes
 	defaultEstTimeConfig apolloconfig.Entry[[]uint32]
+	sampleLimit          apolloconfig.Entry[uint]
 }
 
 func NewCalculator(storage interface{}) (Calculator, error) {
@@ -35,7 +38,8 @@ func NewCalculator(storage interface{}) (Calculator, error) {
 	c := &calculatorImpl{
 		storage:              storage.(DBStorage),
 		estimateTime:         make([]uint32, estTimeSize),
-		defaultEstTimeConfig: apolloconfig.NewUint32SliceEntry(estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}),
+		defaultEstTimeConfig: apolloconfig.NewIntSliceEntry[uint32](estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}),
+		sampleLimit:          apolloconfig.NewIntEntry[uint](sampleLimitConfigKey, defaultSampleLimit),
 	}
 	def := c.defaultEstTimeConfig.Get()
 	for i := 0; i < estTimeSize; i++ {
@@ -71,7 +75,7 @@ func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
 	if networkID > 1 {
 		return fmt.Errorf("invalid networkID %v", networkID)
 	}
-	deposits, err := c.storage.GetLatestReadyDeposits(ctx, networkID, sampleLimit, nil)
+	deposits, err := c.storage.GetLatestReadyDeposits(ctx, networkID, c.sampleLimit.Get(), nil)
 	if err != nil {
 		log.Errorf("GetLatestReadyDeposits err:%v", err)
 		return err

@@ -7,6 +7,7 @@ require (
 	github.com/IBM/sarama v1.41.2
 	github.com/alibaba/sentinel-golang v1.0.4
 	github.com/alibaba/sentinel-golang/pkg/adapters/grpc v0.0.0-20230626085943-08071855bc67
+	github.com/apolloconfig/agollo/v4 v4.3.1
 	github.com/ethereum/go-ethereum v1.12.1
 	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -25,6 +26,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/crypto v0.16.0
+	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
@@ -40,7 +42,6 @@ require (
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.18 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
-	github.com/apolloconfig/agollo/v4 v4.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
@@ -152,7 +153,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
@@ -170,7 +170,6 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect

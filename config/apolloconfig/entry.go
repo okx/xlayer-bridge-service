@@ -4,34 +4,48 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/apolloconfig/agollo/v4"
+	"golang.org/x/exp/constraints"
 )
 
 type Entry[T any] interface {
 	Get() T
 }
 
-// To convert config value from string type to another type
-type convertFunction[T any] func(string) (T, error)
+// An interface to get the config from Apollo client (and convert it if needed)
+type getterFunction[T any] func(client agollo.Client, key string) (T, error)
 
 type entryImpl[T any] struct {
 	key          string
 	defaultValue T
-	convertFn    convertFunction[T]
+	getterFn     getterFunction[T]
 }
 
-// NewEntry is a generic constructor for apolloconfig.Entry
-// convertFn is the function to convert the config from type string to the config value type
-// Most of the time we should use the specific constructor NewXxxEntry instead (Xxx is the type name)
-func NewEntry[T any](key string, defaultValue T, convertFn convertFunction[T]) Entry[T] {
+// newEntry is a generic constructor for apolloconfig.Entry
+// TODO: Currently the entry always uses the default namespace ("application"), we can change it to use dynamic namespace name in the future
+func newEntry[T any](key string, defaultValue T, getterFn getterFunction[T]) Entry[T] {
 	return &entryImpl[T]{
 		key:          key,
 		defaultValue: defaultValue,
-		convertFn:    convertFn,
+		getterFn:     getterFn,
 	}
 }
 
-func NewUint32SliceEntry(key string, defaultValue []uint32) Entry[[]uint32] {
-	return NewEntry(key, defaultValue, ToUint32Slice)
+func NewIntEntry[T constraints.Integer](key string, defaultValue T) Entry[T] {
+	return newEntry(key, defaultValue, getInt[T])
+}
+
+func NewIntSliceEntry[T constraints.Integer](key string, defaultValue []T) Entry[[]T] {
+	return newEntry(key, defaultValue, getIntSlice[T])
+}
+
+func NewBoolEntry(key string, defaultValue bool) Entry[bool] {
+	return newEntry(key, defaultValue, getBool)
+}
+
+func NewStringEntry(key string, defaultValue string) Entry[string] {
+	return newEntry(key, defaultValue, getString)
 }
 
 func (e *entryImpl[T]) Get() T {
@@ -45,49 +59,68 @@ func (e *entryImpl[T]) Get() T {
 	// If client is not initialized, return the default value
 	client := GetClient()
 	if client == nil {
-		logger.Debugf("apollo client is nil")
+		logger.Error("apollo client is nil, returning default")
 		return e.defaultValue
 	}
 
-	// Get the string value and convert it to type T
-	s := client.GetStringValue(e.key, fmt.Sprint(e.defaultValue))
-
-	if e.convertFn == nil {
-		logger.Debugf("convertFn is nil")
+	if e.getterFn == nil {
+		logger.Error("getterFn is nil, returning default")
 		return e.defaultValue
 	}
-	v, err := e.convertFn(s)
+
+	v, err := e.getterFn(client, e.key)
 	if err != nil {
-		logger.Debugf("conversion error: %v", err)
-		// If cannot convert, return the default value
+		logger.Error("getterFn error: %v, returning default", err)
 		return e.defaultValue
 	}
 	return v
 }
 
-// ----- Convert functions -----
+// ----- Getter functions -----
 
-func ToString(s string) (string, error) {
+func getString(client agollo.Client, key string) (string, error) {
+	v, err := client.GetDefaultConfigCache().Get(key)
+	if err != nil {
+		return "", err
+	}
+	s, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("value is not string, type: %T", v)
+	}
 	return s, nil
 }
 
-func ToInt(s string) (int, error) {
-	return strconv.Atoi(s)
+func getInt[T constraints.Integer](client agollo.Client, key string) (T, error) {
+	s, err := getString(client, key)
+	if err != nil {
+		return 0, err
+	}
+	res, err := strconv.ParseInt(s, parseIntBase, parseIntBitSize)
+	return T(res), err
 }
 
-func ToInt64(s string) (int64, error) {
-	return strconv.ParseInt(s, parseIntBase, parseIntBitSize)
-}
+func getIntSlice[T constraints.Integer](client agollo.Client, key string) ([]T, error) {
+	s, err := getString(client, key)
+	if err != nil {
+		return nil, err
+	}
 
-func ToUint32Slice(s string) ([]uint32, error) {
 	sArr := strings.Split(s, comma)
-	result := make([]uint32, len(sArr))
+	result := make([]T, len(sArr))
 	for i := range sArr {
-		v, err := ToInt64(sArr[i])
+		v, err := strconv.ParseInt(sArr[i], parseIntBase, parseIntBitSize)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = uint32(v)
+		result[i] = T(v)
 	}
 	return result, nil
+}
+
+func getBool(client agollo.Client, key string) (bool, error) {
+	s, err := getString(client, key)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(s)
 }
