@@ -47,6 +47,7 @@ type ClaimTxManager struct {
 	synced          bool
 	isDone          bool
 	lastGer         *etherman.GlobalExitRoot
+	gerNum          int
 }
 
 // NewClaimTxManager creates a new claim transaction manager.
@@ -62,6 +63,10 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	auth, err := client.GetSignerFromKeystore(ctx, cfg.PrivateKey)
+	if cfg.GerThreshold == 0 {
+		// use the default GerThreshold
+		cfg.GerThreshold = 50
+	}
 	return &ClaimTxManager{
 		ctx:             ctx,
 		cancel:          cancel,
@@ -97,12 +102,23 @@ func (tm *ClaimTxManager) Start() {
 				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot)
 				tmpGer := tm.lastGer
 				tm.lastGer = ger
-				go func(lastGer *etherman.GlobalExitRoot) {
+				// every GerThreshold(default 50), check all the deposit which ready_for_claim is false
+				if tm.gerNum == tm.cfg.GerThreshold {
+					tm.gerNum = 0
+					go func(lastGer, ger *etherman.GlobalExitRoot) {
+						err := tm.updateDepositsStatus(lastGer, ger)
+						if err != nil {
+							log.Errorf("failed to update deposits status: %v", err)
+						}
+					}(nil, tm.lastGer)
+				}
+				tm.gerNum++
+				go func(lastGer, ger *etherman.GlobalExitRoot) {
 					err := tm.updateDepositsStatus(lastGer, ger)
 					if err != nil {
 						log.Errorf("failed to update deposits status: %v", err)
 					}
-				}(tmpGer)
+				}(tmpGer, ger)
 			} else {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
