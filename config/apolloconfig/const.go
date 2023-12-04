@@ -1,6 +1,11 @@
 package apolloconfig
 
 const (
-	loggerFieldKey   = "function"
+	loggerFieldKey   = "component"
 	loggerFieldValue = "apolloconfig"
+
+	parseIntBase    = 10
+	parseIntBitSize = 64
+
+	comma = ","
 )

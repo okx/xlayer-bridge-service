@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 )
@@ -16,11 +17,15 @@ const (
 	refreshInterval       = 5 * time.Minute
 	defaultL1EstimateTime = 15
 	defaultL2EstimateTime = 60
+	estTimeSize           = 2
+
+	estTimeConfigKey = "estimateTime"
 )
 
 type calculatorImpl struct {
-	storage      DBStorage
-	estimateTime []uint32 // In minutes
+	storage              DBStorage
+	estimateTime         []uint32 // In minutes
+	defaultEstTimeConfig apolloconfig.Entry[[]uint32]
 }
 
 func NewCalculator(storage interface{}) (Calculator, error) {
@@ -28,8 +33,13 @@ func NewCalculator(storage interface{}) (Calculator, error) {
 		return nil, errors.New("EstimateTime calculator: storage is nil")
 	}
 	c := &calculatorImpl{
-		storage:      storage.(DBStorage),
-		estimateTime: []uint32{defaultL1EstimateTime, defaultL2EstimateTime},
+		storage:              storage.(DBStorage),
+		estimateTime:         make([]uint32, estTimeSize),
+		defaultEstTimeConfig: apolloconfig.NewEntry(estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}, apolloconfig.ToUint32Slice),
+	}
+	def := c.defaultEstTimeConfig.Get()
+	for i := 0; i < estTimeSize; i++ {
+		c.estimateTime[i] = def[i]
 	}
 	c.init()
 	return c, nil
@@ -89,10 +99,7 @@ func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
 	}
 	newTime := uint32(math.Ceil(sum / float64(len(fMinutes))))
 	log.Debugf("Re-calculate estimate time, networkID[%v], fMinutes[%v], newTime[%v]", networkID, fMinutes, newTime)
-	defaultTime := uint32(defaultL1EstimateTime)
-	if networkID != 0 {
-		defaultTime = defaultL2EstimateTime
-	}
+	defaultTime := c.defaultEstTimeConfig.Get()[networkID]
 	if newTime > defaultTime {
 		newTime = defaultTime
 	}
