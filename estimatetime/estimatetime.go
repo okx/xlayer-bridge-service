@@ -35,7 +35,7 @@ func NewCalculator(storage interface{}) (Calculator, error) {
 	c := &calculatorImpl{
 		storage:              storage.(DBStorage),
 		estimateTime:         make([]uint32, estTimeSize),
-		defaultEstTimeConfig: apolloconfig.NewEntry(estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}, apolloconfig.ToUint32Slice),
+		defaultEstTimeConfig: apolloconfig.NewUint32SliceEntry(estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}),
 	}
 	def := c.defaultEstTimeConfig.Get()
 	for i := 0; i < estTimeSize; i++ {
