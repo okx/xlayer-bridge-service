@@ -10,6 +10,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/coinmiddleware"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
@@ -23,6 +24,7 @@ import (
 // Config struct
 type Config struct {
 	Log               log.Config
+	Apollo            apolloconfig.Config
 	SyncDB            db.Config
 	ClaimTxManager    claimtxman.Config
 	Etherman          etherman.Config
