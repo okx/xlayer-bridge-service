@@ -8,10 +8,10 @@ import (
 
 var (
 	enabled       = false
-	defaultClient agollo.Client
+	defaultClient *agollo.Client
 )
 
-func GetClient() agollo.Client {
+func GetClient() *agollo.Client {
 	return defaultClient
 }
 

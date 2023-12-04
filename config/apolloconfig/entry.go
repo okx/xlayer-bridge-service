@@ -14,7 +14,7 @@ type Entry[T any] interface {
 }
 
 // An interface to get the config from Apollo client (and convert it if needed)
-type getterFunction[T any] func(client agollo.Client, key string) (T, error)
+type getterFunction[T any] func(client *agollo.Client, key string) (T, error)
 
 type entryImpl[T any] struct {
 	key          string
@@ -70,7 +70,7 @@ func (e *entryImpl[T]) Get() T {
 
 	v, err := e.getterFn(client, e.key)
 	if err != nil {
-		logger.Error("getterFn error: %v, returning default", err)
+		logger.Errorf("getterFn error: %v, returning default", err)
 		return e.defaultValue
 	}
 	return v
@@ -78,7 +78,7 @@ func (e *entryImpl[T]) Get() T {
 
 // ----- Getter functions -----
 
-func getString(client agollo.Client, key string) (string, error) {
+func getString(client *agollo.Client, key string) (string, error) {
 	v, err := client.GetDefaultConfigCache().Get(key)
 	if err != nil {
 		return "", err
@@ -90,7 +90,7 @@ func getString(client agollo.Client, key string) (string, error) {
 	return s, nil
 }
 
-func getInt[T constraints.Integer](client agollo.Client, key string) (T, error) {
+func getInt[T constraints.Integer](client *agollo.Client, key string) (T, error) {
 	s, err := getString(client, key)
 	if err != nil {
 		return 0, err
@@ -99,7 +99,7 @@ func getInt[T constraints.Integer](client agollo.Client, key string) (T, error) 
 	return T(res), err
 }
 
-func getIntSlice[T constraints.Integer](client agollo.Client, key string) ([]T, error) {
+func getIntSlice[T constraints.Integer](client *agollo.Client, key string) ([]T, error) {
 	s, err := getString(client, key)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func getIntSlice[T constraints.Integer](client agollo.Client, key string) ([]T, 
 	return result, nil
 }
 
-func getBool(client agollo.Client, key string) (bool, error) {
+func getBool(client *agollo.Client, key string) (bool, error) {
 	s, err := getString(client, key)
 	if err != nil {
 		return false, err

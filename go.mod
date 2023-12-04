@@ -8,7 +8,7 @@ require (
 	github.com/alibaba/sentinel-golang v1.0.4
 	github.com/alibaba/sentinel-golang/pkg/adapters/grpc v0.0.0-20230626085943-08071855bc67
 	github.com/alibaba/sentinel-golang/pkg/datasource/apollo v0.0.0-20230626085943-08071855bc67
-	github.com/apolloconfig/agollo/v4 v4.3.1
+	github.com/apolloconfig/agollo/v4 v4.0.9
 	github.com/ethereum/go-ethereum v1.12.1
 	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
