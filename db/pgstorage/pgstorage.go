@@ -553,8 +553,8 @@ func (p *PostgresStorage) GetL1Deposits(ctx context.Context, exitRoot1, exitRoot
 			AND network_id = 0 AND ready_for_claim = false`, p.tableSuffix)
 	var rows pgx.Rows
 	var err error
-	if exitRoot2 == nil {
-		rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQLInit, exitRoot1)
+	if exitRoot1 == nil {
+		rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQLInit, exitRoot2)
 	} else {
 		rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQL, exitRoot1, exitRoot2)
 	}
