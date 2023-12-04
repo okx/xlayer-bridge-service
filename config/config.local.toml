@@ -4,6 +4,12 @@ Outputs = ["stdout"]
 
 [Apollo]
 Enabled = false
+AppID = "x1-bridge-service"
+Cluster = "default"
+MetaAddress = "http://127.0.0.1:8080"
+NamespaceName = "application"
+Secret = ""
+IsBackupConfig = true
 
 [SyncDB]
 Database = "postgres"
