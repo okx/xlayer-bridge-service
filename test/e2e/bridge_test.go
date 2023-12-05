@@ -540,7 +540,7 @@ func TestE2E(t *testing.T) {
 		// Send L1 message to L2' 0xc949254d682d8c9ad5682521675b8f43b102aec4
 		destAddr = common.HexToAddress("0xc949254d682d8c9ad5682521675b8f43b102aec4")
 		log.Infof("second, destAddr:%v,amount:%v,destNetwork:%v", destAddr.String(), amount.String(), destNetwork)
-		err = opsman.SendL1BridgeMessage(ctx, destAddr, destNetwork, amount, []byte("metadata"))
+		err = opsman.SendL1BridgeMessage(ctx, destAddr, destNetwork, amount, []byte("metadata"), nil)
 		require.NoError(t, err)
 
 		// Get Bridge Info By DestAddr
