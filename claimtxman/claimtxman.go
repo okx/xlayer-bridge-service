@@ -105,8 +105,8 @@ func (tm *ClaimTxManager) Start() {
 				// every GerThreshold(default 50), check all the deposits which ready_for_claim is false
 				if tm.gerNum == tm.cfg.GerThreshold {
 					tm.gerNum = 0
-					log.Debug("UpdateDepositsStatus for ger all deposits: ", ger.GlobalExitRoot)
 					go func(lastGer, ger *etherman.GlobalExitRoot) {
+						log.Debug("UpdateDepositsStatus for ger all deposits: ", ger.GlobalExitRoot)
 						err := tm.updateDepositsStatus(lastGer, ger)
 						if err != nil {
 							log.Errorf("failed to update all deposits status: %v", err)

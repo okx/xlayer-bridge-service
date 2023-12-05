@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-node/hex"
 	"math/big"
 	"time"
 
@@ -561,6 +562,8 @@ func (p *PostgresStorage) GetL1Deposits(ctx context.Context, exitRoot1, exitRoot
 	if err != nil {
 		return nil, err
 	}
+
+	log.Infof("GetL1Deposits, exitRoot1:%s, exitRoot2:%s, rows:%d", hex.EncodeToHex(exitRoot1), hex.EncodeToHex(exitRoot2), len(rows.RawValues()))
 
 	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
 	for rows.Next() {
