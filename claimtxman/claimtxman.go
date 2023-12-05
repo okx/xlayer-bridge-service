@@ -459,7 +459,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 	isResetNonce := false // it will reset the nonce in one cycle
 	for _, mTx := range mTxs {
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
-		mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
+		mTxLog := mLog.WithFields("monitoredTx", mTx.DepositID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
 
 		// check if any of the txs in the history was mined
