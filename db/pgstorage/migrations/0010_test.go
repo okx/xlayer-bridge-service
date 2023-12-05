@@ -126,6 +126,6 @@ func (m migrationTest0010) RunAssertsAfterMigrationDown(t *testing.T, db *sql.DB
 	assert.Equal(t, 130161, ID)
 }
 
-func TestMigration0006(t *testing.T) {
+func TestMigration0010(t *testing.T) {
 	runMigrationTest(t, 6, migrationTest0010{})
 }
