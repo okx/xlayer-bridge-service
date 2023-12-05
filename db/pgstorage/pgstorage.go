@@ -528,8 +528,7 @@ func (p *PostgresStorage) GetNotReadyTransactions(ctx context.Context, networkID
 func (p *PostgresStorage) GetNotReadyTransactionsCount(ctx context.Context, networkID uint, maxTime time.Time, limit uint, offset uint, dbTx pgx.Tx) (uint64, error) {
 	getDepositsSQL := fmt.Sprintf(`SELECT COUNT(*)
 		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE ready_for_claim = false AND d.network_id = $1 AND b.received_at <= $2
-		ORDER BY d.block_id ASC, d.deposit_cnt ASC LIMIT $3 OFFSET $4`, p.tableSuffix)
+		WHERE ready_for_claim = false AND d.network_id = $1 AND b.received_at <= $2 LIMIT $3 OFFSET $4`, p.tableSuffix)
 
 	var cnt uint64
 	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositsSQL, networkID, maxTime, limit, offset).Scan(&cnt)
