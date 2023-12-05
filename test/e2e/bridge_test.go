@@ -587,12 +587,13 @@ func TestE2E(t *testing.T) {
 	t.Run("Bridge Message Authorized Account Test", func(t *testing.T) {
 		// Test L1 Bridge Message
 		// Send L1 bridge message
+		log.Infof("TestE2E, Bridge Message Test start.")
 		var destNetwork uint32 = 1
 		amount := new(big.Int).SetUint64(1000000000000000000)
 
 		destAddr, err := opsman.DeployBridgeMessageReceiver(ctx, operations.L1)
 		require.NoError(t, err)
-
+		log.Infof("first, destAddr:%v,amount:%v,destNetwork:%v", destAddr.String(), amount.String(), destNetwork)
 		pk := "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" //0x90F79bf6EB2c4f870365E785982E1f101E93b906
 
 		err = opsman.SendL1BridgeMessage(ctx, destAddr, destNetwork, amount, []byte("metadata 3"), &pk)
@@ -620,7 +621,7 @@ func TestE2E(t *testing.T) {
 
 		destAddr, err = opsman.DeployBridgeMessageReceiver(ctx, operations.L2)
 		require.NoError(t, err)
-
+		log.Infof("destAddr:%v, destNetwork:%v, amount:%v", destAddr.String(), destNetwork, amount.String())
 		err = opsman.SendL2BridgeMessage(ctx, destAddr, destNetwork, amount, []byte("metadata 4"))
 		require.NoError(t, err)
 
