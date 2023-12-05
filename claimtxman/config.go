@@ -1,6 +1,9 @@
 package claimtxman
 
-import "github.com/0xPolygonHermez/zkevm-node/config/types"
+import (
+	"github.com/0xPolygonHermez/zkevm-node/config/types"
+	"github.com/ethereum/go-ethereum/common"
+)
 
 // Config is configuration for L2 claim transaction manager
 type Config struct {
@@ -21,4 +24,6 @@ type Config struct {
 	OptClaim bool `mapstructure:"OptClaim"`
 	//GerThreshold is the number of check the deposit which ready_for_claim is false
 	GerThreshold int `mapstructure:"GerThreshold"`
+	// AuthorizedClaimMessageAddresses are the allowed address to bridge message with autoClaim
+	AuthorizedClaimMessageAddresses []common.Address `mapstructure:"AuthorizedClaimMessageAddresses"`
 }
