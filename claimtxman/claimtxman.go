@@ -99,16 +99,17 @@ func (tm *ClaimTxManager) Start() {
 			}
 		case ger := <-tm.chExitRootEvent:
 			if tm.synced {
-				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot)
+				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot, tm.gerNum)
 				tmpGer := tm.lastGer
 				tm.lastGer = ger
-				// every GerThreshold(default 50), check all the deposit which ready_for_claim is false
+				// every GerThreshold(default 50), check all the deposits which ready_for_claim is false
 				if tm.gerNum == tm.cfg.GerThreshold {
 					tm.gerNum = 0
+					log.Debug("UpdateDepositsStatus for ger all deposits: ", ger.GlobalExitRoot)
 					go func(lastGer, ger *etherman.GlobalExitRoot) {
 						err := tm.updateDepositsStatus(lastGer, ger)
 						if err != nil {
-							log.Errorf("failed to update deposits status: %v", err)
+							log.Errorf("failed to update all deposits status: %v", err)
 						}
 					}(nil, tmpGer)
 				}
