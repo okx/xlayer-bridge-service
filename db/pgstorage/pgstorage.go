@@ -542,10 +542,6 @@ func (p *PostgresStorage) UpdateBlocksForTesting(ctx context.Context, networkID 
 
 // GetL1Deposits get the L1 deposits remain to be ready_for_claim
 func (p *PostgresStorage) GetL1Deposits(ctx context.Context, exitRoot1, exitRoot2 []byte, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
-	updateDepositsStatusSQLInit := fmt.Sprintf(`Select leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, network_id, tx_hash, metadata, ready_for_claim
-			FROM sync.deposit%[1]v WHERE deposit_cnt <=
-			(SELECT deposit_cnt FROM mt.root%[1]v WHERE root = $1 AND network = 0)
-			AND network_id = 0 AND ready_for_claim = false`, p.tableSuffix)
 	updateDepositsStatusSQL := fmt.Sprintf(`Select leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, network_id, tx_hash, metadata, ready_for_claim
 			FROM sync.deposit%[1]v WHERE deposit_cnt >
 			(SELECT deposit_cnt FROM mt.root%[1]v WHERE root = $1 AND network = 0) 
@@ -554,11 +550,7 @@ func (p *PostgresStorage) GetL1Deposits(ctx context.Context, exitRoot1, exitRoot
 			AND network_id = 0 AND ready_for_claim = false`, p.tableSuffix)
 	var rows pgx.Rows
 	var err error
-	if exitRoot1 == nil {
-		rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQLInit, exitRoot2)
-	} else {
-		rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQL, exitRoot1, exitRoot2)
-	}
+	rows, err = p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQL, exitRoot1, exitRoot2)
 	if err != nil {
 		return nil, err
 	}

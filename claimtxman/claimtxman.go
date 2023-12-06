@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-node/pool"
 	"math/big"
-	"strings"
 	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
@@ -233,13 +233,13 @@ func (tm *ClaimTxManager) processDepositStatusL1(lastGer, ger *etherman.GlobalEx
 	for _, deposit := range deposits {
 		dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
 		if err != nil {
-			continue
+			return err
 		}
 		claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
 		if err != nil {
 			log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
-			continue
+			return err
 		}
 		if len(claimHash) > 0 || deposit.LeafType == LeafTypeMessage {
 			log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s", deposit.DepositCount, deposit.LeafType, claimHash)
@@ -250,7 +250,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(lastGer, ger *etherman.GlobalEx
 		if err != nil {
 			log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
-			continue
+			return err
 		}
 		log.Infof("get the claim proof for the deposit %d successfully", deposit.DepositCount)
 		var mtProves [mtHeight][keyLen]byte
@@ -267,19 +267,19 @@ func (tm *ClaimTxManager) processDepositStatusL1(lastGer, ger *etherman.GlobalEx
 		if err != nil {
 			log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
-			continue
+			return err
 		}
 		if err = tm.addClaimTx(deposit.DepositCount, deposit.BlockID, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 			log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
-			continue
+			return err
 		}
 
 		err = tm.storage.UpdateL1DepositStatus(tm.ctx, deposit.DepositCount, dbTx)
 		if err != nil {
 			log.Errorf("error update deposit %d status. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
-			continue
+			return err
 		}
 
 		err = tm.storage.Commit(tm.ctx, dbTx)
@@ -288,10 +288,10 @@ func (tm *ClaimTxManager) processDepositStatusL1(lastGer, ger *etherman.GlobalEx
 			rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 			if rollbackErr != nil {
 				log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
-				continue
+				return rollbackErr
 			}
 			log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
-			continue
+			return err
 		}
 		log.Infof("add claim tx for the deposit %d blockID %d successfully", deposit.DepositCount, deposit.BlockID)
 	}
@@ -598,7 +598,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 				if err != nil {
 					mTxLog.Errorf("failed to send tx %s to network: %v", signedTx.Hash().String(), err)
 					var reviewNonce bool
-					if strings.Contains(err.Error(), "nonce") {
+					if err.Error() == pool.ErrNonceTooLow.Error() {
 						mTxLog.Infof("nonce error detected, Nonce used: %d", signedTx.Nonce())
 						if !isResetNonce {
 							isResetNonce = true
