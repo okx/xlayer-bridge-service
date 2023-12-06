@@ -595,10 +595,10 @@ func (p *PostgresStorage) UpdateL1DepositsStatus(ctx context.Context, exitRoot [
 	return deposits, nil
 }
 
-func (p *PostgresStorage) UpdateL1DepositStatus(ctx context.Context, depositCount uint, dbTx pgx.Tx) error {
-	updateDepositStatusSQL := fmt.Sprintf(`UPDATE sync.deposit%[1]v SET ready_for_claim = true 
-		WHERE deposit_cnt = $1 And network_id = 0`, p.tableSuffix)
-	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositStatusSQL, depositCount)
+func (p *PostgresStorage) UpdateL1DepositStatus(ctx context.Context, depositCount uint, eventTime time.Time, dbTx pgx.Tx) error {
+	updateDepositStatusSQL := fmt.Sprintf(`UPDATE sync.deposit%[1]v SET ready_for_claim = true, ready_time = $1 
+		WHERE deposit_cnt = $2 And network_id = 0`, p.tableSuffix)
+	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositStatusSQL, eventTime, depositCount)
 	return err
 }
 

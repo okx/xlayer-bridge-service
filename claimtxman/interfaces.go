@@ -15,7 +15,7 @@ type storageInterface interface {
 	UpdateL1DepositsStatus(ctx context.Context, exitRoot []byte, eventTime time.Time, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	UpdateL2DepositsStatus(ctx context.Context, exitRoot []byte, eventTime time.Time, networkID uint, dbTx pgx.Tx) error
 	GetL1Deposits(ctx context.Context, exitRoot []byte, dbTx pgx.Tx) ([]*etherman.Deposit, error)
-	UpdateL1DepositStatus(ctx context.Context, depositCount uint, dbTx pgx.Tx) error
+	UpdateL1DepositStatus(ctx context.Context, depositCount uint, eventTime time.Time, dbTx pgx.Tx) error
 
 	AddClaimTx(ctx context.Context, mTx types.MonitoredTx, dbTx pgx.Tx) error
 	UpdateClaimTx(ctx context.Context, mTx types.MonitoredTx, dbTx pgx.Tx) error
