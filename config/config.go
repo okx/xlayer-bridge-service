@@ -23,15 +23,15 @@ import (
 
 // Config struct
 type Config struct {
-	Log               log.Config
-	SyncDB            db.Config
-	ClaimTxManager    claimtxman.Config
-	Etherman          etherman.Config
-	Synchronizer      synchronizer.Config
-	BridgeController  bridgectrl.Config
-	BridgeServer      server.Config
-	CoinKafkaConsumer coinmiddleware.Config
-	MessagePush       messagepush.Config
+	Log                 log.Config
+	SyncDB              db.Config
+	ClaimTxManager      claimtxman.Config
+	Etherman            etherman.Config
+	Synchronizer        synchronizer.Config
+	BridgeController    bridgectrl.Config
+	BridgeServer        server.Config
+	CoinKafkaConsumer   coinmiddleware.Config
+	MessagePushProducer messagepush.Config
 	NetworkConfig
 	NacosConfig nacos.Config
 }

@@ -113,8 +113,8 @@ func startServer(ctx *cli.Context) error {
 	}
 
 	var messagePushProducer messagepush.KafkaProducer
-	if c.MessagePush.Enabled {
-		messagePushProducer, err = messagepush.NewKafkaProducer(c.MessagePush)
+	if c.MessagePushProducer.Enabled {
+		messagePushProducer, err = messagepush.NewKafkaProducer(c.MessagePushProducer)
 		if err != nil {
 			log.Error(err)
 			return err
