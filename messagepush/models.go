@@ -1,6 +1,6 @@
 package messagepush
 
-type PushMessage[T any] struct {
-	Type string `json:"type"`
-	Data []T    `json:"data"`
+type PushMessage struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
 }
