@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
@@ -109,6 +110,21 @@ func startServer(ctx *cli.Context) error {
 	if err != nil {
 		log.Error(err)
 		return err
+	}
+
+	var messagePushProducer messagepush.KafkaProducer
+	if c.MessagePush.Enabled {
+		messagePushProducer, err = messagepush.NewKafkaProducer(c.MessagePush)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		defer func() {
+			err := messagePushProducer.Close()
+			if err != nil {
+				log.Errorf("close kafka producer error: %v", err)
+			}
+		}()
 	}
 
 	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estTimeCalc)

@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/coinmiddleware"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
@@ -30,6 +31,7 @@ type Config struct {
 	BridgeController  bridgectrl.Config
 	BridgeServer      server.Config
 	CoinKafkaConsumer coinmiddleware.Config
+	MessagePush       messagepush.Config
 	NetworkConfig
 	NacosConfig nacos.Config
 }
