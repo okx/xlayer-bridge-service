@@ -206,8 +206,8 @@ func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman
 	return deposits, nil
 }
 
-func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) error {
-	deposits, err := tm.getDeposits(ger)
+func (tm *ClaimTxManager) processDepositStatusL1(newGer *etherman.GlobalExitRoot) error {
+	deposits, err := tm.getDeposits(newGer)
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 			return err
 		}
 
-		err = tm.storage.UpdateL1DepositStatus(tm.ctx, deposit.DepositCount, ger.Time, dbTx)
+		err = tm.storage.UpdateL1DepositStatus(tm.ctx, deposit.DepositCount, newGer.Time, dbTx)
 		if err != nil {
 			log.Errorf("error update deposit %d status. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
