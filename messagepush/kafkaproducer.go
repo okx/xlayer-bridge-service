@@ -12,8 +12,8 @@ import (
 )
 
 type KafkaProducer interface {
-	Produce(topic string, msg interface{}) error
-	PushTransactionUpdate(data *TransactionUpdateData) error
+	Produce(topic string, pushKey string, msg interface{}) error
+	PushTransactionUpdate(pushKey string, data *TransactionUpdateData) error
 	Close() error
 }
 
@@ -59,7 +59,7 @@ func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 // Produce send a message to the Kafka topic
 // msg should be either a string or an object
 // If msg is an object, it will be encoded to JSON before being sent
-func (p *kafkaProducerImpl) Produce(topic string, msg interface{}) error {
+func (p *kafkaProducerImpl) Produce(topic string, pushKey string, msg interface{}) error {
 	if p == nil || p.producer == nil {
 		log.Debugf("Kafka producer is nil")
 		return nil
@@ -86,6 +86,7 @@ func (p *kafkaProducerImpl) Produce(topic string, msg interface{}) error {
 	// Send message to the topic
 	partition, offset, err := p.producer.SendMessage(&sarama.ProducerMessage{
 		Topic: topic,
+		Key:   sarama.StringEncoder(pushKey),
 		Value: sarama.StringEncoder(msgString),
 	})
 
@@ -98,13 +99,13 @@ func (p *kafkaProducerImpl) Produce(topic string, msg interface{}) error {
 }
 
 // PushTransactionUpdate pushes a transaction update message to the default topic
-func (p *kafkaProducerImpl) PushTransactionUpdate(data *TransactionUpdateData) error {
+func (p *kafkaProducerImpl) PushTransactionUpdate(pushKey string, data *TransactionUpdateData) error {
 	msg := &PushMessage{
 		Type: transactionUpdateType,
 		Data: data,
 	}
 
-	return p.Produce("", msg)
+	return p.Produce("", pushKey, msg)
 }
 
 func (p *kafkaProducerImpl) Close() error {
