@@ -7,6 +7,9 @@ type Config struct {
 	// Brokers is the list of address of the kafka brokers
 	Brokers []string `mapstructure:"Brokers"`
 
+	// Topic is the default topic name to send message to
+	Topic string `mapstructure:"Topic"`
+
 	// Username and Password are used for SASL_SSL authentication
 	Username string `mapstructure:"Username"`
 	Password string `mapstructure:"Password"`

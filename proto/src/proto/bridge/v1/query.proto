@@ -110,6 +110,14 @@ service BridgeService {
     }
 }
 
+enum TransactionStatus {
+    TX_CREATED = 0;
+    TX_PENDING_USER_CLAIM = 1;
+    TX_CLAIMED = 2;
+    TX_PENDING_AUTO_CLAIM = 3; // Only for L1->L2
+    TX_PENDING_VERIFICATION = 4; // Only for L2->L1
+}
+
 // TokenWrapped message
 message TokenWrapped {
     uint32 orig_net = 1;
@@ -189,7 +197,7 @@ message Transaction {
     string bridgeToken = 3;
     string tokenAmount = 4;
     uint32 estimateTime = 5;
-    uint32 status = 6; // 0: cannot claim; 1: pending & not claimed; 2; claimed
+    TransactionStatus status = 6;
     uint64 time = 7; // Deposit's block time
     string txHash = 8; // Deposit tx hash
     string claimTxHash = 9;
