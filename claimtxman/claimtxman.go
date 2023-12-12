@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/pool"
@@ -49,10 +51,13 @@ type ClaimTxManager struct {
 	nonceCache      *lru.Cache[string, uint64]
 	synced          bool
 	isDone          bool
+
+	// Producer to push the transaction status change to front end
+	messagePushProducer messagepush.KafkaProducer
 }
 
 // NewClaimTxManager creates a new claim transaction manager.
-func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint, l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}) (*ClaimTxManager, error) {
+func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint, l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, producer messagepush.KafkaProducer) (*ClaimTxManager, error) {
 	ctx := context.Background()
 	client, err := utils.NewClient(ctx, l2NodeURL, l2BridgeAddr)
 	if err != nil {
@@ -65,17 +70,18 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 	ctx, cancel := context.WithCancel(ctx)
 	auth, err := client.GetSignerFromKeystore(ctx, cfg.PrivateKey)
 	return &ClaimTxManager{
-		ctx:             ctx,
-		cancel:          cancel,
-		l2Node:          client,
-		l2NetworkID:     l2NetworkID,
-		bridgeService:   bridgeService,
-		cfg:             cfg,
-		chExitRootEvent: chExitRootEvent,
-		chSynced:        chSynced,
-		storage:         storage.(storageInterface),
-		auth:            auth,
-		nonceCache:      cache,
+		ctx:                 ctx,
+		cancel:              cancel,
+		l2Node:              client,
+		l2NetworkID:         l2NetworkID,
+		bridgeService:       bridgeService,
+		cfg:                 cfg,
+		chExitRootEvent:     chExitRootEvent,
+		chSynced:            chSynced,
+		storage:             storage.(storageInterface),
+		auth:                auth,
+		nonceCache:          cache,
+		messagePushProducer: producer,
 	}, err
 }
 
@@ -277,6 +283,9 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 			return err
 		}
 		log.Infof("add claim tx for the deposit %d blockID %d successfully", deposit.DepositCount, deposit.BlockID)
+
+		// Notify FE that tx is pending auto claim
+		go tm.pushTransactionUpdate(deposit, pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 	}
 	return nil
 }
@@ -519,6 +528,17 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			if err != nil {
 				mTxLog.Errorf("failed to update monitored tx when max history size limit reached: %v", err)
 			}
+
+			// Notify FE that tx is pending user claim
+			go func() {
+				// Retrieve L1 transaction info
+				deposit, err := tm.storage.GetDeposit(ctx, mTx.ID, 0, nil)
+				if err != nil {
+					log.Errorf("push message: GetDeposit error: %v", err)
+					return
+				}
+				tm.pushTransactionUpdate(deposit, pb.TransactionStatus_TX_PENDING_USER_CLAIM)
+			}()
 			continue
 		}
 
@@ -674,4 +694,18 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 	}
 
 	return nil
+}
+
+// Push message to FE to notify about tx status change
+func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, status pb.TransactionStatus) {
+	err := tm.messagePushProducer.PushTransactionUpdate(&messagepush.TransactionUpdateData{
+		FromChain: uint32(deposit.NetworkID),
+		ToChain:   uint32(deposit.DestinationNetwork),
+		TxHash:    deposit.TxHash.String(),
+		Index:     uint64(deposit.DepositCount),
+		Status:    status,
+	})
+	if err != nil {
+		log.Errorf("PushTransactionUpdate error: %v", err)
+	}
 }

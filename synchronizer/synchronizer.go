@@ -7,7 +7,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/common"
@@ -35,6 +37,8 @@ type ClientSynchronizer struct {
 	zkEVMClient      zkEVMClientInterface
 	synced           bool
 	l1RollupExitRoot common.Hash
+	// Producer to push the transaction status change to front end
+	messagePushProducer messagepush.KafkaProducer
 }
 
 // NewSynchronizer creates and initializes an instance of Synchronizer
@@ -46,6 +50,7 @@ func NewSynchronizer(
 	genBlockNumber uint64,
 	chExitRootEvent chan *etherman.GlobalExitRoot,
 	chSynced chan uint,
+	messagePushProducer messagepush.KafkaProducer,
 	cfg Config) (Synchronizer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	networkID, err := ethMan.GetNetworkID(ctx)
@@ -63,30 +68,32 @@ func NewSynchronizer(
 
 	if networkID == 0 {
 		return &ClientSynchronizer{
-			bridgeCtrl:       bridge,
-			storage:          storage.(storageInterface),
-			etherMan:         ethMan,
-			ctx:              ctx,
-			cancelCtx:        cancel,
-			genBlockNumber:   genBlockNumber,
-			cfg:              cfg,
-			networkID:        networkID,
-			chExitRootEvent:  chExitRootEvent,
-			chSynced:         chSynced,
-			zkEVMClient:      zkEVMClient,
-			l1RollupExitRoot: ger.ExitRoots[1],
+			bridgeCtrl:          bridge,
+			storage:             storage.(storageInterface),
+			etherMan:            ethMan,
+			ctx:                 ctx,
+			cancelCtx:           cancel,
+			genBlockNumber:      genBlockNumber,
+			cfg:                 cfg,
+			networkID:           networkID,
+			chExitRootEvent:     chExitRootEvent,
+			chSynced:            chSynced,
+			zkEVMClient:         zkEVMClient,
+			l1RollupExitRoot:    ger.ExitRoots[1],
+			messagePushProducer: messagePushProducer,
 		}, nil
 	}
 	return &ClientSynchronizer{
-		bridgeCtrl:     bridge,
-		storage:        storage.(storageInterface),
-		etherMan:       ethMan,
-		ctx:            ctx,
-		cancelCtx:      cancel,
-		genBlockNumber: genBlockNumber,
-		cfg:            cfg,
-		chSynced:       chSynced,
-		networkID:      networkID,
+		bridgeCtrl:          bridge,
+		storage:             storage.(storageInterface),
+		etherMan:            ethMan,
+		ctx:                 ctx,
+		cancelCtx:           cancel,
+		genBlockNumber:      genBlockNumber,
+		cfg:                 cfg,
+		chSynced:            chSynced,
+		networkID:           networkID,
+		messagePushProducer: messagePushProducer,
 	}, nil
 }
 
@@ -563,6 +570,26 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 		}
 		return err
 	}
+
+	// Notify FE that the tx has been claimed
+	go func() {
+		// Retrieve deposit transaction info
+		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, claim.OriginalNetwork, nil)
+		if err != nil {
+			log.Errorf("push message: GetDeposit error: %v", err)
+			return
+		}
+		err = s.messagePushProducer.PushTransactionUpdate(&messagepush.TransactionUpdateData{
+			FromChain: uint32(deposit.NetworkID),
+			ToChain:   uint32(deposit.DestinationNetwork),
+			TxHash:    deposit.TxHash.String(),
+			Index:     uint64(deposit.DepositCount),
+			Status:    pb.TransactionStatus_TX_CLAIMED,
+		})
+		if err != nil {
+			log.Errorf("PushTransactionUpdate error: %v", err)
+		}
+	}()
 	return nil
 }
 
