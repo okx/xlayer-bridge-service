@@ -13,13 +13,14 @@ import (
 
 type KafkaProducer interface {
 	Produce(topic string, pushKey string, msg interface{}) error
-	PushTransactionUpdate(pushKey string, data *TransactionUpdateData) error
+	PushTransactionUpdate(data *TransactionUpdateData) error
 	Close() error
 }
 
 type kafkaProducerImpl struct {
-	producer     sarama.SyncProducer
-	defaultTopic string
+	producer       sarama.SyncProducer
+	defaultTopic   string
+	defaultPushKey string
 }
 
 func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
@@ -51,8 +52,9 @@ func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 		return nil, errors.Wrap(err, "NewKafkaProducer: NewSyncProducer error")
 	}
 	return &kafkaProducerImpl{
-		producer:     producer,
-		defaultTopic: cfg.Topic,
+		producer:       producer,
+		defaultTopic:   cfg.Topic,
+		defaultPushKey: cfg.PushKey,
 	}, nil
 }
 
@@ -66,6 +68,9 @@ func (p *kafkaProducerImpl) Produce(topic string, pushKey string, msg interface{
 	}
 	if topic == "" {
 		topic = p.defaultTopic
+	}
+	if pushKey == "" {
+		pushKey = p.defaultPushKey
 	}
 
 	var msgString string
@@ -99,13 +104,13 @@ func (p *kafkaProducerImpl) Produce(topic string, pushKey string, msg interface{
 }
 
 // PushTransactionUpdate pushes a transaction update message to the default topic
-func (p *kafkaProducerImpl) PushTransactionUpdate(pushKey string, data *TransactionUpdateData) error {
+func (p *kafkaProducerImpl) PushTransactionUpdate(data *TransactionUpdateData) error {
 	msg := &PushMessage{
 		Type: transactionUpdateType,
 		Data: data,
 	}
 
-	return p.Produce("", pushKey, msg)
+	return p.Produce("", "", msg)
 }
 
 func (p *kafkaProducerImpl) Close() error {

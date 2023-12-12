@@ -582,7 +582,7 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 			log.Errorf("push message: GetDeposit error: %v", err)
 			return
 		}
-		err = s.messagePushProducer.PushTransactionUpdate(deposit.DestinationAddress.Hex(), &messagepush.TransactionUpdateData{
+		err = s.messagePushProducer.PushTransactionUpdate(&messagepush.TransactionUpdateData{
 			FromChain: uint32(deposit.NetworkID),
 			ToChain:   uint32(deposit.DestinationNetwork),
 			TxHash:    deposit.TxHash.String(),
