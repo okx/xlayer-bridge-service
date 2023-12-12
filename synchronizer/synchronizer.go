@@ -573,6 +573,9 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 
 	// Notify FE that the tx has been claimed
 	go func() {
+		if s.messagePushProducer == nil {
+			return
+		}
 		// Retrieve deposit transaction info
 		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, claim.OriginalNetwork, nil)
 		if err != nil {

@@ -698,6 +698,9 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 
 // Push message to FE to notify about tx status change
 func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, status pb.TransactionStatus) {
+	if tm.messagePushProducer == nil {
+		return
+	}
 	err := tm.messagePushProducer.PushTransactionUpdate(deposit.DestinationAddress.Hex(), &messagepush.TransactionUpdateData{
 		FromChain: uint32(deposit.NetworkID),
 		ToChain:   uint32(deposit.DestinationNetwork),
