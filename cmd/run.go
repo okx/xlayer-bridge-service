@@ -106,6 +106,12 @@ func startServer(ctx *cli.Context) error {
 		return err
 	}
 
+	l1BlockNumCache, err := localcache.NewBlockNumCache(c.Etherman.L1URL)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
 	estTimeCalc, err := estimatetime.NewCalculator(apiStorage)
 	if err != nil {
 		log.Error(err)
@@ -127,7 +133,7 @@ func startServer(ctx *cli.Context) error {
 		}()
 	}
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estTimeCalc)
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, l1BlockNumCache, estTimeCalc)
 
 	server.RegisterNacos(c.NacosConfig)
 

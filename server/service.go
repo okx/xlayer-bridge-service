@@ -22,12 +22,16 @@ import (
 const (
 	defaultErrorCode   = 1
 	defaultSuccessCode = 0
+
+	// Number of block confirmations need to wait for the transaction to be synced from L1 to L2
+	l1TargetBlockConfirmations = 64
 )
 
 type bridgeService struct {
 	storage           BridgeServiceStorage
 	redisStorage      redisstorage.RedisStorage
 	mainCoinsCache    localcache.MainCoinsCache
+	l1BlockNumCache   localcache.BlockNumCache
 	networkIDs        map[uint]uint8
 	chainIDs          map[uint]uint32
 	height            uint8
@@ -40,7 +44,8 @@ type bridgeService struct {
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, storage interface{}, redisStorage redisstorage.RedisStorage, mainCoinsCache localcache.MainCoinsCache, estTimeCalc estimatetime.Calculator) *bridgeService {
+func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, storage interface{}, redisStorage redisstorage.RedisStorage,
+	mainCoinsCache localcache.MainCoinsCache, l1BlockNumCache localcache.BlockNumCache, estTimeCalc estimatetime.Calculator) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
 	var chainIDs = make(map[uint]uint32)
 	for i, network := range networks {
@@ -55,6 +60,7 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		storage:           storage.(BridgeServiceStorage),
 		redisStorage:      redisStorage,
 		mainCoinsCache:    mainCoinsCache,
+		l1BlockNumCache:   l1BlockNumCache,
 		estTimeCalculator: estTimeCalc,
 		height:            height,
 		networkIDs:        networkIDs,
@@ -456,15 +462,23 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
 		}
-		transaction.Status = 0
+		transaction.Status = pb.TransactionStatus_TX_CREATED
 		if deposit.ReadyForClaim {
-			transaction.Status = 1
+			transaction.Status = pb.TransactionStatus_TX_PENDING_USER_CLAIM
 			// For L1->L2, if backend is trying to auto-claim, set the status to 0 to block the user from manual-claim
 			// When the auto-claim failed, set status to 1 to let the user claim manually through front-end
 			if deposit.NetworkID == 0 {
 				mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 				if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-					transaction.Status = 0
+					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+				}
+			}
+		} else {
+			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
+			// should also display the status as "L2 executing" (pending auto claim)
+			if deposit.NetworkID == 0 {
+				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= l1TargetBlockConfirmations {
+					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
 		}
@@ -516,11 +530,11 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
 		}
-		transaction.Status = 0 // Not ready for claim
+		transaction.Status = pb.TransactionStatus_TX_CREATED // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
 			claim, err := s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
-			transaction.Status = 1 // Ready but not claimed
+			transaction.Status = pb.TransactionStatus_TX_PENDING_USER_CLAIM // Ready but not claimed
 			if err != nil {
 				if !errors.Is(err, gerror.ErrStorageNotFound) {
 					return &pb.CommonTransactionsResponse{
@@ -533,13 +547,21 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 				if deposit.NetworkID == 0 {
 					mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 					if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-						transaction.Status = 0
+						transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 					}
 				}
 			} else {
-				transaction.Status = 2 // Claimed
+				transaction.Status = pb.TransactionStatus_TX_CLAIMED // Claimed
 				transaction.ClaimTxHash = claim.TxHash.String()
 				transaction.ClaimTime = uint64(claim.Time.UnixMilli())
+			}
+		} else {
+			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
+			// should also display the status as "L2 executing" (pending auto claim)
+			if deposit.NetworkID == 0 {
+				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= l1TargetBlockConfirmations {
+					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+				}
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
