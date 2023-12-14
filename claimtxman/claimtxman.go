@@ -81,7 +81,6 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 		storage:         storage.(storageInterface),
 		auth:            auth,
 		nonceCache:      cache,
-		lastGer:         &etherman.GlobalExitRoot{},
 	}, err
 }
 
@@ -115,7 +114,7 @@ func (tm *ClaimTxManager) Start() {
 					}(nil, tmpGer)
 				}
 				go func(lastGer, newGer *etherman.GlobalExitRoot) {
-					log.Debugf("updateDepositsStatus deposits of gerNum: %d, for ger: %v to ger: %v", tm.gerNum, lastGer.GlobalExitRoot, newGer.GlobalExitRoot)
+					log.Debugf("updateDepositsStatus deposits of gerNum: %d, for ger: %v", tm.gerNum, newGer.GlobalExitRoot)
 					err := tm.updateDepositsStatus(lastGer, newGer)
 					if err != nil {
 						log.Errorf("failed to update deposits status: %v", err)
@@ -218,11 +217,11 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 
 func (tm *ClaimTxManager) getDeposits(lastGer, ger *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
 	log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
-	//var lastExitRoot []byte
-	//if lastGer != nil {
-	//	lastExitRoot = lastGer.ExitRoots[0][:]
-	//}
-	deposits, err := tm.storage.GetL1Deposits(tm.ctx, lastGer.ExitRoots[0][:], ger.ExitRoots[0][:], nil)
+	var lastExitRoot []byte
+	if lastGer != nil {
+		lastExitRoot = lastGer.ExitRoots[0][:]
+	}
+	deposits, err := tm.storage.GetL1Deposits(tm.ctx, lastExitRoot, ger.ExitRoots[0][:], nil)
 	if err != nil {
 		log.Errorf("error processing ger. Error: %v", err)
 		return nil, err
