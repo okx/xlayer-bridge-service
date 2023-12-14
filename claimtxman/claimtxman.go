@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
@@ -32,10 +31,10 @@ const (
 
 // ClaimTxManager is the claim transaction manager for L2.
 type ClaimTxManager struct {
-	ctx                   context.Context
-	cancel                context.CancelFunc
-	updateDepositsL1Mutex sync.Mutex
-	updateDepositsL2Mutex sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	//updateDepositsL1Mutex sync.Mutex
+	//updateDepositsL2Mutex sync.Mutex
 
 	// client is the ethereum client
 	l2Node          *utils.Client
@@ -49,6 +48,8 @@ type ClaimTxManager struct {
 	nonceCache      *lru.Cache[string, uint64]
 	synced          bool
 	isDone          bool
+	lastGer         *etherman.GlobalExitRoot
+	gerNum          int
 }
 
 // NewClaimTxManager creates a new claim transaction manager.
@@ -64,6 +65,10 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	auth, err := client.GetSignerFromKeystore(ctx, cfg.PrivateKey)
+	if cfg.GerThreshold == 0 {
+		// use the default GerThreshold
+		cfg.GerThreshold = 50
+	}
 	return &ClaimTxManager{
 		ctx:             ctx,
 		cancel:          cancel,
@@ -97,12 +102,26 @@ func (tm *ClaimTxManager) Start() {
 		case ger := <-tm.chExitRootEvent:
 			if tm.synced {
 				log.Debug("UpdateDepositsStatus for ger: ", ger.GlobalExitRoot)
-				go func() {
-					err := tm.updateDepositsStatus(ger)
+				tmpGer := tm.lastGer
+				if tm.gerNum == tm.cfg.GerThreshold {
+					tm.gerNum = 0
+					go func(lastGer, newGer *etherman.GlobalExitRoot) {
+						log.Debugf("updateDepositsStatus all deposits of gerNum: %d, for ger:%v", tm.gerNum, newGer.GlobalExitRoot)
+						err := tm.updateDepositsStatus(lastGer, newGer)
+						if err != nil {
+							log.Errorf("failed to update deposits status: %v", err)
+						}
+					}(nil, tmpGer)
+				}
+				go func(lastGer, newGer *etherman.GlobalExitRoot) {
+					log.Debugf("updateDepositsStatus deposits of gerNum: %d, for ger: %v to ger: %v", tm.gerNum, lastGer.GlobalExitRoot, newGer.GlobalExitRoot)
+					err := tm.updateDepositsStatus(lastGer, newGer)
 					if err != nil {
 						log.Errorf("failed to update deposits status: %v", err)
 					}
-				}()
+				}(tmpGer, ger)
+				tm.lastGer = ger
+				tm.gerNum++
 			} else {
 				log.Infof("Waiting for networkID %d to be synced before processing deposits", tm.l2NetworkID)
 			}
@@ -128,16 +147,16 @@ func (tm *ClaimTxManager) startMonitorTxs() {
 	}
 }
 
-func (tm *ClaimTxManager) updateDepositsStatus(ger *etherman.GlobalExitRoot) error {
+func (tm *ClaimTxManager) updateDepositsStatus(lastGer, ger *etherman.GlobalExitRoot) error {
 	if tm.cfg.OptClaim {
 		if ger.BlockID != 0 {
-			tm.updateDepositsL2Mutex.Lock()
-			defer tm.updateDepositsL2Mutex.Unlock()
+			//tm.updateDepositsL2Mutex.Lock()
+			//defer tm.updateDepositsL2Mutex.Unlock()
 			return tm.processDepositStatusL2(ger)
 		} else {
-			tm.updateDepositsL1Mutex.Lock()
-			defer tm.updateDepositsL1Mutex.Unlock()
-			return tm.processDepositStatusL1(ger)
+			//tm.updateDepositsL1Mutex.Lock()
+			//defer tm.updateDepositsL1Mutex.Unlock()
+			return tm.processDepositStatusL1(lastGer, ger)
 		}
 	}
 
@@ -196,9 +215,13 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 	return nil
 }
 
-func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
+func (tm *ClaimTxManager) getDeposits(lastGer, ger *etherman.GlobalExitRoot) ([]*etherman.Deposit, error) {
 	log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
-	deposits, err := tm.storage.GetL1Deposits(tm.ctx, ger.ExitRoots[0][:], nil)
+	var lastExitRoot []byte
+	if lastGer != nil {
+		lastExitRoot = lastGer.ExitRoots[0][:]
+	}
+	deposits, err := tm.storage.GetL1Deposits(tm.ctx, lastExitRoot, ger.ExitRoots[0][:], nil)
 	if err != nil {
 		log.Errorf("error processing ger. Error: %v", err)
 		return nil, err
@@ -206,8 +229,8 @@ func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman
 	return deposits, nil
 }
 
-func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) error {
-	deposits, err := tm.getDeposits(ger)
+func (tm *ClaimTxManager) processDepositStatusL1(lastGer, ger *etherman.GlobalExitRoot) error {
+	deposits, err := tm.getDeposits(lastGer, ger)
 	if err != nil {
 		return err
 	}

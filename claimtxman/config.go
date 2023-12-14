@@ -19,4 +19,6 @@ type Config struct {
 	FreeGas bool `mapstructure:"FreeGas"`
 	//OptClaim enabled store claimTx into storage every deposit
 	OptClaim bool `mapstructure:"OptClaim"`
+	//GerThreshold is the number of check the deposit which ready_for_claim is false
+	GerThreshold int `mapstructure:"GerThreshold"`
 }
