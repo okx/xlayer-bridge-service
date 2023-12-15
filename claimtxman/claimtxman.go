@@ -613,7 +613,11 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 						}
 						reviewNonce = true
 					} else if err.Error() == pool.ErrNonceTooHigh.Error() {
-						tm.ResetL2NodeNonce(&mTx)
+						if !isResetNonce {
+							isResetNonce = true
+							tm.ResetL2NodeNonce(&mTx)
+							mTxLog.Infof("nonce ResetL2NodeNonce %v", mTx.From.Hex())
+						}
 					}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
