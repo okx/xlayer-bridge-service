@@ -653,10 +653,13 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 }
 
 func (tm *ClaimTxManager) ResetL2NodeNonce(mTx *ctmtypes.MonitoredTx) error {
+	mTxLog := log.WithFields("monitoredTx", mTx.ID)
+	mTxLog.Debug("ResetL2NodeNonce")
 	nonce, err := tm.l2Node.NonceAt(tm.ctx, mTx.From, nil)
 	if err != nil {
 		return err
 	}
+	mTxLog.Debugf("ResetL2NodeNonce mtxNonce:%d, new nonce:%d", mTx.Nonce, nonce)
 	mTx.Nonce = nonce
 	return nil
 }
