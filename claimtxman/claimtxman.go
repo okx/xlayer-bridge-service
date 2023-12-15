@@ -612,6 +612,8 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 							mTxLog.Infof("nonce cache cleared for address %v", mTx.From.Hex())
 						}
 						reviewNonce = true
+					} else if err.Error() == pool.ErrNonceTooHigh.Error() {
+						tm.ResetL2NodeNonce(&mTx)
 					}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
@@ -647,6 +649,15 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 	}
 
 	mLog.Infof("monitorTxs committed")
+	return nil
+}
+
+func (tm *ClaimTxManager) ResetL2NodeNonce(mTx *ctmtypes.MonitoredTx) error {
+	nonce, err := tm.l2Node.NonceAt(tm.ctx, mTx.From, nil)
+	if err != nil {
+		return err
+	}
+	mTx.Nonce = nonce
 	return nil
 }
 
