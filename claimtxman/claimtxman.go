@@ -117,13 +117,13 @@ func (tm *ClaimTxManager) startMonitorTxs() {
 			return
 		}
 		traceID := utils.GenerateTraceID()
-		ctx := context.WithValue(tm.ctx, utils.CtxTraceID, traceID)
+		//ctx := context.WithValue(tm.ctx, utils.CtxTraceID, traceID)
 		logger := log.WithFields(utils.TraceID, traceID)
 		logger.Infof("MonitorTxs begin %d", tm.l2NetworkID)
-		err := tm.monitorTxs(ctx)
-		if err != nil {
-			logger.Errorf("failed to monitor txs: %v", err)
-		}
+		//err := tm.monitorTxs(ctx)
+		//if err != nil {
+		//	logger.Errorf("failed to monitor txs: %v", err)
+		//}
 		logger.Infof("MonitorTxs end %d", tm.l2NetworkID)
 	}
 }
