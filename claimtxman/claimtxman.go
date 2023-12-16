@@ -496,6 +496,9 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 					}
 					if errors.Is(err, ethereum.NotFound) {
 						mTxLog.Error("maximum retries and the tx is still missing in the pool. TxHash: ", txHash.String())
+						if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
+							tm.l2Node.SendTransaction(ctx, signedTx)
+						}
 						hasFailedReceipts = true
 						continue
 					} else if err != nil {
