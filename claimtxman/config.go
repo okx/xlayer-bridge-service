@@ -24,4 +24,6 @@ type Config struct {
 	OptClaim bool `mapstructure:"OptClaim"`
 	// AuthorizedClaimMessageAddresses are the allowed address to bridge message with autoClaim
 	AuthorizedClaimMessageAddresses []common.Address `mapstructure:"AuthorizedClaimMessageAddresses"`
+	//GerThreshold is the number of check the deposit which ready_for_claim is false
+	GerThreshold int `mapstructure:"GerThreshold"`
 }
