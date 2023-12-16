@@ -454,6 +454,9 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 
 	isResetNonce := false // it will reset the nonce in one cycle
 	for _, mTx := range mTxs {
+		if isResetNonce {
+			break
+		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
 		mTxLog := mLog.WithFields("monitoredTx", mTx.ID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
@@ -479,6 +482,9 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 				_, _, err = tm.l2Node.TransactionByHash(ctx, txHash)
 				if errors.Is(err, ethereum.NotFound) {
 					mTxLog.Errorf("tx %s was not found in the pending pool", txHash.String())
+					if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
+						tm.l2Node.SendTransaction(ctx, signedTx)
+					}
 					hasFailedReceipts = true
 					continue
 				} else if err != nil {
