@@ -460,9 +460,9 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 
 	isResetNonce := false // it will reset the nonce in one cycle
 	for _, mTx := range mTxs {
-		//if isResetNonce {
-		//	break
-		//}
+		if isResetNonce {
+			break
+		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
 		mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
@@ -617,14 +617,13 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 							mTxLog.Infof("nonce cache cleared for address %v", mTx.From.Hex())
 						}
 						reviewNonce = true
+					} else if err.Error() == pool.ErrNonceTooHigh.Error() {
+						if !isResetNonce {
+							isResetNonce = true
+							tm.ResetL2NodeNonce(&mTx)
+							mTxLog.Infof("nonce ResetL2NodeNonce %v", mTx.From.Hex())
+						}
 					}
-					//else if err.Error() == pool.ErrNonceTooHigh.Error() {
-					//	if !isResetNonce {
-					//		isResetNonce = true
-					//		tm.ResetL2NodeNonce(&mTx)
-					//		mTxLog.Infof("nonce ResetL2NodeNonce %v", mTx.From.Hex())
-					//	}
-					//}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
 					err := tm.ReviewMonitoredTx(ctx, &mTx, reviewNonce)
