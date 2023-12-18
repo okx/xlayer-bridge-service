@@ -69,3 +69,8 @@ func EthermanDepositToPbTransaction(deposit *etherman.Deposit) *pb.Transaction {
 		LeafType:    uint32(deposit.LeafType),
 	}
 }
+
+// GenerateTraceID generates a random trace ID.
+func GenerateTraceID() string {
+	return generateRandomString(traceIDLen)
+}
