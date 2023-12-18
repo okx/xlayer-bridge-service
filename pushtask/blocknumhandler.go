@@ -38,10 +38,19 @@ func (h *L1BlockNumHandler) HandleChange(ctx context.Context, oldBlockNum, newBl
 		log.Errorf("TryLock error: %v", err)
 		return
 	}
+
 	if !ok {
 		log.Debugf("L1BlockNumHandler locked by other process, ignored")
 		return
 	}
+
+	defer func() {
+		err = h.redisStorage.ReleaseLock(ctx, l1BlockNumHandlerLockKey)
+		if err != nil {
+			log.Errorf("ReleaseLock error: %v", err)
+			return
+		}
+	}()
 
 	// Replace oldBlockNum with the block num from Redis
 	oldBlockNum, err = h.redisStorage.GetL1BlockNum(ctx)
@@ -49,14 +58,22 @@ func (h *L1BlockNumHandler) HandleChange(ctx context.Context, oldBlockNum, newBl
 		log.Errorf("GetL1BlockNum error: %v", err)
 		return
 	}
+	if oldBlockNum == newBlockNum {
+		return
+	}
 
-	// Minus 64 to find the transactions that reached 64 block confirmations
-	newBlockNum -= utils.L1TargetBlockConfirmations
-	oldBlockNum -= utils.L1TargetBlockConfirmations
+	defer func() {
+		// Update Redis cached block num
+		err = h.redisStorage.SetL1BlockNum(ctx, newBlockNum)
+		if err != nil {
+			log.Errorf("SetL1BlockNum error: %v", err)
+		}
+	}()
 
 	var offset = uint(0)
 	for {
-		deposits, err := h.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1, newBlockNum, queryLimit, offset, nil)
+		deposits, err := h.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1-utils.L1TargetBlockConfirmations+1,
+			newBlockNum-utils.L1TargetBlockConfirmations, queryLimit, offset, nil)
 		if err != nil {
 			log.Errorf("L1BlockNumHandler query error: %v", err)
 			return

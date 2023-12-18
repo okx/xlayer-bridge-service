@@ -145,7 +145,7 @@ func startServer(ctx *cli.Context) error {
 	}
 
 	// Initialize the push task for L1 block num change
-	l1BlockNumHandler := pushtask.NewL1BlockNumHandler(apiStorage, messagePushProducer)
+	l1BlockNumHandler := pushtask.NewL1BlockNumHandler(apiStorage, redisStorage, messagePushProducer)
 	l1BlockNumCache.OnChanged(l1BlockNumHandler.HandleChange)
 
 	log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
