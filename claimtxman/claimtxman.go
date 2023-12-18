@@ -536,7 +536,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			// Notify FE that tx is pending user claim
 			go func() {
 				// Retrieve L1 transaction info
-				deposit, err := tm.storage.GetDeposit(ctx, mTx.ID, 0, nil)
+				deposit, err := tm.storage.GetDeposit(ctx, mTx.DepositID, 0, nil)
 				if err != nil {
 					log.Errorf("push message: GetDeposit error: %v", err)
 					return
