@@ -17,14 +17,14 @@ const (
 
 type BlockNumCache interface {
 	GetLatestBlockNum() uint64
-	OnChanged(func(ctx context.Context, oldBlockNum, newBlockNum uint64))
+	OnChanged(func(ctx context.Context, newBlockNum uint64))
 }
 
 type blockNumCacheImpl struct {
 	client         *ethclient.Client
 	latestBlockNum uint64
 	lock           sync.RWMutex
-	onChangedFuncs []func(context.Context, uint64, uint64)
+	onChangedFuncs []func(context.Context, uint64)
 }
 
 func NewBlockNumCache(rpcURL string) (BlockNumCache, error) {
@@ -53,7 +53,7 @@ func (c *blockNumCacheImpl) GetLatestBlockNum() uint64 {
 	return c.latestBlockNum
 }
 
-func (c *blockNumCacheImpl) OnChanged(fn func(context.Context, uint64, uint64)) {
+func (c *blockNumCacheImpl) OnChanged(fn func(context.Context, uint64)) {
 	c.onChangedFuncs = append(c.onChangedFuncs, fn)
 }
 
@@ -89,7 +89,7 @@ func (c *blockNumCacheImpl) doRefresh(ctx context.Context) error {
 	// If the block num is changed, notify the OnChanged functions
 	if blockNum != c.latestBlockNum {
 		for _, fn := range c.onChangedFuncs {
-			fn(ctx, c.latestBlockNum, blockNum)
+			fn(ctx, blockNum)
 		}
 		c.latestBlockNum = blockNum
 	}

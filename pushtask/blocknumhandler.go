@@ -32,7 +32,7 @@ func NewL1BlockNumHandler(storage interface{}, redisStorage redisstorage.RedisSt
 }
 
 // HandleChange queries all txs that reached 64 blocks and push a message to notify that it's pending auto claim
-func (h *L1BlockNumHandler) HandleChange(ctx context.Context, oldBlockNum, newBlockNum uint64) {
+func (h *L1BlockNumHandler) HandleChange(ctx context.Context, newBlockNum uint64) {
 	ok, err := h.redisStorage.TryLock(ctx, l1BlockNumHandlerLockKey)
 	if err != nil {
 		log.Errorf("TryLock error: %v", err)
@@ -53,7 +53,7 @@ func (h *L1BlockNumHandler) HandleChange(ctx context.Context, oldBlockNum, newBl
 	}()
 
 	// Replace oldBlockNum with the block num from Redis
-	oldBlockNum, err = h.redisStorage.GetL1BlockNum(ctx)
+	oldBlockNum, err := h.redisStorage.GetL1BlockNum(ctx)
 	if err != nil {
 		log.Errorf("GetL1BlockNum error: %v", err)
 		return
