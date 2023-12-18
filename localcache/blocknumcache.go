@@ -91,8 +91,7 @@ func (c *blockNumCacheImpl) doRefresh(ctx context.Context) error {
 		for _, fn := range c.onChangedFuncs {
 			fn(ctx, c.latestBlockNum, blockNum)
 		}
+		c.latestBlockNum = blockNum
 	}
-
-	c.latestBlockNum = blockNum
 	return nil
 }

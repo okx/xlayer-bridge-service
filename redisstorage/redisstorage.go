@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-node/log"
@@ -14,6 +15,10 @@ import (
 
 const (
 	coinPriceHashKey = "bridge_coin_prices"
+	l1BlockNumKey    = "bridge_l1_block_num"
+
+	// Set a default expiration for locks to prevent a process from keeping the lock for too long
+	lockExpire = 1 * time.Minute
 )
 
 // redisStorageImpl implements RedisStorage interface
@@ -145,6 +150,45 @@ func (s *redisStorageImpl) GetCoinPrice(ctx context.Context, symbols []*pb.Symbo
 		}
 	}
 	return priceList, nil
+}
+
+func (s *redisStorageImpl) SetL1BlockNum(ctx context.Context, blockNum uint64) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	err := s.client.Set(ctx, l1BlockNumKey, blockNum, 0).Err()
+	if err != nil {
+		return errors.Wrap(err, "SetL1BlockNum error")
+	}
+	return nil
+}
+
+func (s *redisStorageImpl) GetL1BlockNum(ctx context.Context) (uint64, error) {
+	if s == nil || s.client == nil {
+		return 0, errors.New("redis client is nil")
+	}
+	res, err := s.client.Get(ctx, l1BlockNumKey).Result()
+	if err != nil {
+		return 0, errors.Wrap(err, "GetL1BlockNum error")
+	}
+	num, err := strconv.ParseInt(res, 10, 64) //nolint:gomnd
+	return uint64(num), errors.Wrap(err, "GetL1BlockNum convert error")
+}
+
+func (s *redisStorageImpl) TryLock(ctx context.Context, lockKey string) (bool, error) {
+	if s == nil || s.client == nil {
+		return false, errors.New("redis client is nil")
+	}
+	success, err := s.client.SetNX(ctx, lockKey, true, lockExpire).Result()
+	return success, errors.Wrap(err, "TryLock error")
+}
+
+func (s *redisStorageImpl) ReleaseLock(ctx context.Context, lockKey string) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	err := s.client.Del(ctx, lockKey).Err()
+	return errors.Wrap(err, "ReleaseLock error")
 }
 
 func getCoinPriceKey(chainID uint64, tokenAddr string) string {
