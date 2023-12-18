@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -89,7 +88,5 @@ func Load(configFilePath string, network string) (*Config, error) {
 		cfg.loadNetworkConfig(network)
 	}
 
-	cfgJSON, _ := json.MarshalIndent(cfg, "", "  ")
-	log.Infof("Configuration loaded: \n%s\n", string(cfgJSON))
 	return &cfg, nil
 }
