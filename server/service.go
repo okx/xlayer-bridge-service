@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -22,9 +23,6 @@ import (
 const (
 	defaultErrorCode   = 1
 	defaultSuccessCode = 0
-
-	// Number of block confirmations need to wait for the transaction to be synced from L1 to L2
-	l1TargetBlockConfirmations = 64
 )
 
 type bridgeService struct {
@@ -477,7 +475,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= l1TargetBlockConfirmations {
+				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
@@ -559,7 +557,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= l1TargetBlockConfirmations {
+				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}

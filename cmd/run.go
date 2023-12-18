@@ -13,6 +13,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
@@ -142,6 +143,10 @@ func startServer(ctx *cli.Context) error {
 		log.Error(err)
 		return err
 	}
+
+	// Initialize the push task for L1 block num change
+	l1BlockNumHandler := pushtask.NewL1BlockNumHandler(apiStorage, messagePushProducer)
+	l1BlockNumCache.OnChanged(l1BlockNumHandler.HandleChange)
 
 	log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
 	zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])
