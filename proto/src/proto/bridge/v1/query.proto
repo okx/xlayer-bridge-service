@@ -207,7 +207,8 @@ message Transaction {
     uint64 id = 13;
     uint64 index = 14;
     string metadata = 15;
-    string destAddr =16;
+    string destAddr = 16;
+    uint64 blockNumber = 17;
 }
 
 // Monitored tx

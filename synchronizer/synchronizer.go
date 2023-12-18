@@ -553,6 +553,29 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		}
 		return err
 	}
+
+	// Notify FE about a new deposit
+	go func() {
+		if s.messagePushProducer == nil {
+			return
+		}
+		err := s.messagePushProducer.Produce(&pb.Transaction{
+			FromChain:   uint32(deposit.NetworkID),
+			ToChain:     uint32(deposit.DestinationNetwork),
+			BridgeToken: deposit.OriginalAddress.Hex(),
+			TokenAmount: deposit.Amount.String(),
+			Time:        uint64(deposit.Time.UnixMilli()),
+			TxHash:      deposit.TxHash.String(),
+			Id:          depositID,
+			Index:       uint64(deposit.DepositCount),
+			Status:      pb.TransactionStatus_TX_CLAIMED,
+			BlockNumber: deposit.BlockNumber,
+			DestAddr:    deposit.DestinationAddress.Hex(),
+		})
+		if err != nil {
+			log.Errorf("PushTransactionUpdate error: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -583,12 +606,14 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 			return
 		}
 		err = s.messagePushProducer.Produce(&pb.Transaction{
-			FromChain: uint32(deposit.NetworkID),
-			ToChain:   uint32(deposit.DestinationNetwork),
-			TxHash:    deposit.TxHash.String(),
-			Index:     uint64(deposit.DepositCount),
-			Status:    pb.TransactionStatus_TX_CLAIMED,
-			DestAddr:  deposit.DestinationAddress.Hex(),
+			FromChain:   uint32(deposit.NetworkID),
+			ToChain:     uint32(deposit.DestinationNetwork),
+			TxHash:      deposit.TxHash.String(),
+			Index:       uint64(deposit.DepositCount),
+			Status:      pb.TransactionStatus_TX_CLAIMED,
+			ClaimTxHash: claim.TxHash.Hex(),
+			ClaimTime:   uint64(claim.Time.UnixMilli()),
+			DestAddr:    deposit.DestinationAddress.Hex(),
 		})
 		if err != nil {
 			log.Errorf("PushTransactionUpdate error: %v", err)
