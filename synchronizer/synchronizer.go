@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
@@ -559,17 +560,18 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			return
 		}
 		err := s.messagePushProducer.Produce(&pb.Transaction{
-			FromChain:   uint32(deposit.NetworkID),
-			ToChain:     uint32(deposit.DestinationNetwork),
-			BridgeToken: deposit.OriginalAddress.Hex(),
-			TokenAmount: deposit.Amount.String(),
-			Time:        uint64(deposit.Time.UnixMilli()),
-			TxHash:      deposit.TxHash.String(),
-			Id:          depositID,
-			Index:       uint64(deposit.DepositCount),
-			Status:      pb.TransactionStatus_TX_CLAIMED,
-			BlockNumber: deposit.BlockNumber,
-			DestAddr:    deposit.DestinationAddress.Hex(),
+			FromChain:    uint32(deposit.NetworkID),
+			ToChain:      uint32(deposit.DestinationNetwork),
+			BridgeToken:  deposit.OriginalAddress.Hex(),
+			TokenAmount:  deposit.Amount.String(),
+			EstimateTime: estimatetime.GetDefaultCalculator().Get(deposit.NetworkID),
+			Time:         uint64(deposit.Time.UnixMilli()),
+			TxHash:       deposit.TxHash.String(),
+			Id:           depositID,
+			Index:        uint64(deposit.DepositCount),
+			Status:       pb.TransactionStatus_TX_CLAIMED,
+			BlockNumber:  deposit.BlockNumber,
+			DestAddr:     deposit.DestinationAddress.Hex(),
 		})
 		if err != nil {
 			log.Errorf("PushTransactionUpdate error: %v", err)

@@ -112,7 +112,7 @@ func startServer(ctx *cli.Context) error {
 		return err
 	}
 
-	estTimeCalc, err := estimatetime.NewCalculator(apiStorage)
+	err = estimatetime.InitDefaultCalculator(apiStorage)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -133,7 +133,7 @@ func startServer(ctx *cli.Context) error {
 		}()
 	}
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, l1BlockNumCache, estTimeCalc)
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, l1BlockNumCache, estimatetime.GetDefaultCalculator())
 
 	server.RegisterNacos(c.NacosConfig)
 
