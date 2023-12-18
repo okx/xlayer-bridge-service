@@ -207,6 +207,7 @@ message Transaction {
     uint64 id = 13;
     uint64 index = 14;
     string metadata = 15;
+    string destAddr =16;
 }
 
 // Monitored tx

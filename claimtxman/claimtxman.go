@@ -701,12 +701,13 @@ func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, statu
 	if tm.messagePushProducer == nil {
 		return
 	}
-	err := tm.messagePushProducer.PushTransactionUpdate(&messagepush.TransactionUpdateData{
+	err := tm.messagePushProducer.Produce(&pb.Transaction{
 		FromChain: uint32(deposit.NetworkID),
 		ToChain:   uint32(deposit.DestinationNetwork),
 		TxHash:    deposit.TxHash.String(),
 		Index:     uint64(deposit.DepositCount),
 		Status:    status,
+		DestAddr:  deposit.DestinationAddress.Hex(),
 	})
 	if err != nil {
 		log.Errorf("PushTransactionUpdate error: %v", err)

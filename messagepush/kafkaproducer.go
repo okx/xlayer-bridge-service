@@ -11,9 +11,27 @@ import (
 	"github.com/pkg/errors"
 )
 
+type produceOptions struct {
+	topic   string
+	pushKey string
+}
+
+type produceOptFunc func(opts *produceOptions)
+
+func WithTopic(topic string) produceOptFunc {
+	return func(opts *produceOptions) {
+		opts.topic = topic
+	}
+}
+
+func WithPushKey(key string) produceOptFunc {
+	return func(opts *produceOptions) {
+		opts.pushKey = key
+	}
+}
+
 type KafkaProducer interface {
-	Produce(topic string, pushKey string, msg interface{}) error
-	PushTransactionUpdate(data *TransactionUpdateData) error
+	Produce(msg interface{}, optFns ...produceOptFunc) error
 	Close() error
 }
 
@@ -61,16 +79,17 @@ func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 // Produce send a message to the Kafka topic
 // msg should be either a string or an object
 // If msg is an object, it will be encoded to JSON before being sent
-func (p *kafkaProducerImpl) Produce(topic string, pushKey string, msg interface{}) error {
+func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) error {
 	if p == nil || p.producer == nil {
 		log.Debugf("Kafka producer is nil")
 		return nil
 	}
-	if topic == "" {
-		topic = p.defaultTopic
+	opts := &produceOptions{
+		topic:   p.defaultTopic,
+		pushKey: p.defaultPushKey,
 	}
-	if pushKey == "" {
-		pushKey = p.defaultPushKey
+	for _, f := range optFns {
+		f(opts)
 	}
 
 	var msgString string
@@ -88,29 +107,23 @@ func (p *kafkaProducerImpl) Produce(topic string, pushKey string, msg interface{
 		msgString = string(b)
 	}
 
-	// Send message to the topic
-	partition, offset, err := p.producer.SendMessage(&sarama.ProducerMessage{
-		Topic: topic,
-		Key:   sarama.StringEncoder(pushKey),
+	produceMsg := &sarama.ProducerMessage{
+		Topic: opts.topic,
 		Value: sarama.StringEncoder(msgString),
-	})
+	}
+	if opts.pushKey != "" {
+		produceMsg.Key = sarama.StringEncoder(opts.pushKey)
+	}
+
+	// Send message to the topic
+	partition, offset, err := p.producer.SendMessage(produceMsg)
 
 	if err != nil {
 		return errors.Wrap(err, "kafka SendMessage error")
 	}
 
-	log.Debugf("Produced to Kafka: topic[%v] msg[%v] partition[%v] offset[%v]", topic, msgString, partition, offset)
+	log.Debugf("Produced to Kafka: topic[%v] msg[%v] partition[%v] offset[%v]", opts.topic, msgString, partition, offset)
 	return nil
-}
-
-// PushTransactionUpdate pushes a transaction update message to the default topic
-func (p *kafkaProducerImpl) PushTransactionUpdate(data *TransactionUpdateData) error {
-	msg := &PushMessage{
-		Type: transactionUpdateType,
-		Data: data,
-	}
-
-	return p.Produce("", "", msg)
 }
 
 func (p *kafkaProducerImpl) Close() error {
