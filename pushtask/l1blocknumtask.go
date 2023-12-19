@@ -1,0 +1,138 @@
+package pushtask
+
+import (
+	"context"
+	"time"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
+	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/pkg/errors"
+)
+
+const (
+	queryLimit             = 100
+	l1BlockNumTaskInterval = 5 * time.Second
+	l1BlockNumTaskLockKey  = "bridge_l1_block_num_lock"
+)
+
+type L1BlockNumTask struct {
+	storage             DBStorage
+	redisStorage        redisstorage.RedisStorage
+	client              *ethclient.Client
+	messagePushProducer messagepush.KafkaProducer
+}
+
+func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redisstorage.RedisStorage, producer messagepush.KafkaProducer) (*L1BlockNumTask, error) {
+	ctx := context.Background()
+	client, err := ethclient.DialContext(ctx, rpcURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "ethclient dial error")
+	}
+
+	return &L1BlockNumTask{
+		storage:             storage.(DBStorage),
+		redisStorage:        redisStorage,
+		client:              client,
+		messagePushProducer: producer,
+	}, nil
+}
+
+func (t *L1BlockNumTask) Start(ctx context.Context) {
+	ticker := time.NewTicker(l1BlockNumTaskInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			t.doTask(ctx)
+		}
+	}
+}
+
+func (t *L1BlockNumTask) doTask(ctx context.Context) {
+	ok, err := t.redisStorage.TryLock(ctx, l1BlockNumTaskLockKey)
+	if err != nil {
+		log.Errorf("TryLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
+		return
+	}
+
+	if !ok {
+		return
+	}
+
+	// If successfully acquired the lock, need to eventually release it
+	defer func() {
+		err = t.redisStorage.ReleaseLock(ctx, l1BlockNumTaskLockKey)
+		if err != nil {
+			log.Errorf("ReleaseLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
+		}
+	}()
+
+	// Get the latest block num from the chain RPC
+	blockNum, err := t.client.BlockNumber(ctx)
+	if err != nil {
+		log.Errorf("eth_blockNumber error: %v", err)
+		return
+	}
+
+	// Get the previous block num from Redis cache and check
+	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
+	if err != nil {
+		log.Errorf("Get L1 block num from Redis error: %v", err)
+		return
+	}
+
+	// If the block num is not changed, no need to do anything
+	if blockNum == oldBlockNum {
+		return
+	}
+
+	defer func() {
+		// Update Redis cached block num
+		err = t.redisStorage.SetL1BlockNum(ctx, blockNum)
+		if err != nil {
+			log.Errorf("SetL1BlockNum error: %v", err)
+		}
+	}()
+
+	// Scan the DB and push events to FE
+	var offset = uint(0)
+	for {
+		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1-utils.L1TargetBlockConfirmations+1,
+			blockNum-utils.L1TargetBlockConfirmations, queryLimit, offset, nil)
+		if err != nil {
+			log.Errorf("L1BlockNumTask query error: %v", err)
+			return
+		}
+
+		// Notify FE for each transaction
+		for _, deposit := range deposits {
+			go func(deposit *etherman.Deposit) {
+				if t.messagePushProducer == nil {
+					return
+				}
+				err := t.messagePushProducer.Produce(&pb.Transaction{
+					FromChain: uint32(deposit.NetworkID),
+					ToChain:   uint32(deposit.DestinationNetwork),
+					TxHash:    deposit.TxHash.String(),
+					Index:     uint64(deposit.DepositCount),
+					Status:    pb.TransactionStatus_TX_PENDING_AUTO_CLAIM,
+					DestAddr:  deposit.DestinationAddress.Hex(),
+				})
+				if err != nil {
+					log.Errorf("PushTransactionUpdate error: %v", err)
+				}
+			}(deposit)
+		}
+
+		if len(deposits) < queryLimit {
+			break
+		}
+		offset += queryLimit
+	}
+}

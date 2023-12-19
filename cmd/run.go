@@ -107,12 +107,6 @@ func startServer(ctx *cli.Context) error {
 		return err
 	}
 
-	l1BlockNumCache, err := localcache.NewBlockNumCache(c.Etherman.L1URL)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
 	err = estimatetime.InitDefaultCalculator(apiStorage)
 	if err != nil {
 		log.Error(err)
@@ -134,7 +128,7 @@ func startServer(ctx *cli.Context) error {
 		}()
 	}
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, l1BlockNumCache, estimatetime.GetDefaultCalculator())
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator())
 
 	server.RegisterNacos(c.NacosConfig)
 
@@ -145,8 +139,12 @@ func startServer(ctx *cli.Context) error {
 	}
 
 	// Initialize the push task for L1 block num change
-	l1BlockNumHandler := pushtask.NewL1BlockNumHandler(apiStorage, redisStorage, messagePushProducer)
-	l1BlockNumCache.OnChanged(l1BlockNumHandler.HandleChange)
+	l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	go l1BlockNumTask.Start(ctx.Context)
 
 	log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
 	zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])

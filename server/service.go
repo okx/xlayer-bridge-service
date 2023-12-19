@@ -29,7 +29,6 @@ type bridgeService struct {
 	storage           BridgeServiceStorage
 	redisStorage      redisstorage.RedisStorage
 	mainCoinsCache    localcache.MainCoinsCache
-	l1BlockNumCache   localcache.BlockNumCache
 	networkIDs        map[uint]uint8
 	chainIDs          map[uint]uint32
 	height            uint8
@@ -43,7 +42,7 @@ type bridgeService struct {
 
 // NewBridgeService creates new bridge service.
 func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, storage interface{}, redisStorage redisstorage.RedisStorage,
-	mainCoinsCache localcache.MainCoinsCache, l1BlockNumCache localcache.BlockNumCache, estTimeCalc estimatetime.Calculator) *bridgeService {
+	mainCoinsCache localcache.MainCoinsCache, estTimeCalc estimatetime.Calculator) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
 	var chainIDs = make(map[uint]uint32)
 	for i, network := range networks {
@@ -58,7 +57,6 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		storage:           storage.(BridgeServiceStorage),
 		redisStorage:      redisStorage,
 		mainCoinsCache:    mainCoinsCache,
-		l1BlockNumCache:   l1BlockNumCache,
 		estTimeCalculator: estTimeCalc,
 		height:            height,
 		networkIDs:        networkIDs,
@@ -475,7 +473,8 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
+				blockNum, err := s.redisStorage.GetL1BlockNum(ctx)
+				if err == nil && blockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
@@ -557,7 +556,8 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if s.l1BlockNumCache.GetLatestBlockNum()-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
+				blockNum, err := s.redisStorage.GetL1BlockNum(ctx)
+				if err == nil && blockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
