@@ -83,7 +83,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 
 	// Get the previous block num from Redis cache and check
 	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("Get L1 block num from Redis error: %v", err)
 		return
 	}
