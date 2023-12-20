@@ -89,23 +89,30 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 	}
 
 	// If the block num is not changed, no need to do anything
-	if blockNum == oldBlockNum {
+	if blockNum <= oldBlockNum {
 		return
 	}
 
-	defer func() {
+	defer func(blockNum uint64) {
 		// Update Redis cached block num
 		err = t.redisStorage.SetL1BlockNum(ctx, blockNum)
 		if err != nil {
 			log.Errorf("SetL1BlockNum error: %v", err)
 		}
-	}()
+	}(blockNum)
+
+	// Minus 64 to get the target query block num
+	oldBlockNum -= utils.Min(utils.L1TargetBlockConfirmations, oldBlockNum)
+	blockNum -= utils.Min(utils.L1TargetBlockConfirmations, blockNum)
+	if blockNum <= oldBlockNum {
+		return
+	}
 
 	// Scan the DB and push events to FE
 	var offset = uint(0)
 	for {
-		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1-utils.L1TargetBlockConfirmations+1,
-			blockNum-utils.L1TargetBlockConfirmations, queryLimit, offset, nil)
+		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1,
+			blockNum, queryLimit, offset, nil)
 		if err != nil {
 			log.Errorf("L1BlockNumTask query error: %v", err)
 			return
