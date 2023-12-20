@@ -2,6 +2,7 @@ package redisstorage
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,16 @@ import (
 const (
 	coinPriceHashKey = "bridge_coin_prices"
 	l1BlockNumKey    = "bridge_l1_block_num"
+
+	//batch info key
+	latestCommitBatchNumKey = "bridge_latest_commit_batch_num"
+	maxCommitBlockNumKey    = "bridge_max_commit_block_num"
+	avgCommitDurationKey    = "bridge_avg_commit_duration"
+	commitBatchTimeListKey  = "bridge_commit_batch_simple_info"
+	latestVerifyBatchNumKey = "bridge_latest_verify_batch_num"
+	maxVerifyBlockNum       = "bridge_max_verify_block_num"
+	avgVerifyDurationKey    = "bridge_avg_verify_duration"
+	verifyBatchTimeListKey  = "bridge_verify_batch_simple_info"
 
 	// Set a default expiration for locks to prevent a process from keeping the lock for too long
 	lockExpire = 1 * time.Minute
@@ -189,6 +200,107 @@ func (s *redisStorageImpl) ReleaseLock(ctx context.Context, lockKey string) erro
 	}
 	err := s.client.Del(ctx, lockKey).Err()
 	return errors.Wrap(err, "ReleaseLock error")
+}
+
+func (s *redisStorageImpl) SetCommitBatchNum(ctx context.Context, batchNum uint64) error {
+	return s.setFoundation(ctx, latestCommitBatchNumKey, batchNum, 0)
+}
+
+func (s *redisStorageImpl) GetCommitBatchNum(ctx context.Context) (uint64, error) {
+	return s.getIntCacheFoundation(ctx, latestCommitBatchNumKey)
+}
+
+func (s *redisStorageImpl) SetCommitMaxBlockNum(ctx context.Context, blockNum uint64) error {
+	return s.setFoundation(ctx, maxCommitBlockNumKey, blockNum, 0)
+}
+
+func (s *redisStorageImpl) GetCommitMaxBlockNum(ctx context.Context) (uint64, error) {
+	return s.getIntCacheFoundation(ctx, maxCommitBlockNumKey)
+}
+
+func (s *redisStorageImpl) SetAvgCommitDuration(ctx context.Context, duration int64) error {
+	return s.setFoundation(ctx, avgCommitDurationKey, duration, 0)
+}
+
+func (s *redisStorageImpl) GetAvgCommitDuration(ctx context.Context) (uint64, error) {
+	return s.getIntCacheFoundation(ctx, avgCommitDurationKey)
+}
+
+func (s *redisStorageImpl) LPushCommitTime(ctx context.Context, commitTimeTimestamp int64) error {
+	return s.lPushFoundation(ctx, commitBatchTimeListKey, commitTimeTimestamp)
+}
+
+func (s *redisStorageImpl) LLenCommitTimeList(ctx context.Context) (int64, error) {
+	return s.lLenFoundation(ctx, commitBatchTimeListKey)
+}
+
+func (s *redisStorageImpl) RPopCommitTime(ctx context.Context) (int64, error) {
+	return s.rPopIntCacheFoundation(ctx, commitBatchTimeListKey)
+}
+
+func (s *redisStorageImpl) setFoundation(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	err := s.client.Set(ctx, key, value, expiration).Err()
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("set for key: %v error", key))
+	}
+	return nil
+}
+
+// todo: optimize adapt to all type
+func (s *redisStorageImpl) getIntCacheFoundation(ctx context.Context, key string) (uint64, error) {
+	if s == nil || s.client == nil {
+		return 0, errors.New("redis client is nil")
+	}
+	res, err := s.client.Get(ctx, key).Result()
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("get redis cache for key: %v failed", key))
+	}
+	num, err := strconv.ParseInt(res, 10, 64)
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("convert value for key: %v failed, value: %v", key, res))
+	}
+	return uint64(num), nil
+}
+
+func (s *redisStorageImpl) lPushFoundation(ctx context.Context, key string, values ...interface{}) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	err := s.client.LPush(ctx, key, values).Err()
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("lPush redis cache for key: %v failed", key))
+	}
+	return nil
+}
+
+func (s *redisStorageImpl) lLenFoundation(ctx context.Context, key string) (int64, error) {
+	if s == nil || s.client == nil {
+		return 0, errors.New("redis client is nil")
+	}
+	res, err := s.client.LLen(ctx, key).Result()
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("get redis list len for key: %v failed", key))
+	}
+	return res, nil
+}
+
+// todo: optimize adapt to all type
+func (s *redisStorageImpl) rPopIntCacheFoundation(ctx context.Context, key string) (int64, error) {
+	if s == nil || s.client == nil {
+		return 0, errors.New("redis client is nil")
+	}
+	res, err := s.client.RPop(ctx, key).Result()
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("r-pop redis list item for key: %v, failed", key))
+	}
+	num, err := strconv.ParseInt(res, 10, 64)
+	if err != nil {
+		return 0, errors.Wrap(err, fmt.Sprintf("convert redis list item value for key: %v failed, value: %v", key, res))
+	}
+	return num, nil
 }
 
 func getCoinPriceKey(chainID uint64, tokenAddr string) string {

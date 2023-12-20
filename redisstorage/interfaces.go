@@ -20,6 +20,17 @@ type RedisStorage interface {
 	// General lock
 	TryLock(ctx context.Context, lockKey string) (success bool, err error)
 	ReleaseLock(ctx context.Context, lockKey string) error
+
+	// commit and verify batch storage
+	SetCommitBatchNum(ctx context.Context, batchNum uint64) error
+	GetCommitBatchNum(ctx context.Context) (uint64, error)
+	SetCommitMaxBlockNum(ctx context.Context, batchNum uint64) error
+	GetCommitMaxBlockNum(ctx context.Context) (uint64, error)
+	SetAvgCommitDuration(ctx context.Context, commitDuration int64) error
+	GetAvgCommitDuration(ctx context.Context) (uint64, error)
+	LPushCommitTime(ctx context.Context, commitTimeTimestamp int64) error
+	LLenCommitTimeList(ctx context.Context) (int64, error)
+	RPopCommitTime(ctx context.Context) (int64, error)
 }
 
 type RedisClient interface {
@@ -30,4 +41,7 @@ type RedisClient interface {
 	Get(ctx context.Context, key string) *redis.StringCmd
 	SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
+	RPop(ctx context.Context, key string) *redis.StringCmd
+	LLen(ctx context.Context, key string) *redis.IntCmd
 }
