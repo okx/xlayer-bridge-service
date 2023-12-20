@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -82,7 +83,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 
 	// Get the previous block num from Redis cache and check
 	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
-	if err != nil {
+	if err != nil && err != redis.Nil {
 		log.Errorf("Get L1 block num from Redis error: %v", err)
 		return
 	}
