@@ -44,6 +44,7 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 }
 
 func (t *L1BlockNumTask) Start(ctx context.Context) {
+	log.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
 	ticker := time.NewTicker(l1BlockNumTaskInterval)
 	for {
 		select {
@@ -109,7 +110,10 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 	}
 
 	// Scan the DB and push events to FE
-	var offset = uint(0)
+	var (
+		totalDeposits = 0
+		offset        = uint(0)
+	)
 	for {
 		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1,
 			blockNum, queryLimit, offset, nil)
@@ -117,6 +121,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 			log.Errorf("L1BlockNumTask query error: %v", err)
 			return
 		}
+		totalDeposits += len(deposits)
 
 		// Notify FE for each transaction
 		for _, deposit := range deposits {
@@ -143,4 +148,5 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		}
 		offset += queryLimit
 	}
+	log.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
 }
