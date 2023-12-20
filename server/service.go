@@ -442,6 +442,8 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		deposits = deposits[:limit]
 	}
 
+	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
+
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
 		transaction := &pb.Transaction{
@@ -473,8 +475,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				blockNum, err := s.redisStorage.GetL1BlockNum(ctx)
-				if err == nil && blockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
@@ -510,6 +511,8 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 	if hasNext {
 		deposits = deposits[0:limit]
 	}
+
+	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
@@ -556,8 +559,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				blockNum, err := s.redisStorage.GetL1BlockNum(ctx)
-				if err == nil && blockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
 				}
 			}
