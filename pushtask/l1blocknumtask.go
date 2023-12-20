@@ -17,7 +17,7 @@ import (
 
 const (
 	queryLimit             = 100
-	l1BlockNumTaskInterval = 5 * time.Second
+	l1BlockNumTaskInterval = 10 * time.Second
 	l1BlockNumTaskLockKey  = "bridge_l1_block_num_lock"
 )
 
