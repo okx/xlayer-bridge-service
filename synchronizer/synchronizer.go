@@ -559,7 +559,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		if s.messagePushProducer == nil {
 			return
 		}
-		err := s.messagePushProducer.Produce(&pb.Transaction{
+		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
 			BridgeToken:  deposit.OriginalAddress.Hex(),
@@ -606,7 +606,7 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 			log.Errorf("push message: GetDeposit error: %v", err)
 			return
 		}
-		err = s.messagePushProducer.Produce(&pb.Transaction{
+		err = s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 			FromChain:   uint32(deposit.NetworkID),
 			ToChain:     uint32(deposit.DestinationNetwork),
 			TxHash:      deposit.TxHash.String(),
