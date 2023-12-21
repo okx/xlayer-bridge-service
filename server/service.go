@@ -459,6 +459,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
+			BlockNumber:  deposit.BlockNumber,
 		}
 		transaction.Status = pb.TransactionStatus_TX_CREATED
 		if deposit.ReadyForClaim {
@@ -529,6 +530,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
+			BlockNumber:  deposit.BlockNumber,
 		}
 		transaction.Status = pb.TransactionStatus_TX_CREATED // Not ready for claim
 		if deposit.ReadyForClaim {
@@ -612,6 +614,7 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
+			BlockNumber:  deposit.BlockNumber,
 		}
 		pbTransactions = append(pbTransactions, transaction)
 	}
