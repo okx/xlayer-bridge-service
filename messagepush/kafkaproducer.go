@@ -43,6 +43,7 @@ type kafkaProducerImpl struct {
 
 func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
 
 	// Enable SASL authentication
 	if cfg.Username != "" && cfg.Password != "" && cfg.RootCAPath != "" {
