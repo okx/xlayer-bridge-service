@@ -707,7 +707,7 @@ func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, statu
 	if tm.messagePushProducer == nil {
 		return
 	}
-	err := tm.messagePushProducer.Produce(&pb.Transaction{
+	err := tm.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 		FromChain: uint32(deposit.NetworkID),
 		ToChain:   uint32(deposit.DestinationNetwork),
 		TxHash:    deposit.TxHash.String(),

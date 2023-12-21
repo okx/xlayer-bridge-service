@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/IBM/sarama"
 	"github.com/pkg/errors"
@@ -32,6 +34,7 @@ func WithPushKey(key string) produceOptFunc {
 
 type KafkaProducer interface {
 	Produce(msg interface{}, optFns ...produceOptFunc) error
+	PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error
 	Close() error
 }
 
@@ -43,6 +46,7 @@ type kafkaProducerImpl struct {
 
 func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
 
 	// Enable SASL authentication
 	if cfg.Username != "" && cfg.Password != "" && cfg.RootCAPath != "" {
@@ -124,6 +128,25 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 
 	log.Debugf("Produced to Kafka: topic[%v] msg[%v] partition[%v] offset[%v]", opts.topic, msgString, partition, offset)
 	return nil
+}
+
+func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error {
+	if tx == nil {
+		return nil
+	}
+	b, err := json.Marshal([]*pb.Transaction{tx})
+	if err != nil {
+		return errors.Wrap(err, "json marshal error")
+	}
+
+	msg := &PushMessage{
+		BizCode:       BizCodeBridgeOrder,
+		WalletAddress: tx.GetDestAddr(),
+		RequestID:     utils.GenerateTraceID(),
+		PushContent:   string(b),
+	}
+
+	return p.Produce(msg, optFns...)
 }
 
 func (p *kafkaProducerImpl) Close() error {

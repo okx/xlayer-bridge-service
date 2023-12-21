@@ -129,7 +129,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 				if t.messagePushProducer == nil {
 					return
 				}
-				err := t.messagePushProducer.Produce(&pb.Transaction{
+				err := t.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 					FromChain: uint32(deposit.NetworkID),
 					ToChain:   uint32(deposit.DestinationNetwork),
 					TxHash:    deposit.TxHash.String(),
