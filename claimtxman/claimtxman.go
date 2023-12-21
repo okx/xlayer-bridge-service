@@ -285,7 +285,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) e
 		log.Infof("add claim tx for the deposit %d blockID %d successfully", deposit.DepositCount, deposit.BlockID)
 
 		// Notify FE that tx is pending auto claim
-		go tm.pushTransactionUpdate(deposit, pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
+		go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 	}
 	return nil
 }
@@ -541,7 +541,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 					log.Errorf("push message: GetDeposit error: %v", err)
 					return
 				}
-				tm.pushTransactionUpdate(deposit, pb.TransactionStatus_TX_PENDING_USER_CLAIM)
+				tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM))
 			}()
 			continue
 		}
@@ -703,7 +703,7 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 }
 
 // Push message to FE to notify about tx status change
-func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, status pb.TransactionStatus) {
+func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, status uint32) {
 	if tm.messagePushProducer == nil {
 		return
 	}

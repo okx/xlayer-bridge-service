@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -43,6 +44,7 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 }
 
 func (t *L1BlockNumTask) Start(ctx context.Context) {
+	log.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
 	ticker := time.NewTicker(l1BlockNumTaskInterval)
 	for {
 		select {
@@ -82,33 +84,44 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 
 	// Get the previous block num from Redis cache and check
 	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("Get L1 block num from Redis error: %v", err)
 		return
 	}
 
 	// If the block num is not changed, no need to do anything
-	if blockNum == oldBlockNum {
+	if blockNum <= oldBlockNum {
 		return
 	}
 
-	defer func() {
+	defer func(blockNum uint64) {
 		// Update Redis cached block num
 		err = t.redisStorage.SetL1BlockNum(ctx, blockNum)
 		if err != nil {
 			log.Errorf("SetL1BlockNum error: %v", err)
 		}
-	}()
+	}(blockNum)
+
+	// Minus 64 to get the target query block num
+	oldBlockNum -= utils.Min(utils.L1TargetBlockConfirmations, oldBlockNum)
+	blockNum -= utils.Min(utils.L1TargetBlockConfirmations, blockNum)
+	if blockNum <= oldBlockNum {
+		return
+	}
 
 	// Scan the DB and push events to FE
-	var offset = uint(0)
+	var (
+		totalDeposits = 0
+		offset        = uint(0)
+	)
 	for {
-		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1-utils.L1TargetBlockConfirmations+1,
-			blockNum-utils.L1TargetBlockConfirmations, queryLimit, offset, nil)
+		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1,
+			blockNum, queryLimit, offset, nil)
 		if err != nil {
 			log.Errorf("L1BlockNumTask query error: %v", err)
 			return
 		}
+		totalDeposits += len(deposits)
 
 		// Notify FE for each transaction
 		for _, deposit := range deposits {
@@ -121,7 +134,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 					ToChain:   uint32(deposit.DestinationNetwork),
 					TxHash:    deposit.TxHash.String(),
 					Index:     uint64(deposit.DepositCount),
-					Status:    pb.TransactionStatus_TX_PENDING_AUTO_CLAIM,
+					Status:    uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM),
 					DestAddr:  deposit.DestinationAddress.Hex(),
 				})
 				if err != nil {
@@ -135,4 +148,5 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		}
 		offset += queryLimit
 	}
+	log.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
 }
