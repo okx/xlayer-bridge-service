@@ -134,7 +134,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 					ToChain:   uint32(deposit.DestinationNetwork),
 					TxHash:    deposit.TxHash.String(),
 					Index:     uint64(deposit.DepositCount),
-					Status:    pb.TransactionStatus_TX_PENDING_AUTO_CLAIM,
+					Status:    uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM),
 					DestAddr:  deposit.DestinationAddress.Hex(),
 				})
 				if err != nil {

@@ -461,15 +461,15 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
 			BlockNumber:  deposit.BlockNumber,
 		}
-		transaction.Status = pb.TransactionStatus_TX_CREATED
+		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
 		if deposit.ReadyForClaim {
-			transaction.Status = pb.TransactionStatus_TX_PENDING_USER_CLAIM
+			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM)
 			// For L1->L2, if backend is trying to auto-claim, set the status to 0 to block the user from manual-claim
 			// When the auto-claim failed, set status to 1 to let the user claim manually through front-end
 			if deposit.NetworkID == 0 {
 				mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 				if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
 			}
 		} else {
@@ -477,7 +477,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
 				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
-					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
 			}
 		}
@@ -532,11 +532,11 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
 			BlockNumber:  deposit.BlockNumber,
 		}
-		transaction.Status = pb.TransactionStatus_TX_CREATED // Not ready for claim
+		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED) // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
 			claim, err := s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
-			transaction.Status = pb.TransactionStatus_TX_PENDING_USER_CLAIM // Ready but not claimed
+			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM) // Ready but not claimed
 			if err != nil {
 				if !errors.Is(err, gerror.ErrStorageNotFound) {
 					return &pb.CommonTransactionsResponse{
@@ -549,11 +549,11 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 				if deposit.NetworkID == 0 {
 					mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 					if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-						transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+						transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 					}
 				}
 			} else {
-				transaction.Status = pb.TransactionStatus_TX_CLAIMED // Claimed
+				transaction.Status = uint32(pb.TransactionStatus_TX_CLAIMED) // Claimed
 				transaction.ClaimTxHash = claim.TxHash.String()
 				transaction.ClaimTime = uint64(claim.Time.UnixMilli())
 			}
@@ -562,7 +562,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
 				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
-					transaction.Status = pb.TransactionStatus_TX_PENDING_AUTO_CLAIM
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
 			}
 		}

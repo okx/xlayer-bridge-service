@@ -197,7 +197,7 @@ message Transaction {
     string bridgeToken = 3;
     string tokenAmount = 4;
     uint32 estimateTime = 5;
-    TransactionStatus status = 6;
+    uint32 status = 6; // Enum: TransactionStatus
     uint64 time = 7; // Deposit's block time
     string txHash = 8; // Deposit tx hash
     string claimTxHash = 9;
