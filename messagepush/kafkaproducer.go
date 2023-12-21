@@ -131,7 +131,10 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 }
 
 func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error {
-	b, err := json.Marshal(tx)
+	if tx == nil {
+		return nil
+	}
+	b, err := json.Marshal([]*pb.Transaction{tx})
 	if err != nil {
 		return errors.Wrap(err, "json marshal error")
 	}
