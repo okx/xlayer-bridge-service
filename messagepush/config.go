@@ -4,6 +4,10 @@ package messagepush
 type Config struct {
 	Enabled bool `mapstructure:"Enabled"`
 
+	// Due to some restriction in dev environment, bridge service cannot push message to okc-basic kafka
+	// We need to implement a "fake producer" flow to let okc-basic get the events from bridge-service
+	UseFakeProducer bool `mapstructure:"UseFakeProducer"`
+
 	// Brokers is the list of address of the kafka brokers
 	Brokers []string `mapstructure:"Brokers"`
 

@@ -128,7 +128,8 @@ func startServer(ctx *cli.Context) error {
 		}()
 	}
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator())
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator()).
+		WithMessagePushProducer(messagePushProducer)
 
 	server.RegisterNacos(c.NacosConfig)
 

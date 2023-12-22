@@ -9,4 +9,5 @@ type PushMessage struct {
 	WalletAddress string `json:"walletAddress"`
 	RequestID     string `json:"requestId"`
 	PushContent   string `json:"pushContent"`
+	Time          int64  `json:"time"`
 }

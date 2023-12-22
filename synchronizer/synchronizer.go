@@ -569,7 +569,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			TxHash:       deposit.TxHash.String(),
 			Id:           depositID,
 			Index:        uint64(deposit.DepositCount),
-			Status:       uint32(pb.TransactionStatus_TX_CLAIMED),
+			Status:       uint32(pb.TransactionStatus_TX_CREATED),
 			BlockNumber:  deposit.BlockNumber,
 			DestAddr:     deposit.DestinationAddress.Hex(),
 		})
