@@ -212,8 +212,8 @@ func (tm *ClaimTxManager) getDeposits(ger *etherman.GlobalExitRoot) ([]*etherman
 	return deposits, nil
 }
 
-func (tm *ClaimTxManager) processDepositStatusL1(ger *etherman.GlobalExitRoot) error {
-	deposits, err := tm.getDeposits(ger)
+func (tm *ClaimTxManager) processDepositStatusL1(newGer *etherman.GlobalExitRoot) error {
+	deposits, err := tm.getDeposits(newGer)
 	if err != nil {
 		return err
 	}
@@ -350,6 +350,9 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 				return err
 			}
 			log.Debugf("claimTx for deposit %d save successfully %d", deposit.DepositCount)
+
+			// Notify FE that tx is pending auto claim
+			go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 		}
 	}
 	return nil
