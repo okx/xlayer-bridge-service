@@ -50,6 +50,9 @@ type BridgeServiceClient interface {
 	GetMonitoredTxsByStatus(ctx context.Context, in *GetMonitoredTxsByStatusRequest, opts ...grpc.CallOption) (*CommonMonitoredTxsResponse, error)
 	// / Return the estimated deposit wait time for L1 and L2
 	GetEstimateTime(ctx context.Context, in *GetEstimateTimeRequest, opts ...grpc.CallOption) (*CommonEstimateTimeResponse, error)
+	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
+	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
+	GetFakePushMessages(ctx context.Context, in *GetFakePushMessagesRequest, opts ...grpc.CallOption) (*GetFakePushMessagesResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -186,6 +189,15 @@ func (c *bridgeServiceClient) GetEstimateTime(ctx context.Context, in *GetEstima
 	return out, nil
 }
 
+func (c *bridgeServiceClient) GetFakePushMessages(ctx context.Context, in *GetFakePushMessagesRequest, opts ...grpc.CallOption) (*GetFakePushMessagesResponse, error) {
+	out := new(GetFakePushMessagesResponse)
+	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/GetFakePushMessages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -218,6 +230,9 @@ type BridgeServiceServer interface {
 	GetMonitoredTxsByStatus(context.Context, *GetMonitoredTxsByStatusRequest) (*CommonMonitoredTxsResponse, error)
 	// / Return the estimated deposit wait time for L1 and L2
 	GetEstimateTime(context.Context, *GetEstimateTimeRequest) (*CommonEstimateTimeResponse, error)
+	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
+	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
+	GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -266,6 +281,9 @@ func (UnimplementedBridgeServiceServer) GetMonitoredTxsByStatus(context.Context,
 }
 func (UnimplementedBridgeServiceServer) GetEstimateTime(context.Context, *GetEstimateTimeRequest) (*CommonEstimateTimeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEstimateTime not implemented")
+}
+func (UnimplementedBridgeServiceServer) GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFakePushMessages not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -532,6 +550,24 @@ func _BridgeService_GetEstimateTime_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_GetFakePushMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFakePushMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).GetFakePushMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/bridge.v1.BridgeService/GetFakePushMessages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).GetFakePushMessages(ctx, req.(*GetFakePushMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -594,6 +630,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEstimateTime",
 			Handler:    _BridgeService_GetEstimateTime_Handler,
+		},
+		{
+			MethodName: "GetFakePushMessages",
+			Handler:    _BridgeService_GetFakePushMessages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

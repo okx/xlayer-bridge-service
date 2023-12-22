@@ -11,6 +11,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
@@ -26,17 +27,18 @@ const (
 )
 
 type bridgeService struct {
-	storage           BridgeServiceStorage
-	redisStorage      redisstorage.RedisStorage
-	mainCoinsCache    localcache.MainCoinsCache
-	networkIDs        map[uint]uint8
-	chainIDs          map[uint]uint32
-	height            uint8
-	defaultPageLimit  uint32
-	maxPageLimit      uint32
-	version           string
-	cache             *lru.Cache[string, [][]byte]
-	estTimeCalculator estimatetime.Calculator
+	storage             BridgeServiceStorage
+	redisStorage        redisstorage.RedisStorage
+	mainCoinsCache      localcache.MainCoinsCache
+	networkIDs          map[uint]uint8
+	chainIDs            map[uint]uint32
+	height              uint8
+	defaultPageLimit    uint32
+	maxPageLimit        uint32
+	version             string
+	cache               *lru.Cache[string, [][]byte]
+	estTimeCalculator   estimatetime.Calculator
+	messagePushProducer messagepush.KafkaProducer
 	pb.UnimplementedBridgeServiceServer
 }
 
@@ -66,6 +68,11 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		version:           cfg.BridgeVersion,
 		cache:             cache,
 	}
+}
+
+func (s *bridgeService) WithMessagePushProducer(producer messagepush.KafkaProducer) *bridgeService {
+	s.messagePushProducer = producer
+	return s
 }
 
 func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
@@ -680,5 +687,19 @@ func (s *bridgeService) GetEstimateTime(ctx context.Context, req *pb.GetEstimate
 	return &pb.CommonEstimateTimeResponse{
 		Code: defaultSuccessCode,
 		Data: []uint32{s.estTimeCalculator.Get(0), s.estTimeCalculator.Get(1)},
+	}, nil
+}
+
+func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFakePushMessagesRequest) (*pb.GetFakePushMessagesResponse, error) {
+	if s.messagePushProducer == nil {
+		return &pb.GetFakePushMessagesResponse{
+			Code: defaultErrorCode,
+			Msg:  "producer is nil",
+		}, nil
+	}
+
+	return &pb.GetFakePushMessagesResponse{
+		Code: defaultSuccessCode,
+		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
 	}, nil
 }

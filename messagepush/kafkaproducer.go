@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
@@ -36,6 +37,10 @@ type KafkaProducer interface {
 	Produce(msg interface{}, optFns ...produceOptFunc) error
 	PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error
 	Close() error
+
+	// GetFakeMessages returns the messages from the fake producer
+	// Not available for real kafka producer
+	GetFakeMessages(topic string) []string
 }
 
 type kafkaProducerImpl struct {
@@ -45,6 +50,9 @@ type kafkaProducerImpl struct {
 }
 
 func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
+	if cfg.UseFakeProducer {
+		return newFakeProducer(cfg), nil
+	}
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
@@ -96,19 +104,9 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 		f(opts)
 	}
 
-	var msgString string
-	switch v := msg.(type) {
-	case string:
-		// If message is a string, just send it
-		msgString = v
-	default:
-		// If message is an object, encode to json
-		b, err := json.Marshal(msg)
-		if err != nil {
-			log.Errorf("msg cannot be encoded to json: msg[%v] err[%v]", msg, err)
-			return errors.Wrap(err, "kafka produce: JSON marshal error")
-		}
-		msgString = string(b)
+	msgString, err := convertMsgToString(msg)
+	if err != nil {
+		return err
 	}
 
 	produceMsg := &sarama.ProducerMessage{
@@ -144,6 +142,7 @@ func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...
 		WalletAddress: tx.GetDestAddr(),
 		RequestID:     utils.GenerateTraceID(),
 		PushContent:   string(b),
+		Time:          time.Now().UnixMilli(),
 	}
 
 	return p.Produce(msg, optFns...)
@@ -151,4 +150,9 @@ func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...
 
 func (p *kafkaProducerImpl) Close() error {
 	return p.producer.Close()
+}
+
+func (p *kafkaProducerImpl) GetFakeMessages(string) []string {
+	log.Warnf("GetFakeMessages should only be called from fakeProducer")
+	return nil
 }
