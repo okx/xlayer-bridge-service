@@ -9,6 +9,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"time"
 )
 
@@ -138,7 +139,7 @@ func (ins *CommittedBatchHandler) getMaxBlockNumByBatchNum(ctx context.Context, 
 
 func (ins *CommittedBatchHandler) checkLatestBatchLegal(ctx context.Context, latestBatchNum uint64) (bool, error) {
 	oldBatchNum, err := ins.redisStorage.GetCommitBatchNum(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("failed to get batch num from redis, so skip, error: %v", err)
 		return false, errors.Wrap(err, "failed to get batch num from redis")
 	}
@@ -160,7 +161,7 @@ func (ins *CommittedBatchHandler) freshRedisForMaxCommitBlockNum(ctx context.Con
 		return 0, err
 	}
 	oldMaxBlockNum, err = ins.redisStorage.GetCommitMaxBlockNum(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return 0, err
 	}
 	err = ins.redisStorage.SetCommitMaxBlockNum(ctx, maxBlockNum)
@@ -181,15 +182,15 @@ func (ins *CommittedBatchHandler) cacheEveryLockCommitTimeForBatch(ctx context.C
 }
 
 func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Context, latestBatchNum uint64, currTimestamp int64) error {
+	err := ins.redisStorage.LPushCommitTime(ctx, currTimestamp)
+	if err != nil {
+		return err
+	}
 	listLen, err := ins.redisStorage.LLenCommitTimeList(ctx)
 	if err != nil {
 		return err
 	}
-	err = ins.redisStorage.LPushCommitTime(ctx, currTimestamp)
-	if err != nil {
-		return err
-	}
-	if listLen < commitDurationListLen {
+	if listLen <= commitDurationListLen {
 		log.Infof("redis duration list is not enough, so skip count the avg duration!")
 		return nil
 	}

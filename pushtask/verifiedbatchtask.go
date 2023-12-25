@@ -5,6 +5,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"time"
 )
 
@@ -88,15 +89,15 @@ func (ins *VerifiedBatchHandler) freshRedisForMaxCommitBatchNum(ctx context.Cont
 }
 
 func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Context, latestBatchNum uint64, currTimestamp int64) error {
+	err := ins.redisStorage.LPushVerifyTime(ctx, currTimestamp)
+	if err != nil {
+		return err
+	}
 	listLen, err := ins.redisStorage.LLenVerifyTimeList(ctx)
 	if err != nil {
 		return err
 	}
-	err = ins.redisStorage.LPushVerifyTime(ctx, currTimestamp)
-	if err != nil {
-		return err
-	}
-	if listLen < verifyDurationListLen {
+	if listLen <= verifyDurationListLen {
 		log.Infof("redis verify duration list is not enough, so skip count the avg duration!")
 		return nil
 	}
@@ -119,7 +120,7 @@ func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Cont
 
 func (ins *VerifiedBatchHandler) checkLatestBatchLegal(ctx context.Context, latestBatchNum uint64) (bool, error) {
 	oldBatchNum, err := ins.redisStorage.GetVerifyBatchNum(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("failed to get verify batch num from redis, so skip, error: %v", err)
 		return false, errors.Wrap(err, "failed to get verify batch num from redis")
 	}
