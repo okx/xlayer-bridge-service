@@ -74,7 +74,7 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 	auth, err := client.GetSignerFromKeystore(ctx, cfg.PrivateKey)
 	if cfg.GerThreshold == 0 {
 		// use the default GerThreshold
-		cfg.GerThreshold = 50
+		cfg.GerThreshold = 20
 	}
 	return &ClaimTxManager{
 		ctx:             ctx,
