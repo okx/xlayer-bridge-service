@@ -114,9 +114,9 @@ func (tm *ClaimTxManager) Start() {
 					BlockID: ger.BlockID,
 					Time:    ger.Time,
 				}
-				copy(tmpGer.GlobalExitRoot, ger.GlobalExitRoot.Bytes())
-				copy(tmpGer.ExitRoots0, ger.ExitRoots[0].Bytes())
-				copy(tmpGer.ExitRoots1, ger.ExitRoots[1].Bytes())
+				tmpGer.GlobalExitRoot = append(tmpGer.GlobalExitRoot, ger.GlobalExitRoot[:]...)
+				tmpGer.ExitRoots0 = append(tmpGer.ExitRoots0, ger.ExitRoots[0][:]...)
+				tmpGer.ExitRoots1 = append(tmpGer.ExitRoots1, ger.ExitRoots[1][:]...)
 				if tm.gerNum == tm.cfg.GerThreshold {
 					tm.gerNum = 0
 					go func(lastGer, newGer *gerCache) {
