@@ -172,43 +172,44 @@ func (tm *ClaimTxManager) updateDepositsStatusOpt(lastGer, ger *gerCache) error 
 	return nil
 }
 
-func (tm *ClaimTxManager) updateDepositsStatus(lastGer, ger *etherman.GlobalExitRoot) error {
-	//if tm.cfg.OptClaim {
-	//	if ger.BlockID != 0 {
-	//		return tm.processDepositStatusL2(ger)
-	//	} else {
-	//		return tm.processDepositStatusL1(lastGer, ger)
-	//	}
-	//}
+/*
+	func (tm *ClaimTxManager) updateDepositsStatus(lastGer, ger *etherman.GlobalExitRoot) error {
+		//if tm.cfg.OptClaim {
+		//	if ger.BlockID != 0 {
+		//		return tm.processDepositStatusL2(ger)
+		//	} else {
+		//		return tm.processDepositStatusL1(lastGer, ger)
+		//	}
+		//}
 
-	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
-	if err != nil {
-		return err
-	}
-	err = tm.processDepositStatus(ger, dbTx)
-	if err != nil {
-		log.Errorf("error processing ger. Error: %v", err)
-		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-		if rollbackErr != nil {
-			log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
-			return rollbackErr
+		dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	err = tm.storage.Commit(tm.ctx, dbTx)
-	if err != nil {
-		log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
-		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-		if rollbackErr != nil {
-			log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
+		err = tm.processDepositStatus(ger, dbTx)
+		if err != nil {
+			log.Errorf("error processing ger. Error: %v", err)
+			rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+			if rollbackErr != nil {
+				log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
+				return rollbackErr
+			}
+			return err
 		}
-		log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
+		err = tm.storage.Commit(tm.ctx, dbTx)
+		if err != nil {
+			log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
+			rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+			if rollbackErr != nil {
+				log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
+			}
+			log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
+		}
+		log.Debugf("updateDepositsStatus done")
+
+		return nil
 	}
-	log.Debugf("updateDepositsStatus done")
-
-	return nil
-}
-
+*/
 func (tm *ClaimTxManager) processDepositStatusL2(ger *gerCache) error {
 	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
 	if err != nil {
