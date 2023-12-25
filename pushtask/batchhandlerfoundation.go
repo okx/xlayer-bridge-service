@@ -19,8 +19,8 @@ const (
 
 // BatchInfo just simple info, can get more from https://okg-block.larksuite.com/wiki/DqM0wLcm1i5fztk5iKAu2Tw6spg
 type BatchInfo struct {
-	number string
-	blocks []string
+	Number string   `json:"number"`
+	Blocks []string `json:"blocks"`
 }
 
 func QueryLatestCommitBatch(rpcUrl string) (uint64, error) {
@@ -57,8 +57,12 @@ func queryLatestBatchNum(rpcUrl string, methodName string) (uint64, error) {
 
 func QueryMaxBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error) {
 	blocks, err := queryBlockHashListByBatchNum(rpcUrl, batchNum)
+	if err != nil {
+		log.Errorf("query for %v, error: %v", "zkevm_getBatchByNumber", err)
+		return "", err
+	}
 	if blocks == nil || len(blocks) == 0 {
-		log.Errorf("query for %v, blocks is empty: %v", "zkevm_getBatchByNumber", err)
+		log.Errorf("query for %v, blocks is empty", "zkevm_getBatchByNumber")
 		return "", nil
 	}
 	return blocks[len(blocks)-1], nil
@@ -85,13 +89,14 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber failed"))
 	}
 
+	log.Debugf("query batch info result: %v", response.Result)
 	var result BatchInfo
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		log.Errorf("query for %v, parse json error: %v", "zkevm_getBatchByNumber", err)
 		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber, parse json error"))
 	}
-	return result.blocks, nil
+	return result.Blocks, nil
 }
 
 func QueryBlockNumByBlockHash(ctx context.Context, client *ethclient.Client, blockHash string) (uint64, error) {
