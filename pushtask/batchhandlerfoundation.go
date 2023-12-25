@@ -89,7 +89,6 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber failed"))
 	}
 
-	log.Debugf("query batch info result: %v", response.Result)
 	var result BatchInfo
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {

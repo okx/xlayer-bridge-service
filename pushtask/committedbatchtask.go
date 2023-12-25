@@ -198,6 +198,7 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 	if err != nil {
 		return err
 	}
+	log.Debugf("count for avg commit duration, currTime: %v, oldest time: %v, list len: %v", currTimestamp, fistTimestamp, listLen)
 	newAvgDuration := (currTimestamp - fistTimestamp) / listLen
 	if !ins.checkAvgDurationLegal(newAvgDuration) {
 		log.Errorf("new avg commit is un-legal, so drop it. new duration: %v", newAvgDuration)
