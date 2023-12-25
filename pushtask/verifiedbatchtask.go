@@ -138,7 +138,7 @@ func (ins *VerifiedBatchHandler) checkAvgDurationLegal(avgDuration int64) bool {
 
 func GetAvgVerifyDuration(ctx context.Context, redisStorage redisstorage.RedisStorage) uint64 {
 	avgDuration, err := redisStorage.GetAvgVerifyDuration(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("get avg verify duration from redis failed, error: %v", err)
 		return uint64(defaultVerifyDuration)
 	}
