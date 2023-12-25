@@ -56,28 +56,42 @@ func queryLatestBatchNum(rpcUrl string, methodName string) (uint64, error) {
 }
 
 func QueryMaxBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error) {
+	blocks, err := queryBlockHashListByBatchNum(rpcUrl, batchNum)
+	if blocks == nil || len(blocks) == 0 {
+		log.Errorf("query for %v, blocks is empty: %v", "zkevm_getBatchByNumber", err)
+		return "", nil
+	}
+	return blocks[len(blocks)-1], nil
+}
+
+func QueryMinBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error) {
+	blocks, err := queryBlockHashListByBatchNum(rpcUrl, batchNum)
+	if blocks == nil || len(blocks) == 0 {
+		log.Errorf("query for %v, blocks is empty: %v", "zkevm_getBatchByNumber", err)
+		return "", nil
+	}
+	return blocks[0], nil
+}
+
+func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, error) {
 	response, err := client.JSONRPCCall(rpcUrl, "zkevm_getBatchByNumber", batchNum)
 	if err != nil {
 		log.Errorf("query for %v error: %v", "zkevm_getBatchByNumber", err)
-		return "", errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber error"))
+		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber error"))
 	}
 
 	if response.Error != nil {
 		log.Errorf("query for zkevm_getBatchByNumber failed, %v, %v", response.Error.Code, response.Error.Message)
-		return "", errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber failed"))
+		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber failed"))
 	}
 
 	var result BatchInfo
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		log.Errorf("query for %v, parse json error: %v", "zkevm_getBatchByNumber", err)
-		return "", errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber, parse json error"))
+		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber, parse json error"))
 	}
-	if result.blocks == nil || len(result.blocks) == 0 {
-		log.Errorf("query for %v, blocks is empty: %v", "zkevm_getBatchByNumber", err)
-		return "", nil
-	}
-	return result.blocks[len(result.blocks)-1], nil
+	return result.blocks, nil
 }
 
 func QueryBlockNumByBlockHash(ctx context.Context, client *ethclient.Client, blockHash string) (uint64, error) {

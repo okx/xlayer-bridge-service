@@ -147,6 +147,22 @@ func startServer(ctx *cli.Context) error {
 	}
 	go l1BlockNumTask.Start(ctx.Context)
 
+	// Initialize the push task for sync l2 commit batch
+	syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	go syncCommitBatchTask.Start(ctx.Context)
+
+	// Initialize the push task for sync verify batch
+	syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L1URL, redisStorage)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	go syncVerifyBatchTask.Start(ctx.Context)
+
 	log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
 	zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])
 	chExitRootEvent := make(chan *etherman.GlobalExitRoot)

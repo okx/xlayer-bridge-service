@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
+	"github.com/0xPolygonHermez/zkevm-node/log"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -450,6 +453,10 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	}
 
 	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
+	l2CommitBlockNum, _ := s.redisStorage.GetCommitMaxBlockNum(ctx)
+	l2AvgCommitDuration := pushtask.GetAvgCommitDuration(ctx, s.redisStorage)
+	l2AvgVerifyDuration := pushtask.GetAvgVerifyDuration(ctx, s.redisStorage)
+	currTimestamp := time.Now().Unix()
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
@@ -486,6 +493,11 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
+			} else {
+				if l2CommitBlockNum >= deposit.BlockNumber {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION)
+				}
+				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTimestamp, transaction)
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
@@ -494,6 +506,25 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		Code: defaultSuccessCode,
 		Data: &pb.TransactionDetail{HasNext: hasNext, Transactions: pbTransactions},
 	}, nil
+}
+
+func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currTimestamp int64, tx *pb.Transaction) {
+	var duration uint32
+	if tx.Status == uint32(pb.TransactionStatus_TX_CREATED) {
+		duration = uint32(l2AvgCommitDuration - (uint64(currTimestamp) - tx.Time))
+	} else {
+		commitTime, _ := s.redisStorage.GetL2BlockCommitTime(ctx, tx.BlockNumber)
+		if commitTime == 0 {
+			log.Debugf("failed to get commit time for block num, so use crate time + avg commit duration")
+			commitTime = tx.Time + l2AvgCommitDuration
+		}
+		duration = uint32(l2AvgVerifyDuration - (uint64(currTimestamp) - commitTime))
+	}
+	if duration <= 0 {
+		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: 60000")
+		duration = uint32(60 * 1000)
+	}
+	tx.EstimateTime = duration
 }
 
 // GetAllTransactions returns all the transactions of an account, similar to GetBridges

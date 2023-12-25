@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	committedBatchCacheRefreshInterval = 2 * time.Second
+	committedBatchCacheRefreshInterval = 10 * time.Second
 	defaultCommitDuration              = 10 * time.Minute
 	minCommitDuration                  = 5 * time.Minute
 	commitDurationListLen              = 5
@@ -48,45 +48,55 @@ func NewCommittedBatchHandler(rpcUrl string, storage interface{}, redisStorage r
 }
 
 func (ins *CommittedBatchHandler) Start(ctx context.Context) {
+	log.Debugf("Starting processSyncCommitBatchTask, interval:%v", committedBatchCacheRefreshInterval)
 	ticker := time.NewTicker(committedBatchCacheRefreshInterval)
-	for range ticker.C {
-		lock, err := ins.redisStorage.TryLock(ctx, syncL1CommittedBatchLockKey)
-		if err != nil {
-			log.Errorf("sync latest commit batch lock error, so kip, error: %v", err)
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			ins.processSyncCommitBatchTask(ctx)
 		}
-		if !lock {
-			log.Infof("sync latest commit batch lock failed, another is running, so kip, error: %v", err)
-			continue
-		}
-		log.Infof("start to sync latest commit batch")
-		latestBatchNum, err := QueryLatestCommitBatch(ins.rpcUrl)
-		if err != nil {
-			log.Warnf("query latest commit batch num error, so skip sync latest commit batch!")
-			continue
-		}
-		now := time.Now().Unix()
-		isBatchLegal, err := ins.checkLatestBatchLegal(ctx, latestBatchNum)
-		if err != nil {
-			log.Warnf("check latest commit batch num error, so skip sync latest commit batch!")
-			continue
-		}
-		if !isBatchLegal {
-			log.Infof("latest commit batch num is un-legal, so skip sync latest commit batch!")
-			continue
-		}
-		err = ins.freshRedisByLatestBatch(ctx, latestBatchNum, now)
-		if err != nil {
-			log.Warnf("fresh redis for latest commit batch num error, so skip sync latest commit batch!")
-			continue
-		}
-		err = ins.pushStatusChangedMsg(ctx, latestBatchNum)
-		if err != nil {
-			log.Warnf("push msg for latest commit batch num error, so skip sync latest commit batch!")
-			continue
-		}
-		log.Infof("success process all thing for sync latest commit batch num %v", latestBatchNum)
 	}
+}
+
+func (ins *CommittedBatchHandler) processSyncCommitBatchTask(ctx context.Context) {
+	lock, err := ins.redisStorage.TryLock(ctx, syncL1CommittedBatchLockKey)
+	if err != nil {
+		log.Errorf("sync latest commit batch lock error, so kip, error: %v", err)
+		return
+	}
+	if !lock {
+		log.Infof("sync latest commit batch lock failed, another is running, so kip, error: %v", err)
+		return
+	}
+	log.Infof("start to sync latest commit batch")
+	latestBatchNum, err := QueryLatestCommitBatch(ins.rpcUrl)
+	if err != nil {
+		log.Warnf("query latest commit batch num error, so skip sync latest commit batch!")
+		return
+	}
+	now := time.Now().Unix()
+	isBatchLegal, err := ins.checkLatestBatchLegal(ctx, latestBatchNum)
+	if err != nil {
+		log.Warnf("check latest commit batch num error, so skip sync latest commit batch!")
+		return
+	}
+	if !isBatchLegal {
+		log.Infof("latest commit batch num is un-legal, so skip sync latest commit batch!")
+		return
+	}
+	err = ins.freshRedisByLatestBatch(ctx, latestBatchNum, now)
+	if err != nil {
+		log.Warnf("fresh redis for latest commit batch num error, so skip sync latest commit batch!")
+		return
+	}
+	err = ins.pushStatusChangedMsg(ctx, latestBatchNum)
+	if err != nil {
+		log.Warnf("push msg for latest commit batch num error, so skip sync latest commit batch!")
+		return
+	}
+	log.Infof("success process all thing for sync latest commit batch num %v", latestBatchNum)
 }
 
 func (ins *CommittedBatchHandler) freshRedisByLatestBatch(ctx context.Context, latestBatchNum uint64, currTimestamp int64) error {
@@ -95,9 +105,14 @@ func (ins *CommittedBatchHandler) freshRedisByLatestBatch(ctx context.Context, l
 		log.Errorf("fresh redis for max commit batch num err, num: %v, err: %v", latestBatchNum, err)
 		return err
 	}
-	err = ins.freshRedisForMaxCommitBlockNum(ctx, latestBatchNum)
+	maxBlockNum, err := ins.freshRedisForMaxCommitBlockNum(ctx, latestBatchNum)
 	if err != nil {
 		log.Errorf("fresh redis for max commit block num err, num: %v, err: %v", latestBatchNum, err)
+		return err
+	}
+	err = ins.cacheEveryLockCommitTimeForBatch(ctx, maxBlockNum, currTimestamp)
+	if err != nil {
+		log.Errorf("cache every block commit time for batch error, num: %v, err: %v", latestBatchNum, err)
 		return err
 	}
 	err = ins.freshRedisForAvgCommitDuration(ctx, latestBatchNum, currTimestamp)
@@ -139,16 +154,30 @@ func (ins *CommittedBatchHandler) freshRedisForMaxCommitBatchNum(ctx context.Con
 	return ins.redisStorage.SetCommitBatchNum(ctx, latestBatchNum)
 }
 
-func (ins *CommittedBatchHandler) freshRedisForMaxCommitBlockNum(ctx context.Context, latestBatchNum uint64) error {
+func (ins *CommittedBatchHandler) freshRedisForMaxCommitBlockNum(ctx context.Context, latestBatchNum uint64) (uint64, error) {
 	maxBlockNum, err := ins.getMaxBlockNumByBatchNum(ctx, latestBatchNum)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	oldMaxBlockNum, err = ins.redisStorage.GetCommitMaxBlockNum(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return ins.redisStorage.SetCommitMaxBlockNum(ctx, maxBlockNum)
+	err = ins.redisStorage.SetCommitMaxBlockNum(ctx, maxBlockNum)
+	if err != nil {
+		return 0, err
+	}
+	return maxBlockNum, nil
+}
+
+func (ins *CommittedBatchHandler) cacheEveryLockCommitTimeForBatch(ctx context.Context, maxBlockNum uint64, currTimestamp int64) error {
+	for i := oldMaxBlockNum + 1; i <= maxBlockNum; i++ {
+		err := ins.redisStorage.SetL2BlockCommitTime(ctx, i, currTimestamp)
+		if err != nil {
+			log.Errorf("failed to set commit time for block: %v", i)
+		}
+	}
+	return nil
 }
 
 func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Context, latestBatchNum uint64, currTimestamp int64) error {
@@ -184,6 +213,7 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 func (ins *CommittedBatchHandler) pushStatusChangedMsg(ctx context.Context, latestBlockNum uint64) error {
 	// Scan the DB and push events to FE
 	var offset = uint(0)
+	l2AvgVerifyDuration := GetAvgVerifyDuration(ctx, ins.redisStorage)
 	for {
 		deposits, err := ins.storage.GetNotReadyTransactionsWithBlockRange(ctx, l1NetWorkId, oldMaxBlockNum+1,
 			latestBlockNum, l1PendingDepositQueryLimit, offset, nil)
@@ -193,7 +223,7 @@ func (ins *CommittedBatchHandler) pushStatusChangedMsg(ctx context.Context, late
 		}
 		// Notify FE for each transaction
 		for _, deposit := range deposits {
-			ins.pushMsgForDeposit(deposit)
+			ins.pushMsgForDeposit(deposit, l2AvgVerifyDuration)
 		}
 		if len(deposits) < l1PendingDepositQueryLimit {
 			break
@@ -203,18 +233,19 @@ func (ins *CommittedBatchHandler) pushStatusChangedMsg(ctx context.Context, late
 	return nil
 }
 
-func (ins *CommittedBatchHandler) pushMsgForDeposit(deposit *etherman.Deposit) {
+func (ins *CommittedBatchHandler) pushMsgForDeposit(deposit *etherman.Deposit, l2AvgVerifyDuration uint64) {
 	go func(deposit *etherman.Deposit) {
 		if ins.messagePushProducer == nil {
 			return
 		}
-		err := ins.messagePushProducer.Produce(&pb.Transaction{
-			FromChain: uint32(deposit.NetworkID),
-			ToChain:   uint32(deposit.DestinationNetwork),
-			TxHash:    deposit.TxHash.String(),
-			Index:     uint64(deposit.DepositCount),
-			Status:    pb.TransactionStatus_TX_PENDING_VERIFICATION,
-			DestAddr:  deposit.DestinationAddress.Hex(),
+		err := ins.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+			FromChain:    uint32(deposit.NetworkID),
+			ToChain:      uint32(deposit.DestinationNetwork),
+			TxHash:       deposit.TxHash.String(),
+			Index:        uint64(deposit.DepositCount),
+			Status:       uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION),
+			DestAddr:     deposit.DestinationAddress.Hex(),
+			EstimateTime: uint32(l2AvgVerifyDuration),
 		})
 		if err != nil {
 			log.Errorf("PushTransactionUpdate for pending-verify error: %v", err)

@@ -28,9 +28,18 @@ type RedisStorage interface {
 	GetCommitMaxBlockNum(ctx context.Context) (uint64, error)
 	SetAvgCommitDuration(ctx context.Context, commitDuration int64) error
 	GetAvgCommitDuration(ctx context.Context) (uint64, error)
+	SetL2BlockCommitTime(ctx context.Context, blockNum uint64, commitTimestamp int64) error
+	GetL2BlockCommitTime(ctx context.Context, blockNum uint64) (uint64, error)
 	LPushCommitTime(ctx context.Context, commitTimeTimestamp int64) error
 	LLenCommitTimeList(ctx context.Context) (int64, error)
 	RPopCommitTime(ctx context.Context) (int64, error)
+	SetVerifyBatchNum(ctx context.Context, batchNum uint64) error
+	GetVerifyBatchNum(ctx context.Context) (uint64, error)
+	SetAvgVerifyDuration(ctx context.Context, commitDuration int64) error
+	GetAvgVerifyDuration(ctx context.Context) (uint64, error)
+	LPushVerifyTime(ctx context.Context, commitTimeTimestamp int64) error
+	LLenVerifyTimeList(ctx context.Context) (int64, error)
+	RPopVerifyTime(ctx context.Context) (int64, error)
 }
 
 type RedisClient interface {

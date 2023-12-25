@@ -24,9 +24,9 @@ const (
 	avgCommitDurationKey    = "bridge_avg_commit_duration"
 	commitBatchTimeListKey  = "bridge_commit_batch_simple_info"
 	latestVerifyBatchNumKey = "bridge_latest_verify_batch_num"
-	maxVerifyBlockNum       = "bridge_max_verify_block_num"
 	avgVerifyDurationKey    = "bridge_avg_verify_duration"
 	verifyBatchTimeListKey  = "bridge_verify_batch_simple_info"
+	l2BlockCommitTimeKey    = "bridge_l2_block_commit_time_key_"
 
 	// Set a default expiration for locks to prevent a process from keeping the lock for too long
 	lockExpire = 1 * time.Minute
@@ -222,6 +222,19 @@ func (s *redisStorageImpl) SetAvgCommitDuration(ctx context.Context, duration in
 	return s.setFoundation(ctx, avgCommitDurationKey, duration, 0)
 }
 
+func (s *redisStorageImpl) SetL2BlockCommitTime(ctx context.Context, blockNum uint64, commitTimestamp int64) error {
+	key := s.buildL2BlockCommitTimeCacheKey(blockNum)
+	return s.setFoundation(ctx, key, commitTimestamp, 48*time.Hour)
+}
+func (s *redisStorageImpl) GetL2BlockCommitTime(ctx context.Context, blockNum uint64) (uint64, error) {
+	key := s.buildL2BlockCommitTimeCacheKey(blockNum)
+	return s.getIntCacheFoundation(ctx, key)
+}
+
+func (s *redisStorageImpl) buildL2BlockCommitTimeCacheKey(blockNum uint64) string {
+	return l2BlockCommitTimeKey + strconv.FormatUint(blockNum, 10)
+}
+
 func (s *redisStorageImpl) GetAvgCommitDuration(ctx context.Context) (uint64, error) {
 	return s.getIntCacheFoundation(ctx, avgCommitDurationKey)
 }
@@ -236,6 +249,34 @@ func (s *redisStorageImpl) LLenCommitTimeList(ctx context.Context) (int64, error
 
 func (s *redisStorageImpl) RPopCommitTime(ctx context.Context) (int64, error) {
 	return s.rPopIntCacheFoundation(ctx, commitBatchTimeListKey)
+}
+
+func (s *redisStorageImpl) SetVerifyBatchNum(ctx context.Context, batchNum uint64) error {
+	return s.setFoundation(ctx, latestVerifyBatchNumKey, batchNum, 0)
+}
+
+func (s *redisStorageImpl) GetVerifyBatchNum(ctx context.Context) (uint64, error) {
+	return s.getIntCacheFoundation(ctx, latestVerifyBatchNumKey)
+}
+
+func (s *redisStorageImpl) SetAvgVerifyDuration(ctx context.Context, duration int64) error {
+	return s.setFoundation(ctx, avgVerifyDurationKey, duration, 0)
+}
+
+func (s *redisStorageImpl) GetAvgVerifyDuration(ctx context.Context) (uint64, error) {
+	return s.getIntCacheFoundation(ctx, avgVerifyDurationKey)
+}
+
+func (s *redisStorageImpl) LPushVerifyTime(ctx context.Context, commitTimeTimestamp int64) error {
+	return s.lPushFoundation(ctx, verifyBatchTimeListKey, commitTimeTimestamp)
+}
+
+func (s *redisStorageImpl) LLenVerifyTimeList(ctx context.Context) (int64, error) {
+	return s.lLenFoundation(ctx, verifyBatchTimeListKey)
+}
+
+func (s *redisStorageImpl) RPopVerifyTime(ctx context.Context) (int64, error) {
+	return s.rPopIntCacheFoundation(ctx, verifyBatchTimeListKey)
 }
 
 func (s *redisStorageImpl) setFoundation(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
