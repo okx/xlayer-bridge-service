@@ -148,7 +148,7 @@ func startServer(ctx *cli.Context) error {
 	go l1BlockNumTask.Start(ctx.Context)
 
 	// Initialize the push task for sync l2 commit batch
-	syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
+	syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L2URLs[0], apiStorage, redisStorage, messagePushProducer)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -156,7 +156,7 @@ func startServer(ctx *cli.Context) error {
 	go syncCommitBatchTask.Start(ctx.Context)
 
 	// Initialize the push task for sync verify batch
-	syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L1URL, redisStorage)
+	syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L2URLs[0], redisStorage)
 	if err != nil {
 		log.Error(err)
 		return err
