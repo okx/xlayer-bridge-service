@@ -139,7 +139,7 @@ func (ins *CommittedBatchHandler) getMaxBlockNumByBatchNum(ctx context.Context, 
 func (ins *CommittedBatchHandler) checkLatestBatchLegal(ctx context.Context, latestBatchNum uint64) (bool, error) {
 	oldBatchNum, err := ins.redisStorage.GetCommitBatchNum(ctx)
 	if err != nil {
-		log.Errorf("failed to get batch num from redis, so skip")
+		log.Errorf("failed to get batch num from redis, so skip, error: %v", err)
 		return false, errors.Wrap(err, "failed to get batch num from redis")
 	}
 	if oldBatchNum >= latestBatchNum {

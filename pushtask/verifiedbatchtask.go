@@ -120,7 +120,7 @@ func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Cont
 func (ins *VerifiedBatchHandler) checkLatestBatchLegal(ctx context.Context, latestBatchNum uint64) (bool, error) {
 	oldBatchNum, err := ins.redisStorage.GetVerifyBatchNum(ctx)
 	if err != nil {
-		log.Errorf("failed to get verify batch num from redis, so skip")
+		log.Errorf("failed to get verify batch num from redis, so skip, error: %v", err)
 		return false, errors.Wrap(err, "failed to get verify batch num from redis")
 	}
 	if oldBatchNum >= latestBatchNum {

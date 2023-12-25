@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	queryLatestCommitBatchNumMethod = ""
-	queryLatestVerifyBatchNumMethod = ""
+	queryLatestCommitBatchNumMethod = "zkevm_virtualBatchNumber"
+	queryLatestVerifyBatchNumMethod = "zkevm_verifiedBatchNumber"
 )
 
 // BatchInfo just simple info, can get more from https://okg-block.larksuite.com/wiki/DqM0wLcm1i5fztk5iKAu2Tw6spg
