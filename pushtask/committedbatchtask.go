@@ -15,8 +15,8 @@ import (
 
 const (
 	committedBatchCacheRefreshInterval = 10 * time.Second
-	defaultCommitDuration              = 10 * time.Minute
-	minCommitDuration                  = 2 * time.Minute
+	defaultCommitDuration              = 10
+	minCommitDuration                  = 2
 	commitDurationListLen              = 5
 	l1NetWorkId                        = 1
 	l1PendingDepositQueryLimit         = 100
@@ -192,6 +192,8 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 	if err != nil {
 		return err
 	}
+	//todo: bard delete test log
+	log.Debugf("success push commit time for batch: %v, time: %v", latestBatchNum, currTimestamp)
 	listLen, err := ins.redisStorage.LLenCommitTimeList(ctx)
 	if err != nil {
 		return err
@@ -205,7 +207,12 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 		return err
 	}
 	log.Debugf("count for avg commit duration, currTime: %v, oldest time: %v, list len: %v", currTimestamp, fistTimestamp, listLen)
-	newAvgDuration := (currTimestamp - fistTimestamp) / (listLen - 1)
+	timestampDiff := currTimestamp - fistTimestamp
+	newAvgDuration := (timestampDiff) / (listLen - 1) / 60
+	remainder := timestampDiff / (listLen - 1) % 60
+	if remainder > 0 {
+		newAvgDuration++
+	}
 	if !ins.checkAvgDurationLegal(newAvgDuration) {
 		log.Errorf("new avg commit is un-legal, so drop it. new duration: %v", newAvgDuration)
 		return nil
