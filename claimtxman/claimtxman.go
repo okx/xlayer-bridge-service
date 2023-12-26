@@ -121,7 +121,7 @@ func (tm *ClaimTxManager) Start() {
 					tm.gerNum = 0
 					go func(lastGer, newGer *gerCache) {
 						log.Debugf("updateDepositsStatus all deposits of gerNum: %d, for ger:%v", tm.gerNum, newGer.GlobalExitRoot)
-						err := tm.updateDepositsStatusOpt(lastGer, newGer)
+						err := tm.updateDepositsStatusOpt(lastGer, newGer, ger)
 						if err != nil {
 							log.Errorf("failed to update deposits status: %v", err)
 						}
@@ -129,7 +129,7 @@ func (tm *ClaimTxManager) Start() {
 				}
 				go func(lastGer, newGer *gerCache) {
 					log.Debugf("updateDepositsStatus deposits of gerNum: %d, for ger: %v", tm.gerNum, newGer.GlobalExitRoot)
-					err := tm.updateDepositsStatusOpt(lastGer, newGer)
+					err := tm.updateDepositsStatusOpt(lastGer, newGer, ger)
 					if err != nil {
 						log.Errorf("failed to update deposits status: %v", err)
 					}
@@ -161,7 +161,7 @@ func (tm *ClaimTxManager) startMonitorTxs() {
 	}
 }
 
-func (tm *ClaimTxManager) updateDepositsStatusOpt(lastGer, ger *gerCache) error {
+func (tm *ClaimTxManager) updateDepositsStatusOpt(lastGer, ger *gerCache, pGer *etherman.GlobalExitRoot) error {
 	if tm.cfg.OptClaim {
 		if ger.BlockID != 0 {
 			return tm.processDepositStatusL2(ger)
@@ -169,47 +169,38 @@ func (tm *ClaimTxManager) updateDepositsStatusOpt(lastGer, ger *gerCache) error 
 			return tm.processDepositStatusL1(lastGer, ger)
 		}
 	}
+	return tm.updateDepositsStatus(pGer)
+}
+
+func (tm *ClaimTxManager) updateDepositsStatus(ger *etherman.GlobalExitRoot) error {
+	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
+	if err != nil {
+		return err
+	}
+	err = tm.processDepositStatus(ger, dbTx)
+	if err != nil {
+		log.Errorf("error processing ger. Error: %v", err)
+		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
+			return rollbackErr
+		}
+		return err
+	}
+	err = tm.storage.Commit(tm.ctx, dbTx)
+	if err != nil {
+		log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
+		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
+		}
+		log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
+	}
+	log.Debugf("updateDepositsStatus done")
+
 	return nil
 }
 
-/*
-	func (tm *ClaimTxManager) updateDepositsStatus(lastGer, ger *etherman.GlobalExitRoot) error {
-		//if tm.cfg.OptClaim {
-		//	if ger.BlockID != 0 {
-		//		return tm.processDepositStatusL2(ger)
-		//	} else {
-		//		return tm.processDepositStatusL1(lastGer, ger)
-		//	}
-		//}
-
-		dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
-		if err != nil {
-			return err
-		}
-		err = tm.processDepositStatus(ger, dbTx)
-		if err != nil {
-			log.Errorf("error processing ger. Error: %v", err)
-			rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-			if rollbackErr != nil {
-				log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
-				return rollbackErr
-			}
-			return err
-		}
-		err = tm.storage.Commit(tm.ctx, dbTx)
-		if err != nil {
-			log.Errorf("AddClaimTx committing dbTx. Err: %v", err)
-			rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
-			if rollbackErr != nil {
-				log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
-			}
-			log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
-		}
-		log.Debugf("updateDepositsStatus done")
-
-		return nil
-	}
-*/
 func (tm *ClaimTxManager) processDepositStatusL2(ger *gerCache) error {
 	dbTx, err := tm.storage.BeginDBTransaction(tm.ctx)
 	if err != nil {
@@ -333,76 +324,75 @@ func (tm *ClaimTxManager) rollbackStore(dbTx pgx.Tx) {
 	}
 }
 
-/*
-	func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbTx pgx.Tx) error {
-		if ger.BlockID != 0 { // L2 exit root is updated
-			log.Infof("Rollup exitroot %v is updated", ger.ExitRoots[1])
-			if err := tm.storage.UpdateL2DepositsStatus(tm.ctx, ger.ExitRoots[1][:], ger.Time, tm.l2NetworkID, dbTx); err != nil {
-				log.Errorf("error updating L2DepositsStatus. Error: %v", err)
-				return err
-			}
-		} else { // L1 exit root is updated in the trusted state
-			log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
-			deposits, err := tm.storage.UpdateL1DepositsStatus(tm.ctx, ger.ExitRoots[0][:], ger.Time, dbTx)
+func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbTx pgx.Tx) error {
+	if ger.BlockID != 0 { // L2 exit root is updated
+		log.Infof("Rollup exitroot %v is updated", ger.ExitRoots[1])
+		if err := tm.storage.UpdateL2DepositsStatus(tm.ctx, ger.ExitRoots[1][:], ger.Time, tm.l2NetworkID, dbTx); err != nil {
+			log.Errorf("error updating L2DepositsStatus. Error: %v", err)
+			return err
+		}
+	} else { // L1 exit root is updated in the trusted state
+		log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
+		deposits, err := tm.storage.UpdateL1DepositsStatus(tm.ctx, ger.ExitRoots[0][:], ger.Time, dbTx)
+		if err != nil {
+			log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
+			return err
+		}
+		log.Debugf("Mainnet deposits count %d", len(deposits))
+		for _, deposit := range deposits {
+			claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
 			if err != nil {
-				log.Errorf("error getting and updating L1DepositsStatus. Error: %v", err)
+				log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
-			log.Debugf("Mainnet deposits count %d", len(deposits))
-			for _, deposit := range deposits {
-				claimHash, err := tm.bridgeService.GetDepositStatus(tm.ctx, deposit.DepositCount, deposit.DestinationNetwork)
-				if err != nil {
-					log.Errorf("error getting deposit status for deposit %d. Error: %v", deposit.DepositCount, err)
-					return err
-				}
-				if len(claimHash) > 0 || deposit.LeafType == LeafTypeMessage && !tm.isDepositMessageAllowed(deposit) {
-					log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s, deposit.OriginalAddress: %s", deposit.DepositCount, deposit.LeafType, claimHash, deposit.OriginalAddress.String())
-					continue
-				}
-				log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
-				ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
-				if err != nil {
-					log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
-					return err
-				}
-				log.Debugf("get claim proof done for the deposit %d", deposit.DepositCount)
-				var mtProves [mtHeight][keyLen]byte
-				for i := 0; i < mtHeight; i++ {
-					mtProves[i] = proves[i]
-				}
-				tx, err := tm.l2Node.BuildSendClaim(tm.ctx, deposit, mtProves,
-					&etherman.GlobalExitRoot{
-						ExitRoots: []common.Hash{
-							ger.ExitRoots[0],
-							ger.ExitRoots[1],
-						}}, 1, 1, 1,
-					tm.auth)
-				if err != nil {
-					log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
-					return err
-				}
-				log.Debugf("claimTx for deposit %d build successfully %d", deposit.DepositCount)
-				if err = tm.addClaimTx(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
-					log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
-					return err
-				}
-				log.Debugf("claimTx for deposit %d save successfully %d", deposit.DepositCount)
+			if len(claimHash) > 0 || deposit.LeafType == LeafTypeMessage && !tm.isDepositMessageAllowed(deposit) {
+				log.Infof("Ignoring deposit: %d, leafType: %d, claimHash: %s, deposit.OriginalAddress: %s", deposit.DepositCount, deposit.LeafType, claimHash, deposit.OriginalAddress.String())
+				continue
 			}
+			log.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
+			ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
+			if err != nil {
+				log.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
+				return err
+			}
+			log.Debugf("get claim proof done for the deposit %d", deposit.DepositCount)
+			var mtProves [mtHeight][keyLen]byte
+			for i := 0; i < mtHeight; i++ {
+				mtProves[i] = proves[i]
+			}
+			tx, err := tm.l2Node.BuildSendClaim(tm.ctx, deposit, mtProves,
+				&etherman.GlobalExitRoot{
+					ExitRoots: []common.Hash{
+						ger.ExitRoots[0],
+						ger.ExitRoots[1],
+					}}, 1, 1, 1,
+				tm.auth)
+			if err != nil {
+				log.Errorf("error BuildSendClaim tx for deposit %d. Error: %v", deposit.DepositCount, err)
+				return err
+			}
+			log.Debugf("claimTx for deposit %d build successfully %d", deposit.DepositCount)
+			if err = tm.addClaimTx(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
+				log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
+				return err
+			}
+			log.Debugf("claimTx for deposit %d save successfully %d", deposit.DepositCount)
 		}
-		return nil
 	}
+	return nil
+}
 
-	func (tm *ClaimTxManager) isDepositMessageAllowed(deposit *etherman.Deposit) bool {
-		for _, addr := range tm.cfg.AuthorizedClaimMessageAddresses {
-			if deposit.OriginalAddress == addr {
-				log.Infof("MessageBridge from authorized account detected: %+v, account: %s", deposit, addr.String())
-				return true
-			}
+func (tm *ClaimTxManager) isDepositMessageAllowed(deposit *etherman.Deposit) bool {
+	for _, addr := range tm.cfg.AuthorizedClaimMessageAddresses {
+		if deposit.OriginalAddress == addr {
+			log.Infof("MessageBridge from authorized account detected: %+v, account: %s", deposit, addr.String())
+			return true
 		}
-		log.Infof("MessageBridge Not authorized. DepositCount: %d", deposit.DepositCount)
-		return false
 	}
-*/
+	log.Infof("MessageBridge Not authorized. DepositCount: %d", deposit.DepositCount)
+	return false
+}
+
 func (tm *ClaimTxManager) getNextNonce(from common.Address) (uint64, error) {
 	nonce, err := tm.l2Node.NonceAt(tm.ctx, from, nil)
 	if err != nil {
