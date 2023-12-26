@@ -133,7 +133,7 @@ func (tm *ClaimTxManager) Start() {
 					if err != nil {
 						log.Errorf("failed to update deposits status: %v", err)
 					}
-				}(&tmpLastGer, &tmpGer)
+				}(nil, &tmpGer)
 				tm.lastGer = tmpGer
 				tm.gerNum++
 			} else {
