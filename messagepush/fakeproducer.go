@@ -1,7 +1,8 @@
 package messagepush
 
 import (
-	"encoding/json"
+	"fmt"
+	"google.golang.org/protobuf/encoding/protojson"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -55,7 +56,8 @@ func (p *fakeProducer) PushTransactionUpdate(tx *pb.Transaction, optFns ...produ
 	if tx == nil {
 		return nil
 	}
-	b, err := json.Marshal([]*pb.Transaction{tx})
+	b, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(tx)
+	//b, err := json.Marshal([]*pb.Transaction{tx})
 	if err != nil {
 		return errors.Wrap(err, "json marshal error")
 	}
@@ -64,7 +66,7 @@ func (p *fakeProducer) PushTransactionUpdate(tx *pb.Transaction, optFns ...produ
 		BizCode:       BizCodeBridgeOrder,
 		WalletAddress: tx.GetDestAddr(),
 		RequestID:     utils.GenerateTraceID(),
-		PushContent:   string(b),
+		PushContent:   fmt.Sprintf("[%v]", string(b)),
 		Time:          time.Now().UnixMilli(),
 	}
 
