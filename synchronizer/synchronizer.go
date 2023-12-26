@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"math/big"
 	"time"
 
@@ -572,6 +573,8 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			Status:       uint32(pb.TransactionStatus_TX_CREATED),
 			BlockNumber:  deposit.BlockNumber,
 			DestAddr:     deposit.DestinationAddress.Hex(),
+			FromChainId:  pushtask.GetChainIdByNetworkId(deposit.NetworkID),
+			ToChainId:    pushtask.GetChainIdByNetworkId(deposit.DestinationNetwork),
 		})
 		if err != nil {
 			log.Errorf("PushTransactionUpdate error: %v", err)
