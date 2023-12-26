@@ -77,5 +77,7 @@ func (p *fakeProducer) Close() error {
 
 // GetFakeMessages returns latest 100 messages from the topic name
 func (p *fakeProducer) GetFakeMessages(topic string) []string {
-	return p.messages[topic]
+	allMsg := p.messages[topic][0:]
+	p.messages[topic] = []string{}
+	return allMsg
 }
