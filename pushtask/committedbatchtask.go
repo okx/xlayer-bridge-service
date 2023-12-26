@@ -71,6 +71,12 @@ func (ins *CommittedBatchHandler) processSyncCommitBatchTask(ctx context.Context
 		log.Infof("sync latest commit batch lock failed, another is running, so kip, error: %v", err)
 		return
 	}
+	defer func() {
+		err = ins.redisStorage.ReleaseLock(ctx, syncL1CommittedBatchLockKey)
+		if err != nil {
+			log.Errorf("ReleaseLock key[%v] error: %v", syncL1CommittedBatchLockKey, err)
+		}
+	}()
 	log.Infof("start to sync latest commit batch")
 	latestBatchNum, err := QueryLatestCommitBatch(ins.rpcUrl)
 	if err != nil {

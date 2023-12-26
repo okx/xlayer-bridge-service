@@ -52,6 +52,12 @@ func (ins *VerifiedBatchHandler) processSyncVerifyBatchTask(ctx context.Context)
 		log.Infof("sync latest verify batch lock failed, another is running, so kip, error: %v", err)
 		return
 	}
+	defer func() {
+		err = ins.redisStorage.ReleaseLock(ctx, syncL1CommittedBatchLockKey)
+		if err != nil {
+			log.Errorf("ReleaseLock key[%v] error: %v", syncL1CommittedBatchLockKey, err)
+		}
+	}()
 	log.Infof("start to sync latest verify batch")
 	now := time.Now().Unix()
 	latestBatchNum, err := QueryLatestVerifyBatch(ins.rpcUrl)
