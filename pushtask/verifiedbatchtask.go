@@ -53,9 +53,9 @@ func (ins *VerifiedBatchHandler) processSyncVerifyBatchTask(ctx context.Context)
 		return
 	}
 	defer func() {
-		err = ins.redisStorage.ReleaseLock(ctx, syncL1CommittedBatchLockKey)
+		err = ins.redisStorage.ReleaseLock(ctx, syncL1VerifiedBatchLockKey)
 		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", syncL1CommittedBatchLockKey, err)
+			log.Errorf("ReleaseLock key[%v] error: %v", syncL1VerifiedBatchLockKey, err)
 		}
 	}()
 	log.Infof("start to sync latest verify batch")
@@ -83,7 +83,7 @@ func (ins *VerifiedBatchHandler) freshRedisCacheForVerifyDuration(ctx context.Co
 	if err != nil {
 		return err
 	}
-	err = ins.freshRedisForAvgCommitDuration(ctx, latestBatchNum, currentTimestamp)
+	err = ins.freshRedisForAvgCommitDuration(ctx, currentTimestamp)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (ins *VerifiedBatchHandler) freshRedisForMaxCommitBatchNum(ctx context.Cont
 	return ins.redisStorage.SetVerifyBatchNum(ctx, latestBatchNum)
 }
 
-func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Context, latestBatchNum uint64, currTimestamp int64) error {
+func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Context, currTimestamp int64) error {
 	err := ins.redisStorage.LPushVerifyTime(ctx, currTimestamp)
 	if err != nil {
 		return err
