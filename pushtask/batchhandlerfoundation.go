@@ -58,23 +58,14 @@ func queryLatestBatchNum(rpcUrl string, methodName string) (uint64, error) {
 func QueryMaxBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error) {
 	blocks, err := queryBlockHashListByBatchNum(rpcUrl, batchNum)
 	if err != nil {
-		log.Errorf("query for %v, error: %v", "zkevm_getBatchByNumber", err)
+		log.Errorf("query for %v, batch: %v, error: %v", "zkevm_getBatchByNumber", batchNum, err)
 		return "", err
 	}
 	if blocks == nil || len(blocks) == 0 {
-		log.Errorf("query for %v, blocks is empty", "zkevm_getBatchByNumber")
+		log.Errorf("query for %v, blocks is empty, batch num: %v", "zkevm_getBatchByNumber", batchNum)
 		return "", nil
 	}
 	return blocks[len(blocks)-1], nil
-}
-
-func QueryMinBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error) {
-	blocks, err := queryBlockHashListByBatchNum(rpcUrl, batchNum)
-	if blocks == nil || len(blocks) == 0 {
-		log.Errorf("query for %v, blocks is empty: %v", "zkevm_getBatchByNumber", err)
-		return "", nil
-	}
-	return blocks[0], nil
 }
 
 func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, error) {
@@ -101,7 +92,7 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 func QueryBlockNumByBlockHash(ctx context.Context, client *ethclient.Client, blockHash string) (uint64, error) {
 	block, err := client.BlockByHash(ctx, common.HexToHash(blockHash))
 	if err != nil {
-		log.Errorf("query for blockByHash error: %v", err)
+		log.Errorf("query for blockByHash, block hash: %v, error: %v", blockHash, err)
 		return 0, errors.Wrap(err, fmt.Sprintf("query blockByHash error"))
 	}
 	return block.Number().Uint64(), nil
