@@ -16,7 +16,7 @@ import (
 const (
 	committedBatchCacheRefreshInterval = 10 * time.Second
 	defaultCommitDuration              = 10 * time.Minute
-	minCommitDuration                  = 5 * time.Minute
+	minCommitDuration                  = 2 * time.Minute
 	commitDurationListLen              = 5
 	l1NetWorkId                        = 1
 	l1PendingDepositQueryLimit         = 100
@@ -205,7 +205,7 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 		return err
 	}
 	log.Debugf("count for avg commit duration, currTime: %v, oldest time: %v, list len: %v", currTimestamp, fistTimestamp, listLen)
-	newAvgDuration := (currTimestamp - fistTimestamp) / listLen
+	newAvgDuration := (currTimestamp - fistTimestamp) / (listLen - 1)
 	if !ins.checkAvgDurationLegal(newAvgDuration) {
 		log.Errorf("new avg commit is un-legal, so drop it. new duration: %v", newAvgDuration)
 		return nil

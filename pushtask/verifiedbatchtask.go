@@ -12,7 +12,7 @@ import (
 const (
 	verifyDurationListLen             = 100
 	syncL1VerifiedBatchLockKey        = "sync_l1_verified_batch_lock"
-	minVerifyDuration                 = 3 * time.Minute
+	minVerifyDuration                 = 2 * time.Minute
 	defaultVerifyDuration             = 10 * time.Minute
 	verifiedBatchCacheRefreshInterval = 10 * time.Second
 )
@@ -111,7 +111,7 @@ func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Cont
 	if err != nil {
 		return err
 	}
-	newAvgDuration := (currTimestamp - fistTimestamp) / listLen
+	newAvgDuration := (currTimestamp - fistTimestamp) / (listLen - 1)
 	if !ins.checkAvgDurationLegal(newAvgDuration) {
 		log.Errorf("new avg verify is un-legal, so drop it. new duration: %v", newAvgDuration)
 		return nil
