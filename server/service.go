@@ -734,3 +734,46 @@ func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFake
 		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
 	}, nil
 }
+
+// TestUpL2DepositReadyClaim todo: bard delete test code
+func (s *bridgeService) TestUpL2DepositReadyClaim(ctx context.Context, req *pb.TestUpL2DepositReadyClaimRequest) (*pb.TestUpL2DepositReadyClaimResponse, error) {
+	currTime := time.Now()
+	err := s.storage.UpdateReadyClaimForL2Deposit(ctx, req.TxHash, currTime, nil)
+	if err != nil {
+		log.Errorf("failed update claim status for tx: %v, error: %v", req.TxHash, err)
+		return &pb.TestUpL2DepositReadyClaimResponse{
+			Code: 1,
+			Msg:  "failed update status",
+		}, err
+	}
+	deposit, err := s.storage.GetDepositByTxHash(ctx, req.TxHash, nil)
+	if err != nil {
+		log.Errorf("failed uget deposit info for tx: %v, error: %v", req.TxHash, err)
+		return &pb.TestUpL2DepositReadyClaimResponse{
+			Code: 1,
+			Msg:  "failed get deposit info",
+		}, err
+	}
+	s.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM))
+	return &pb.TestUpL2DepositReadyClaimResponse{
+		Code: 0,
+		Msg:  "success",
+	}, nil
+}
+
+func (s *bridgeService) pushTransactionUpdate(deposit *etherman.Deposit, status uint32) {
+	if s.messagePushProducer == nil {
+		return
+	}
+	err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+		FromChain: uint32(deposit.NetworkID),
+		ToChain:   uint32(deposit.DestinationNetwork),
+		TxHash:    deposit.TxHash.String(),
+		Index:     uint64(deposit.DepositCount),
+		Status:    status,
+		DestAddr:  deposit.DestinationAddress.Hex(),
+	})
+	if err != nil {
+		log.Errorf("PushTransactionUpdate error: %v", err)
+	}
+}

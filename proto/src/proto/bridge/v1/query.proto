@@ -116,6 +116,12 @@ service BridgeService {
             get: "/fake-push-messages/{topic}",
         };
     }
+
+    rpc TestUpL2DepositReadyClaim(TestUpL2DepositReadyClaimRequest) returns (TestUpL2DepositReadyClaimResponse) {
+        option (google.api.http) = {
+            get: "/test-up-ready-claim",
+        };
+    }
 }
 
 enum TransactionStatus {
@@ -304,6 +310,10 @@ message GetFakePushMessagesRequest {
     string topic = 1;
 }
 
+message TestUpL2DepositReadyClaimRequest {
+    string txHash = 1;
+}
+
 // Get responses
 
 message CheckAPIResponse {
@@ -430,4 +440,9 @@ message GetFakePushMessagesResponse {
     string error_message = 4;
     string detailMsg = 5;
     repeated string data = 6;
+}
+
+message TestUpL2DepositReadyClaimResponse {
+    uint32 code = 1;
+    string msg = 2;
 }

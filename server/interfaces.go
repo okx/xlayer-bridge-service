@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
@@ -25,4 +26,7 @@ type BridgeServiceStorage interface {
 	GetNotReadyTransactions(ctx context.Context, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	GetClaimTxById(ctx context.Context, id uint, dbTx pgx.Tx) (*ctmtypes.MonitoredTx, error)
 	GetClaimTxsByStatusWithLimit(ctx context.Context, statuses []ctmtypes.MonitoredTxStatus, limit uint, offset uint, dbTx pgx.Tx) ([]ctmtypes.MonitoredTx, error)
+	// UpdateReadyClaimForL2Deposit todo: bard delete this code
+	UpdateReadyClaimForL2Deposit(ctx context.Context, txHash string, currTime time.Time, dbTx pgx.Tx) error
+	GetDepositByTxHash(ctx context.Context, txHash string, dbTx pgx.Tx) (*etherman.Deposit, error)
 }
