@@ -187,6 +187,7 @@ func (ins *CommittedBatchHandler) freshRedisForMaxCommitBlockNum(ctx context.Con
 	if err != nil {
 		return 0, err
 	}
+	log.Infof("success to set max commit block num: %v", maxBlockNum)
 	return maxBlockNum, nil
 }
 
