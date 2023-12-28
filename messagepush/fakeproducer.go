@@ -62,7 +62,8 @@ func (p *fakeProducer) PushTransactionUpdate(tx *pb.Transaction, optFns ...produ
 	if tx.Status == uint32(pb.TransactionStatus_TX_CREATED) {
 		b, err = protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(tx)
 	} else {
-		b, err = json.Marshal([]*pb.Transaction{tx})
+		//b, err = json.Marshal([]*pb.Transaction{tx})
+		b, err = json.Marshal(tx)
 	}
 	if err != nil {
 		return errors.Wrap(err, "json marshal error")
