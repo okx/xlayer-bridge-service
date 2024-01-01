@@ -11,6 +11,7 @@ import (
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/pool"
 	"github.com/0xPolygonHermez/zkevm-node/state/runtime"
@@ -455,7 +456,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			return err
 		}
 		_, err = tm.storage.GetClaim(ctx, mTx.DepositID, tm.l2NetworkID, dbTxClaim)
-		if err != nil {
+		if err != nil && err != gerror.ErrStorageNotFound {
 			mTxLog.Errorf("failed to get claim tx: %v", err)
 			return err
 		}
