@@ -447,7 +447,38 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
 		mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
+		mTxLog = mTxLog.WithFields(utils.TraceID, utils.GenerateTraceID())
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
+		// Check the claim table to see whether the transaction has already been claimed by some other methods
+		dbTxClaim, err := tm.storage.BeginDBTransaction(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = tm.storage.GetClaim(ctx, mTx.DepositID, tm.l2NetworkID, dbTxClaim)
+		if err != nil {
+			mTxLog.Errorf("failed to get claim tx: %v", err)
+			return err
+		}
+		if err == nil {
+			mTxLog.Infof("Tx has already been claimed")
+			mTx.Status = ctmtypes.MonitoredTxStatusConfirmed
+			// Update monitored txs status to confirmed
+			err = tm.storage.UpdateClaimTx(ctx, mTx, dbTxClaim)
+			if err != nil {
+				mTxLog.Errorf("failed to update tx status to confirmed: %v", err)
+			}
+			err = tm.storage.Commit(ctx, dbTxClaim)
+			if err != nil {
+				mTxLog.Errorf("UpdateClaimTx committing dbTx, err: %v", err)
+				rollbackErr := tm.storage.Rollback(tm.ctx, dbTxClaim)
+				if rollbackErr != nil {
+					mLog.Errorf("claimtxman error rolling back state. RollbackErr: %s, err: %v", rollbackErr.Error(), err)
+					return rollbackErr
+				}
+				return err
+			}
+			continue
+		}
 
 		// check if any of the txs in the history was mined
 		mined := false
