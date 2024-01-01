@@ -442,6 +442,9 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 
 	isResetNonce := false // it will reset the nonce in one cycle
 	for _, mTx := range mTxs {
+		if isResetNonce {
+			break
+		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
 		mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
@@ -474,6 +477,10 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 						_, _, err = tm.l2Node.TransactionByHash(ctx, txHash)
 					}
 					if errors.Is(err, ethereum.NotFound) {
+						_ = tm.ResetL2NodeNonce(&mTx)
+						if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
+							_ = tm.l2Node.SendTransaction(ctx, signedTx)
+						}
 						mTxLog.Error("maximum retries and the tx is still missing in the pool. TxHash: ", txHash.String())
 						hasFailedReceipts = true
 						continue
@@ -593,6 +600,15 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 							mTxLog.Infof("nonce cache cleared for address %v", mTx.From.Hex())
 						}
 						reviewNonce = true
+					} else if err.Error() == pool.ErrNonceTooHigh.Error() {
+						if !isResetNonce {
+							isResetNonce = true
+							_ = tm.ResetL2NodeNonce(&mTx)
+							mTxLog.Infof("nonce ResetL2NodeNonce %v", mTx.From.Hex())
+							if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
+								_ = tm.l2Node.SendTransaction(ctx, signedTx)
+							}
+						}
 					}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
@@ -630,6 +646,18 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 	}
 
 	mLog.Infof("monitorTxs committed")
+	return nil
+}
+
+func (tm *ClaimTxManager) ResetL2NodeNonce(mTx *ctmtypes.MonitoredTx) error {
+	mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
+	mTxLog.Debug("ResetL2NodeNonce")
+	nonce, err := tm.l2Node.NonceAt(tm.ctx, mTx.From, nil)
+	if err != nil {
+		return err
+	}
+	mTxLog.Debugf("ResetL2NodeNonce mtxNonce:%d, new nonce:%d", mTx.Nonce, nonce)
+	mTx.Nonce = nonce
 	return nil
 }
 
