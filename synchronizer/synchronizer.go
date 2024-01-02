@@ -560,6 +560,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		if s.messagePushProducer == nil {
 			return
 		}
+		// todo: bard add L2 -> L1 estimate time
 		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
