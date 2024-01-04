@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	verifyDurationListLen             = 100
+	verifyDurationListLen             = 5
 	syncL1VerifiedBatchLockKey        = "sync_l1_verified_batch_lock"
 	minVerifyDuration                 = 2
 	defaultVerifyDuration             = 10

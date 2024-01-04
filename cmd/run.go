@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"os"
 	"os/signal"
 
@@ -140,7 +141,7 @@ func startServer(ctx *cli.Context) error {
 	}
 
 	// Initialize chainId manager
-	pushtask.InitChainIdManager(networkIDs, chainIDs)
+	utils.InitChainIdManager(networkIDs, chainIDs)
 
 	// Initialize the push task for L1 block num change
 	l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)

@@ -1,21 +1,21 @@
-package pushtask
+package utils
 
-type ChainIdManager struct {
+type NetworkChainIdMapping struct {
 	chainIDs map[uint]uint32
 }
 
-var instance ChainIdManager
+var networkChainIdMapping NetworkChainIdMapping
 
 func InitChainIdManager(networks []uint, chainIds []uint) {
 	var chainIDs = make(map[uint]uint32)
 	for i, network := range networks {
 		chainIDs[network] = uint32(chainIds[i])
 	}
-	instance = ChainIdManager{
+	networkChainIdMapping = NetworkChainIdMapping{
 		chainIDs: chainIDs,
 	}
 }
 
 func GetChainIdByNetworkId(networkId uint) uint32 {
-	return instance.chainIDs[networkId]
+	return networkChainIdMapping.chainIDs[networkId]
 }
