@@ -159,3 +159,16 @@ func GetAvgVerifyDuration(ctx context.Context, redisStorage redisstorage.RedisSt
 	}
 	return avgDuration
 }
+
+func GetLeftVerifyTime(ctx context.Context, redisStorage redisstorage.RedisStorage, blockNumber uint64, depositCreateTime time.Time,
+	l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currentTime time.Time) int {
+	var blockCommitTime time.Time
+	commitTimeSecond, _ := redisStorage.GetL2BlockCommitTime(ctx, blockNumber)
+	if commitTimeSecond == 0 {
+		log.Debugf("failed to get commit time for block num, so use create time + avg commit duration")
+		blockCommitTime = depositCreateTime.Add(time.Minute * time.Duration(l2AvgCommitDuration))
+	} else {
+		blockCommitTime = time.Unix(int64(commitTimeSecond), 0)
+	}
+	return int(l2AvgVerifyDuration - uint64(currentTime.Sub(blockCommitTime).Minutes()))
+}

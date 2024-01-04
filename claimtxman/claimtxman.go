@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"math/big"
 	"sync"
 	"time"
@@ -54,10 +56,13 @@ type ClaimTxManager struct {
 
 	// Producer to push the transaction status change to front end
 	messagePushProducer messagepush.KafkaProducer
+	redisStorage        redisstorage.RedisStorage
 }
 
 // NewClaimTxManager creates a new claim transaction manager.
-func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint, l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, producer messagepush.KafkaProducer) (*ClaimTxManager, error) {
+func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint,
+	l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, producer messagepush.KafkaProducer,
+	redisStorage redisstorage.RedisStorage) (*ClaimTxManager, error) {
 	ctx := context.Background()
 	client, err := utils.NewClient(ctx, l2NodeURL, l2BridgeAddr)
 	if err != nil {
@@ -82,6 +87,7 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 		auth:                auth,
 		nonceCache:          cache,
 		messagePushProducer: producer,
+		redisStorage:        redisStorage,
 	}, err
 }
 
@@ -710,13 +716,18 @@ func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, statu
 	if tm.messagePushProducer == nil {
 		return
 	}
+	estimateTime := uint64(0)
+	if deposit.NetworkID != 0 {
+		estimateTime = pushtask.GetAvgVerifyDuration(tm.ctx, tm.redisStorage)
+	}
 	err := tm.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
-		FromChain: uint32(deposit.NetworkID),
-		ToChain:   uint32(deposit.DestinationNetwork),
-		TxHash:    deposit.TxHash.String(),
-		Index:     uint64(deposit.DepositCount),
-		Status:    status,
-		DestAddr:  deposit.DestinationAddress.Hex(),
+		FromChain:    uint32(deposit.NetworkID),
+		ToChain:      uint32(deposit.DestinationNetwork),
+		TxHash:       deposit.TxHash.String(),
+		Index:        uint64(deposit.DepositCount),
+		Status:       status,
+		DestAddr:     deposit.DestinationAddress.Hex(),
+		EstimateTime: uint32(estimateTime),
 	})
 	if err != nil {
 		log.Errorf("PushTransactionUpdate error: %v", err)

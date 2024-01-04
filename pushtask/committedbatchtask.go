@@ -299,3 +299,7 @@ func GetAvgCommitDuration(ctx context.Context, redisStorage redisstorage.RedisSt
 	}
 	return avgDuration
 }
+
+func GetLeftCommitTime(depositCreateTime time.Time, l2AvgCommitDuration uint64, currentTime time.Time) int {
+	return int(l2AvgCommitDuration - uint64(currentTime.Sub(depositCreateTime).Minutes()))
+}

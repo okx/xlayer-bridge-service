@@ -176,7 +176,10 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		}()
 	}
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, chainIDs, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator()).
+	// Initialize chainId manager
+	utils.InitChainIdManager(networkIDs, chainIDs)
+
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator()).
 		WithMessagePushProducer(messagePushProducer)
 
 	// ---------- Run API ----------
@@ -192,8 +195,6 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 
 	// ---------- Run push tasks ----------
 	if opt.runPushTasks {
-	// Initialize chainId manager
-	utils.InitChainIdManager(networkIDs, chainIDs)
 
 		// Initialize the push task for L1 block num change
 		l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
@@ -226,16 +227,16 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])
 		chExitRootEvent := make(chan *etherman.GlobalExitRoot)
 		chSynced := make(chan uint)
-		go runSynchronizer(c.NetworkConfig.GenBlockNumber, bridgeController, l1Etherman, c.Synchronizer, storage, zkEVMClient, chExitRootEvent, chSynced, messagePushProducer)
+		go runSynchronizer(c.NetworkConfig.GenBlockNumber, bridgeController, l1Etherman, c.Synchronizer, storage, zkEVMClient, chExitRootEvent, chSynced, messagePushProducer, redisStorage)
 		for _, cl := range l2Ethermans {
-			go runSynchronizer(0, bridgeController, cl, c.Synchronizer, storage, zkEVMClient, chExitRootEvent, chSynced, messagePushProducer)
+			go runSynchronizer(0, bridgeController, cl, c.Synchronizer, storage, zkEVMClient, chExitRootEvent, chSynced, messagePushProducer, redisStorage)
 		}
 
 		if c.ClaimTxManager.Enabled {
 			for i := 0; i < len(c.Etherman.L2URLs); i++ {
 				// we should match the orders of L2URLs between etherman and claimtxman
 				// since we are using the networkIDs in the same order
-				claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, chSynced, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2PolygonBridgeAddresses[i], bridgeService, storage, messagePushProducer)
+				claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, chSynced, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2PolygonBridgeAddresses[i], bridgeService, storage, messagePushProducer, redisStorage)
 				if err != nil {
 					log.Fatalf("error creating claim tx manager for L2 %s. Error: %v", c.Etherman.L2URLs[i], err)
 				}
@@ -319,8 +320,9 @@ func newEthermans(c *config.Config) (*etherman.Client, []*etherman.Client, error
 }
 
 func runSynchronizer(genBlockNumber uint64, brdigeCtrl *bridgectrl.BridgeController, etherman *etherman.Client, cfg synchronizer.Config,
-	storage db.Storage, zkEVMClient *client.Client, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, messagePushProducer messagepush.KafkaProducer) {
-	sy, err := synchronizer.NewSynchronizer(storage, brdigeCtrl, etherman, zkEVMClient, genBlockNumber, chExitRootEvent, chSynced, messagePushProducer, cfg)
+	storage db.Storage, zkEVMClient *client.Client, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint,
+	messagePushProducer messagepush.KafkaProducer, redisStorage redisstorage.RedisStorage) {
+	sy, err := synchronizer.NewSynchronizer(storage, brdigeCtrl, etherman, zkEVMClient, genBlockNumber, chExitRootEvent, chSynced, messagePushProducer, redisStorage, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

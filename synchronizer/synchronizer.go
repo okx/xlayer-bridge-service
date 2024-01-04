@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"math/big"
 	"time"
@@ -41,6 +43,7 @@ type ClientSynchronizer struct {
 	l1RollupExitRoot common.Hash
 	// Producer to push the transaction status change to front end
 	messagePushProducer messagepush.KafkaProducer
+	redisStorage        redisstorage.RedisStorage
 }
 
 // NewSynchronizer creates and initializes an instance of Synchronizer
@@ -53,6 +56,7 @@ func NewSynchronizer(
 	chExitRootEvent chan *etherman.GlobalExitRoot,
 	chSynced chan uint,
 	messagePushProducer messagepush.KafkaProducer,
+	redisStorage redisstorage.RedisStorage,
 	cfg Config) (Synchronizer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	networkID, err := ethMan.GetNetworkID(ctx)
@@ -83,6 +87,7 @@ func NewSynchronizer(
 			zkEVMClient:         zkEVMClient,
 			l1RollupExitRoot:    ger.ExitRoots[1],
 			messagePushProducer: messagePushProducer,
+			redisStorage:        redisStorage,
 		}, nil
 	}
 	return &ClientSynchronizer{
@@ -96,6 +101,7 @@ func NewSynchronizer(
 		chSynced:            chSynced,
 		networkID:           networkID,
 		messagePushProducer: messagePushProducer,
+		redisStorage:        redisStorage,
 	}, nil
 }
 
@@ -560,13 +566,12 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		if s.messagePushProducer == nil {
 			return
 		}
-		// todo: bard add L2 -> L1 estimate time
 		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
 			BridgeToken:  deposit.OriginalAddress.Hex(),
 			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: estimatetime.GetDefaultCalculator().Get(deposit.NetworkID),
+			EstimateTime: s.getEstimateTimeForDepositCreated(deposit.NetworkID),
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
 			Id:           depositID,
@@ -582,6 +587,13 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		}
 	}()
 	return nil
+}
+
+func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(networkId uint) uint32 {
+	if networkId == 0 {
+		return estimatetime.GetDefaultCalculator().Get(networkId)
+	}
+	return uint32(pushtask.GetAvgCommitDuration(s.ctx, s.redisStorage))
 }
 
 func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, dbTx pgx.Tx) error {

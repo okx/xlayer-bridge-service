@@ -27,14 +27,13 @@ import (
 const (
 	defaultErrorCode   = 1
 	defaultSuccessCode = 0
+	defaultMinDuration = 1
 )
 
 type bridgeService struct {
 	storage             BridgeServiceStorage
 	redisStorage        redisstorage.RedisStorage
 	mainCoinsCache      localcache.MainCoinsCache
-	networkIDs          map[uint]uint8
-	chainIDs            map[uint]uint32
 	height              uint8
 	defaultPageLimit    uint32
 	maxPageLimit        uint32
@@ -46,14 +45,8 @@ type bridgeService struct {
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, storage interface{}, redisStorage redisstorage.RedisStorage,
+func NewBridgeService(cfg Config, height uint8, storage interface{}, redisStorage redisstorage.RedisStorage,
 	mainCoinsCache localcache.MainCoinsCache, estTimeCalc estimatetime.Calculator) *bridgeService {
-	var networkIDs = make(map[uint]uint8)
-	var chainIDs = make(map[uint]uint32)
-	for i, network := range networks {
-		networkIDs[network] = uint8(i)
-		chainIDs[network] = uint32(chainIds[i])
-	}
 	cache, err := lru.New[string, [][]byte](cfg.CacheSize)
 	if err != nil {
 		panic(err)
@@ -64,8 +57,6 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		mainCoinsCache:    mainCoinsCache,
 		estTimeCalculator: estTimeCalc,
 		height:            height,
-		networkIDs:        networkIDs,
-		chainIDs:          chainIDs,
 		defaultPageLimit:  cfg.DefaultPageLimit,
 		maxPageLimit:      cfg.MaxPageLimit,
 		version:           cfg.BridgeVersion,
@@ -78,13 +69,13 @@ func (s *bridgeService) WithMessagePushProducer(producer messagepush.KafkaProduc
 	return s
 }
 
-func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
-	tID, found := s.networkIDs[networkID]
-	if !found {
-		return 0, gerror.ErrNetworkNotRegister
-	}
-	return tID, nil
-}
+//func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
+//	tID, found := s.networkIDs[networkID]
+//	if !found {
+//		return 0, gerror.ErrNetworkNotRegister
+//	}
+//	return tID, nil
+//}
 
 // getNode returns the children hash pairs for a given parent hash.
 func (s *bridgeService) getNode(ctx context.Context, parentHash [bridgectrl.KeyLen]byte, dbTx pgx.Tx) (left, right [bridgectrl.KeyLen]byte, err error) {
@@ -168,10 +159,7 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 		}
 	}
 
-	tID, err := s.getNetworkID(networkID)
-	if err != nil {
-		return nil, nil, err
-	}
+	tID := utils.GetChainIdByNetworkId(networkID)
 
 	globalExitRoot, err := s.storage.GetLatestExitRoot(ctx, tID != 0, dbTx)
 	if err != nil {
@@ -456,7 +444,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	l2CommitBlockNum, _ := s.redisStorage.GetCommitMaxBlockNum(ctx)
 	l2AvgCommitDuration := pushtask.GetAvgCommitDuration(ctx, s.redisStorage)
 	l2AvgVerifyDuration := pushtask.GetAvgVerifyDuration(ctx, s.redisStorage)
-	currTimestamp := time.Now().Unix()
+	currTime := time.Now()
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
@@ -468,8 +456,8 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			EstimateTime: s.estTimeCalculator.Get(deposit.NetworkID),
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
-			FromChainId:  s.chainIDs[deposit.NetworkID],
-			ToChainId:    s.chainIDs[deposit.DestinationNetwork],
+			FromChainId:  utils.GetChainIdByNetworkId(deposit.NetworkID),
+			ToChainId:    utils.GetChainIdByNetworkId(deposit.DestinationNetwork),
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
@@ -490,6 +478,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
+				deposit.Time.Minute()
 				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
@@ -497,7 +486,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 				if l2CommitBlockNum >= deposit.BlockNumber {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION)
 				}
-				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTimestamp, transaction)
+				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
@@ -508,23 +497,20 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	}, nil
 }
 
-func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currTimestamp int64, tx *pb.Transaction) {
-	var duration uint32
+func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currTime time.Time,
+	tx *pb.Transaction, depositCreateTime time.Time) {
+	var duration int
 	if tx.Status == uint32(pb.TransactionStatus_TX_CREATED) {
-		duration = uint32(l2AvgCommitDuration - (uint64(currTimestamp) - tx.Time))
+		duration = pushtask.GetLeftCommitTime(depositCreateTime, l2AvgCommitDuration, currTime)
 	} else {
-		commitTime, _ := s.redisStorage.GetL2BlockCommitTime(ctx, tx.BlockNumber)
-		if commitTime == 0 {
-			log.Debugf("failed to get commit time for block num, so use crate time + avg commit duration")
-			commitTime = tx.Time + l2AvgCommitDuration
-		}
-		duration = uint32(l2AvgVerifyDuration - (uint64(currTimestamp) - commitTime))
+		duration = pushtask.GetLeftVerifyTime(ctx, s.redisStorage, tx.BlockNumber, depositCreateTime, l2AvgCommitDuration, l2AvgVerifyDuration, currTime)
 	}
 	if duration <= 0 {
-		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: 60000")
-		duration = uint32(60 * 1000)
+		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
+		tx.EstimateTime = uint32(defaultMinDuration)
+		return
 	}
-	tx.EstimateTime = duration
+	tx.EstimateTime = uint32(duration)
 }
 
 // GetAllTransactions returns all the transactions of an account, similar to GetBridges
@@ -563,8 +549,8 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			EstimateTime: s.estTimeCalculator.Get(deposit.NetworkID),
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
+			FromChainId:  utils.GetChainIdByNetworkId(deposit.NetworkID),
+			ToChainId:    utils.GetChainIdByNetworkId(deposit.DestinationNetwork),
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
@@ -647,8 +633,8 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 			Status:       0,
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
-			FromChainId:  uint32(s.chainIDs[deposit.NetworkID]),
-			ToChainId:    uint32(s.chainIDs[deposit.DestinationNetwork]),
+			FromChainId:  utils.GetChainIdByNetworkId(deposit.NetworkID),
+			ToChainId:    utils.GetChainIdByNetworkId(deposit.DestinationNetwork),
 			Id:           deposit.Id,
 			Index:        uint64(deposit.DepositCount),
 			Metadata:     "0x" + hex.EncodeToString(deposit.Metadata),
