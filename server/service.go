@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-node/log"
-	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -327,6 +328,7 @@ func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequ
 		return &pb.CommonProofResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 	var proof []string
@@ -404,6 +406,7 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 		return &pb.CommonCoinPricesResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 	return &pb.CommonCoinPricesResponse{
@@ -420,6 +423,7 @@ func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRe
 		return &pb.CommonCoinsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 	return &pb.CommonCoinsResponse{
@@ -444,6 +448,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
@@ -543,6 +548,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
@@ -580,6 +586,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 					return &pb.CommonTransactionsResponse{
 						Code: defaultErrorCode,
 						Data: nil,
+						Msg:  errors.Wrap(err, "load claim error").Error(),
 					}, nil
 				}
 				// For L1->L2, if backend is trying to auto-claim, set the status to 0 to block the user from manual-claim
@@ -628,6 +635,7 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
@@ -678,6 +686,7 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 		return &pb.CommonMonitoredTxsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
