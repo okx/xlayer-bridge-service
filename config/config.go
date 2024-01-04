@@ -88,5 +88,12 @@ func Load(configFilePath string, network string) (*Config, error) {
 		cfg.loadNetworkConfig(network)
 	}
 
+	if cfg.Apollo.Enabled {
+		err = apolloconfig.Init(cfg.Apollo)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &cfg, nil
 }
