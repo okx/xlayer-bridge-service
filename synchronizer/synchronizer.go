@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"math/big"
 	"time"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
@@ -604,8 +605,13 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 		if s.messagePushProducer == nil {
 			return
 		}
+
+		// WARNING: This logic will be wrong if we have more than one L2 networks
+		// We cannot use claim.OriginalNetwork because that value is not the same with the network id that create the bridge tx...
+		originNetwork := 1 - s.networkID
+
 		// Retrieve deposit transaction info
-		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, claim.OriginalNetwork, nil)
+		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
 		if err != nil {
 			log.Errorf("push message: GetDeposit error: %v", err)
 			return
