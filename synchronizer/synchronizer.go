@@ -10,8 +10,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
-
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
