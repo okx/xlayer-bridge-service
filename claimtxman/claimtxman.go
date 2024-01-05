@@ -187,8 +187,9 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 		return err
 	}
 	log.Infof("Rollup exitroot %v is updated", ger.ExitRoots[1])
-	if err := tm.storage.UpdateL2DepositsStatus(tm.ctx, ger.ExitRoots[1][:], ger.Time, tm.l2NetworkID, dbTx); err != nil {
-		log.Errorf("error updating L2DepositsStatus. Error: %v", err)
+	deposits, err := tm.storage.UpdateL2DepositsStatusWithBackDeposits(tm.ctx, ger.ExitRoots[1][:], ger.Time, dbTx)
+	if err != nil {
+		log.Errorf("error getting and updating L2DepositsStatus. Error: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)
 		if rollbackErr != nil {
 			log.Errorf("claimtxman error rolling back state. RollbackErr: %v, err: %s", rollbackErr, err.Error())
@@ -204,6 +205,10 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 			log.Fatalf("claimtxman error rolling back state. RollbackErr: %s, err: %s", rollbackErr.Error(), err.Error())
 		}
 		log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
+	}
+	for _, deposit := range deposits {
+		// Notify FE that tx is pending auto claim
+		go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 	}
 	return nil
 }

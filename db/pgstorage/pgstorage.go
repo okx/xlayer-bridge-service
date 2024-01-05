@@ -631,6 +631,34 @@ func (p *PostgresStorage) UpdateL1DepositStatus(ctx context.Context, depositCoun
 	return err
 }
 
+// UpdateL2DepositsStatus updates the ready_for_claim status of L2 deposits. and return deposit list
+func (p *PostgresStorage) UpdateL2DepositsStatusWithBackDeposits(ctx context.Context, exitRoot []byte, eventTime time.Time, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+	updateDepositsStatusSQL := fmt.Sprintf(`UPDATE sync.deposit%[1]v SET ready_for_claim = true, ready_time = $1
+		WHERE deposit_cnt <=
+			(SELECT deposit_cnt FROM mt.root%[1]v WHERE root = $2 AND network = 1)
+			AND network_id = 1 AND ready_for_claim = false
+			RETURNING leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, network_id, tx_hash, metadata, ready_for_claim;`, p.tableSuffix)
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQL, eventTime, exitRoot)
+	if err != nil {
+		return nil, err
+	}
+	deposits := make([]*etherman.Deposit, 0, len(rows.RawValues()))
+	for rows.Next() {
+		var (
+			deposit etherman.Deposit
+			amount  string
+		)
+		err = rows.Scan(&deposit.LeafType, &deposit.OriginalNetwork, &deposit.OriginalAddress, &amount, &deposit.DestinationNetwork, &deposit.DestinationAddress,
+			&deposit.DepositCount, &deposit.BlockID, &deposit.NetworkID, &deposit.TxHash, &deposit.Metadata, &deposit.ReadyForClaim)
+		if err != nil {
+			return nil, err
+		}
+		deposit.Amount, _ = new(big.Int).SetString(amount, 10) //nolint:gomnd
+		deposits = append(deposits, &deposit)
+	}
+	return deposits, nil
+}
+
 // UpdateL2DepositsStatus updates the ready_for_claim status of L2 deposits.
 func (p *PostgresStorage) UpdateL2DepositsStatus(ctx context.Context, exitRoot []byte, eventTime time.Time, networkID uint, dbTx pgx.Tx) error {
 	updateDepositsStatusSQL := fmt.Sprintf(`UPDATE sync.deposit%[1]v SET ready_for_claim = true, ready_time = $1
