@@ -553,6 +553,10 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 	}
 
 	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
+	l2CommitBlockNum, _ := s.redisStorage.GetCommitMaxBlockNum(ctx)
+	l2AvgCommitDuration := pushtask.GetAvgCommitDuration(ctx, s.redisStorage)
+	l2AvgVerifyDuration := pushtask.GetAvgVerifyDuration(ctx, s.redisStorage)
+	currTime := time.Now()
 
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
@@ -604,6 +608,11 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
+			} else {
+				if l2CommitBlockNum >= deposit.BlockNumber {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION)
+				}
+				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
