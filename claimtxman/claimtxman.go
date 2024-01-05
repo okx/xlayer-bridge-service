@@ -206,7 +206,12 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 		}
 		log.Fatalf("AddClaimTx committing dbTx, err: %s", err.Error())
 	}
+	// todo: bard delete test log
+	log.Debugf("begin send deposits for l1 ready_claim, blockId: %v, blockNumber: %v, deposit size: %v", ger.BlockID, ger.BlockNumber,
+		len(deposits))
 	for _, deposit := range deposits {
+		// todo: bard delete test log
+		log.Debugf("send l1 ready claim for tx: %v", deposit.TxHash)
 		// Notify FE that tx is pending auto claim
 		go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 	}
