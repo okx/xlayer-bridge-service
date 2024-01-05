@@ -213,7 +213,7 @@ func (tm *ClaimTxManager) processDepositStatusL2(ger *etherman.GlobalExitRoot) e
 		// todo: bard delete test log
 		log.Debugf("send l1 ready claim for tx: %v", deposit.TxHash)
 		// Notify FE that tx is pending auto claim
-		go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
+		go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM))
 	}
 	return nil
 }
@@ -316,9 +316,19 @@ func (tm *ClaimTxManager) rollbackStore(dbTx pgx.Tx) {
 func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbTx pgx.Tx) error {
 	if ger.BlockID != 0 { // L2 exit root is updated
 		log.Infof("Rollup exitroot %v is updated", ger.ExitRoots[1])
-		if err := tm.storage.UpdateL2DepositsStatus(tm.ctx, ger.ExitRoots[1][:], ger.Time, tm.l2NetworkID, dbTx); err != nil {
-			log.Errorf("error updating L2DepositsStatus. Error: %v", err)
+		deposits, err := tm.storage.UpdateL2DepositsStatusWithBackDeposits(tm.ctx, ger.ExitRoots[1][:], ger.Time, dbTx)
+		if err != nil {
+			log.Errorf("error getting and updating L2DepositsStatus. Error: %v", err)
 			return err
+		}
+		// todo: bard delete test log
+		log.Debugf("begin send deposits for l1 ready_claim, blockId: %v, blockNumber: %v, deposit size: %v", ger.BlockID, ger.BlockNumber,
+			len(deposits))
+		for _, deposit := range deposits {
+			// todo: bard delete test log
+			log.Debugf("send l1 ready claim for tx: %v", deposit.TxHash)
+			// Notify FE that tx is pending auto claim
+			go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM))
 		}
 	} else { // L1 exit root is updated in the trusted state
 		log.Infof("Mainnet exitroot %v is updated", ger.ExitRoots[0])
