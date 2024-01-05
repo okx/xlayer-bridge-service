@@ -447,9 +447,7 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			break
 		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
-		mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
-		mTxLog = mTxLog.WithFields(utils.TraceID, utils.GenerateTraceID())
-		context.WithValue(ctx, utils.TraceID, utils.GenerateTraceID())
+		mTxLog := mLog.WithFields("monitoredTx", mTx.DepositID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
 		// Check the claim table to see whether the transaction has already been claimed by some other methods
 		_, err = tm.storage.GetClaim(ctx, mTx.DepositID, tm.l2NetworkID, dbTx)
