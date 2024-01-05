@@ -179,7 +179,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	// Initialize chainId manager
 	utils.InitChainIdManager(networkIDs, chainIDs)
 
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator()).
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, apiStorage, redisStorage, mainCoinsCache, estimatetime.GetDefaultCalculator()).
 		WithMessagePushProducer(messagePushProducer)
 
 	// ---------- Run API ----------

@@ -35,6 +35,7 @@ type bridgeService struct {
 	storage             BridgeServiceStorage
 	redisStorage        redisstorage.RedisStorage
 	mainCoinsCache      localcache.MainCoinsCache
+	networkIDs          map[uint]uint8
 	height              uint8
 	defaultPageLimit    uint32
 	maxPageLimit        uint32
@@ -46,8 +47,12 @@ type bridgeService struct {
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, storage interface{}, redisStorage redisstorage.RedisStorage,
+func NewBridgeService(cfg Config, height uint8, networks []uint, storage interface{}, redisStorage redisstorage.RedisStorage,
 	mainCoinsCache localcache.MainCoinsCache, estTimeCalc estimatetime.Calculator) *bridgeService {
+	var networkIDs = make(map[uint]uint8)
+	for i, network := range networks {
+		networkIDs[network] = uint8(i)
+	}
 	cache, err := lru.New[string, [][]byte](cfg.CacheSize)
 	if err != nil {
 		panic(err)
@@ -70,13 +75,13 @@ func (s *bridgeService) WithMessagePushProducer(producer messagepush.KafkaProduc
 	return s
 }
 
-//func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
-//	tID, found := s.networkIDs[networkID]
-//	if !found {
-//		return 0, gerror.ErrNetworkNotRegister
-//	}
-//	return tID, nil
-//}
+func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
+	tID, found := s.networkIDs[networkID]
+	if !found {
+		return 0, gerror.ErrNetworkNotRegister
+	}
+	return tID, nil
+}
 
 // getNode returns the children hash pairs for a given parent hash.
 func (s *bridgeService) getNode(ctx context.Context, parentHash [bridgectrl.KeyLen]byte, dbTx pgx.Tx) (left, right [bridgectrl.KeyLen]byte, err error) {
@@ -160,7 +165,10 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 		}
 	}
 
-	tID := utils.GetChainIdByNetworkId(networkID)
+	tID, err := s.getNetworkID(networkID)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	globalExitRoot, err := s.storage.GetLatestExitRoot(ctx, tID != 0, dbTx)
 	if err != nil {
