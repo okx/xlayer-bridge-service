@@ -6,11 +6,13 @@ import (
 	"strings"
 
 	"github.com/apolloconfig/agollo/v4"
+	"github.com/pkg/errors"
 	"golang.org/x/exp/constraints"
 )
 
 type Entry[T any] interface {
 	Get() T
+	GetWithErr() (T, error)
 }
 
 // An interface to get the config from Apollo client (and convert it if needed)
@@ -48,32 +50,41 @@ func NewStringEntry(key string, defaultValue string) Entry[string] {
 	return newEntry(key, defaultValue, getString)
 }
 
+// String array is separated by commas, so this will work incorrectly if we have comma in the elements
+func NewStringSliceEntry(key string, defaultValue []string) Entry[[]string] {
+	return newEntry(key, defaultValue, getStringSlice)
+}
+
 func (e *entryImpl[T]) Get() T {
+	logger := getLogger().WithFields("key", e.key)
+	v, err := e.GetWithErr()
+	if err != nil {
+		logger.Debugf("error[%v], returning default value", err)
+	}
+	return v
+}
+
+func (e *entryImpl[T]) GetWithErr() (T, error) {
 	// If Apollo config is not enabled, just return the default value
 	if !enabled {
-		return e.defaultValue
+		return e.defaultValue, errors.New("apollo disabled")
 	}
-
-	logger := getLogger().WithFields("key", e.key)
 
 	// If client is not initialized, return the default value
 	client := GetClient()
 	if client == nil {
-		logger.Debug("apollo client is nil, returning default")
-		return e.defaultValue
+		return e.defaultValue, errors.New("apollo client is nil")
 	}
 
 	if e.getterFn == nil {
-		logger.Debug("getterFn is nil, returning default")
-		return e.defaultValue
+		return e.defaultValue, errors.New("getterFn is nil")
 	}
 
 	v, err := e.getterFn(client, e.key)
 	if err != nil {
-		logger.Debugf("getterFn error: %v, returning default", err)
-		return e.defaultValue
+		return e.defaultValue, errors.Wrap(err, "getterFn error")
 	}
-	return v
+	return v, nil
 }
 
 // ----- Getter functions -----
@@ -88,6 +99,15 @@ func getString(client *agollo.Client, key string) (string, error) {
 		return "", fmt.Errorf("value is not string, type: %T", v)
 	}
 	return s, nil
+}
+
+// String array is separated by commas, so this will work incorrectly if we have comma in the elements
+func getStringSlice(client *agollo.Client, key string) ([]string, error) {
+	s, err := getString(client, key)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(s, comma), nil
 }
 
 func getInt[T constraints.Integer](client *agollo.Client, key string) (T, error) {

@@ -85,12 +85,9 @@ func handleStruct(v reflect.Value) error {
 			}
 
 			// If config key is not empty, use it to query from Apollo server
+			// Process differently for each type
 			if field.Kind() == reflect.Struct {
 				loadStruct(field, key)
-				err := handleStruct(field)
-				if err != nil {
-					logger.Errorf("Load apollo: field %v of type %v error: %v", structField.Name, structField.Type, err)
-				}
 			} else if field.CanInt() {
 				field.SetInt(NewIntEntry(key, field.Int()).Get())
 			} else if field.CanUint() {
@@ -99,8 +96,26 @@ func handleStruct(v reflect.Value) error {
 				field.SetString(NewStringEntry(key, field.String()).Get())
 			} else if field.Kind() == reflect.Bool {
 				field.SetBool(NewBoolEntry(key, field.Bool()).Get())
+			} else if field.Kind() == reflect.Slice {
+				switch field.Type().Elem().Kind() {
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					loadIntSlice(field, key)
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+					loadUintSlice(field, key)
+				case reflect.String:
+					loadStringSlice(field, key)
+				default:
+					logger.Debugf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
+				}
 			} else {
 				logger.Errorf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
+			}
+		}
+
+		if field.Kind() == reflect.Struct {
+			err := handleStruct(field)
+			if err != nil {
+				logger.Errorf("Load apollo: field %v of type %v error: %v", structField.Name, structField.Type, err)
 			}
 		}
 	}
@@ -123,4 +138,42 @@ func loadStruct(v reflect.Value, key string) {
 	}
 	v.Set(reflect.ValueOf(temp).Elem())
 	return
+}
+
+func loadIntSlice(v reflect.Value, key string) {
+	list, err := NewIntSliceEntry(key, []int64{}).GetWithErr()
+	if err != nil {
+		return
+	}
+
+	temp := reflect.MakeSlice(v.Type(), len(list), len(list))
+	elemType := v.Type().Elem()
+	for i, x := range list {
+		temp.Index(i).Set(reflect.ValueOf(x).Convert(elemType))
+	}
+
+	v.Set(temp)
+}
+
+func loadUintSlice(v reflect.Value, key string) {
+	list, err := NewIntSliceEntry(key, []uint64{}).GetWithErr()
+	if err != nil {
+		return
+	}
+
+	temp := reflect.MakeSlice(v.Type(), len(list), len(list))
+	elemType := v.Type().Elem()
+	for i, x := range list {
+		temp.Index(i).Set(reflect.ValueOf(x).Convert(elemType))
+	}
+
+	v.Set(temp)
+}
+
+func loadStringSlice(v reflect.Value, key string) {
+	list, err := NewStringSliceEntry(key, []string{}).GetWithErr()
+	if err != nil {
+		return
+	}
+	v.Set(reflect.ValueOf(list))
 }
