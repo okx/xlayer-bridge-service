@@ -63,6 +63,7 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, storage interfa
 		mainCoinsCache:    mainCoinsCache,
 		estTimeCalculator: estTimeCalc,
 		height:            height,
+		networkIDs:        networkIDs,
 		defaultPageLimit:  cfg.DefaultPageLimit,
 		maxPageLimit:      cfg.MaxPageLimit,
 		version:           cfg.BridgeVersion,
