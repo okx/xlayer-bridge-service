@@ -59,18 +59,18 @@ func (e *entryImpl[T]) Get() T {
 	// If client is not initialized, return the default value
 	client := GetClient()
 	if client == nil {
-		logger.Error("apollo client is nil, returning default")
+		logger.Debug("apollo client is nil, returning default")
 		return e.defaultValue
 	}
 
 	if e.getterFn == nil {
-		logger.Error("getterFn is nil, returning default")
+		logger.Debug("getterFn is nil, returning default")
 		return e.defaultValue
 	}
 
 	v, err := e.getterFn(client, e.key)
 	if err != nil {
-		logger.Errorf("getterFn error: %v, returning default", err)
+		logger.Debugf("getterFn error: %v, returning default", err)
 		return e.defaultValue
 	}
 	return v

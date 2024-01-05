@@ -1,7 +1,7 @@
 package apolloconfig
 
 import (
-	"fmt"
+	"encoding/json"
 	"reflect"
 
 	"github.com/apolloconfig/agollo/v4"
@@ -52,10 +52,16 @@ func Init(c Config) error {
 // The struct tag value will be used as the config key to query from Apollo server
 // If Apollo config is not enabled, or somehow we cannot get the value, the field will not be changed
 func Load(cfg any) error {
-	return handleStruct(reflect.ValueOf(cfg))
+	v := reflect.ValueOf(cfg)
+	if v.Kind() != reflect.Pointer {
+		// Must be a pointer
+		return errors.New("Load apollo config: must pass a pointer")
+	}
+	return handleStruct(v)
 }
 
 func handleStruct(v reflect.Value) error {
+	logger := getLogger()
 	// If pointer type, need to call indirect to get the original type
 	v = reflect.Indirect(v)
 
@@ -66,29 +72,35 @@ func handleStruct(v reflect.Value) error {
 
 	// Iterate and handle each field
 	for i := 0; i < v.NumField(); i++ {
-		field := reflect.Indirect(v.Field(i))
+		origField := v.Field(i)
+		field := reflect.Indirect(origField)
 		structField := v.Type().Field(i)
 
 		// Get the config key from the field tag
 		key := structField.Tag.Get(tagName)
 		if key != "" {
 			if !field.CanSet() {
-				return fmt.Errorf("field %v cannot be set", structField.Name)
+				logger.Errorf("Load apollo: field %v cannot be set", structField.Name)
+				continue
 			}
 
 			// If config key is not empty, use it to query from Apollo server
 			if field.Kind() == reflect.Struct {
-				err := loadStruct(field, key)
+				loadStruct(field, key)
+				err := handleStruct(field)
 				if err != nil {
-					return errors.Wrap(err, fmt.Sprintf("load struct %v of type %v error", structField.Name, structField.Type))
+					logger.Errorf("Load apollo: field %v of type %v error: %v", structField.Name, structField.Type, err)
 				}
 			} else if field.CanInt() {
-				// TODO
-				field.Int()
+				field.SetInt(NewIntEntry(key, field.Int()).Get())
 			} else if field.CanUint() {
-				// TODO
+				field.SetUint(NewIntEntry(key, field.Uint()).Get())
+			} else if field.Kind() == reflect.String {
+				field.SetString(NewStringEntry(key, field.String()).Get())
+			} else if field.Kind() == reflect.Bool {
+				field.SetBool(NewBoolEntry(key, field.Bool()).Get())
 			} else {
-				return fmt.Errorf("field %v has invalid type %v", structField.Name, structField.Type)
+				logger.Errorf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
 			}
 		}
 	}
@@ -96,7 +108,19 @@ func handleStruct(v reflect.Value) error {
 	return nil
 }
 
-func loadStruct(v reflect.Value, key string) error {
-	// TODO: Implement
-	return nil
+func loadStruct(v reflect.Value, key string) {
+	s := NewStringEntry(key, "").Get()
+	if s == "" {
+		return
+	}
+
+	// Create a clone so we won't change the original values unexpectedly
+	temp := reflect.New(v.Type()).Interface()
+	// Always use JSON for struct
+	err := json.Unmarshal([]byte(s), &temp)
+	if err != nil {
+		return
+	}
+	v.Set(reflect.ValueOf(temp).Elem())
+	return
 }
