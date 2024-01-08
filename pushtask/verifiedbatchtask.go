@@ -14,6 +14,7 @@ const (
 	syncL1VerifiedBatchLockKey        = "sync_l1_verified_batch_lock"
 	minVerifyDuration                 = 2
 	defaultVerifyDuration             = 10
+	maxVerifyDuration                 = 30
 	verifiedBatchCacheRefreshInterval = 10 * time.Second
 )
 
@@ -143,8 +144,9 @@ func (ins *VerifiedBatchHandler) checkLatestBatchLegal(ctx context.Context, late
 	return true, nil
 }
 
+// checkAvgDurationLegal duration has a default range, 2-30 minutes, if over range, maybe dirty data, drop the data
 func (ins *VerifiedBatchHandler) checkAvgDurationLegal(avgDuration int64) bool {
-	return avgDuration > int64(minVerifyDuration) && avgDuration < int64(defaultVerifyDuration)
+	return avgDuration > int64(minVerifyDuration) && avgDuration < int64(maxVerifyDuration)
 }
 
 func GetAvgVerifyDuration(ctx context.Context, redisStorage redisstorage.RedisStorage) uint64 {

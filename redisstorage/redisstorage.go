@@ -30,6 +30,9 @@ const (
 
 	// Set a default expiration for locks to prevent a process from keeping the lock for too long
 	lockExpire = 1 * time.Minute
+
+	// time for 48 hour
+	durationFor48h = 48 * time.Hour
 )
 
 // redisStorageImpl implements RedisStorage interface
@@ -224,7 +227,7 @@ func (s *redisStorageImpl) SetAvgCommitDuration(ctx context.Context, duration in
 
 func (s *redisStorageImpl) SetL2BlockCommitTime(ctx context.Context, blockNum uint64, commitTimestamp int64) error {
 	key := s.buildL2BlockCommitTimeCacheKey(blockNum)
-	return s.setFoundation(ctx, key, commitTimestamp, 48*time.Hour)
+	return s.setFoundation(ctx, key, commitTimestamp, durationFor48h)
 }
 func (s *redisStorageImpl) GetL2BlockCommitTime(ctx context.Context, blockNum uint64) (uint64, error) {
 	key := s.buildL2BlockCommitTimeCacheKey(blockNum)

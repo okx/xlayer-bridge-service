@@ -283,6 +283,7 @@ func (ins *CommittedBatchHandler) pushMsgForDeposit(deposit *etherman.Deposit, l
 	}(deposit)
 }
 
+// checkAvgDurationLegal duration has a default range, 2-10 minutes, if over range, maybe dirty data, drop the data
 func (ins *CommittedBatchHandler) checkAvgDurationLegal(avgDuration int64) bool {
 	return avgDuration > int64(minCommitDuration) && avgDuration < int64(defaultCommitDuration)
 }

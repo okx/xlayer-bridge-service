@@ -40,7 +40,7 @@ func queryLatestBatchNum(rpcUrl string, methodName string) (uint64, error) {
 
 	if response.Error != nil {
 		log.Errorf("query for %v, back failed data, %v, %v", methodName, response.Error.Code, response.Error.Message)
-		return 0, errors.Wrap(err, fmt.Sprintf("query %v failed", methodName))
+		return 0, fmt.Errorf("query %v failed", methodName)
 	}
 
 	var result string
@@ -77,7 +77,7 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 
 	if response.Error != nil {
 		log.Errorf("query for zkevm_getBatchByNumber failed, %v, %v", response.Error.Code, response.Error.Message)
-		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber failed"))
+		return nil, fmt.Errorf("query zkevm_getBatchByNumber failed")
 	}
 
 	var result BatchInfo
