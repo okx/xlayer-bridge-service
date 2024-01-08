@@ -147,7 +147,6 @@ func loadStruct(v reflect.Value, key string) {
 		return
 	}
 	v.Set(reflect.ValueOf(temp).Elem())
-	return
 }
 
 func loadIntSlice(v reflect.Value, key string) {

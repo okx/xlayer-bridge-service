@@ -2,6 +2,7 @@ package sentinel
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
@@ -61,7 +62,7 @@ func InitApolloDataSource(c apolloconfig.Config) error {
 		AppID:          c.AppID,
 		Cluster:        c.Cluster,
 		IP:             c.MetaAddress,
-		NamespaceName:  c.NamespaceName,
+		NamespaceName:  strings.Join(c.Namespaces, ","),
 		Secret:         c.Secret,
 		IsBackupConfig: c.IsBackupConfig,
 	}
