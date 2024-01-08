@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	"github.com/apolloconfig/agollo/v4"
 	agolloConfig "github.com/apolloconfig/agollo/v4/env/config"
@@ -34,7 +35,7 @@ func Init(c Config) error {
 		AppID:          c.AppID,
 		Cluster:        c.Cluster,
 		IP:             c.MetaAddress,
-		NamespaceName:  c.NamespaceName,
+		NamespaceName:  strings.Join(c.Namespaces, ","),
 		Secret:         c.Secret,
 		IsBackupConfig: c.IsBackupConfig,
 	}
@@ -81,7 +82,7 @@ func handleStruct(v reflect.Value) error {
 
 		// Get the config key from the field tag
 		key := structField.Tag.Get(tagName)
-		if key != "" {
+		if key != "" && key != "-" {
 			if !field.CanSet() {
 				logger.Errorf("Load apollo: field %v cannot be set", structField.Name)
 				continue

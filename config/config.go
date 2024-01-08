@@ -24,15 +24,15 @@ import (
 type Config struct {
 	Log               log.Config
 	Apollo            apolloconfig.Config
-	SyncDB            db.Config
-	ClaimTxManager    claimtxman.Config
-	Etherman          etherman.Config
-	Synchronizer      synchronizer.Config
-	BridgeController  bridgectrl.Config
-	BridgeServer      server.Config
-	CoinKafkaConsumer coinmiddleware.Config
-	NetworkConfig
-	NacosConfig nacos.Config
+	SyncDB            db.Config             `apollo:"SyncDB"`
+	ClaimTxManager    claimtxman.Config     `apollo:"ClaimTxManager"`
+	Etherman          etherman.Config       `apollo:"Etherman"`
+	Synchronizer      synchronizer.Config   `apollo:"Synchronizer"`
+	BridgeController  bridgectrl.Config     `apollo:"BridgeController"`
+	BridgeServer      server.Config         `apollo:"BridgeServer"`
+	CoinKafkaConsumer coinmiddleware.Config `apollo:"CoinKafkaConsumer"`
+	NetworkConfig     `apollo:"NetworkConfig"`
+	NacosConfig       nacos.Config `apollo:"NacosConfig"`
 }
 
 // Load loads the configuration
@@ -90,6 +90,10 @@ func Load(configFilePath string, network string) (*Config, error) {
 
 	if cfg.Apollo.Enabled {
 		err = apolloconfig.Init(cfg.Apollo)
+		if err != nil {
+			return nil, err
+		}
+		err = apolloconfig.Load(&cfg)
 		if err != nil {
 			return nil, err
 		}
