@@ -16,43 +16,58 @@ type Entry[T any] interface {
 }
 
 // An interface to get the config from Apollo client (and convert it if needed)
-type getterFunction[T any] func(client *agollo.Client, key string) (T, error)
+type getterFunction[T any] func(client *agollo.Client, namespace, key string) (T, error)
 
 type entryImpl[T any] struct {
+	namespace    string
 	key          string
 	defaultValue T
 	getterFn     getterFunction[T]
 }
 
+type entryOption[T any] func(*entryImpl[T])
+
+func WithNamespace[T any](namespace string) entryOption[T] {
+	return func(e *entryImpl[T]) {
+		e.namespace = namespace
+	}
+}
+
 // newEntry is a generic constructor for apolloconfig.Entry
-// TODO: Currently the entry always uses the default namespace ("application"), we can change it to use dynamic namespace name in the future
-func newEntry[T any](key string, defaultValue T, getterFn getterFunction[T]) Entry[T] {
-	return &entryImpl[T]{
+func newEntry[T any](key string, defaultValue T, getterFn getterFunction[T], opts ...entryOption[T]) Entry[T] {
+	e := &entryImpl[T]{
+		namespace:    defaultNamespace,
 		key:          key,
 		defaultValue: defaultValue,
 		getterFn:     getterFn,
 	}
+
+	for _, o := range opts {
+		o(e)
+	}
+
+	return e
 }
 
-func NewIntEntry[T constraints.Integer](key string, defaultValue T) Entry[T] {
-	return newEntry(key, defaultValue, getInt[T])
+func NewIntEntry[T constraints.Integer](key string, defaultValue T, opts ...entryOption[T]) Entry[T] {
+	return newEntry(key, defaultValue, getInt[T], opts...)
 }
 
-func NewIntSliceEntry[T constraints.Integer](key string, defaultValue []T) Entry[[]T] {
-	return newEntry(key, defaultValue, getIntSlice[T])
+func NewIntSliceEntry[T constraints.Integer](key string, defaultValue []T, opts ...entryOption[[]T]) Entry[[]T] {
+	return newEntry(key, defaultValue, getIntSlice[T], opts...)
 }
 
-func NewBoolEntry(key string, defaultValue bool) Entry[bool] {
-	return newEntry(key, defaultValue, getBool)
+func NewBoolEntry(key string, defaultValue bool, opts ...entryOption[bool]) Entry[bool] {
+	return newEntry(key, defaultValue, getBool, opts...)
 }
 
-func NewStringEntry(key string, defaultValue string) Entry[string] {
-	return newEntry(key, defaultValue, getString)
+func NewStringEntry(key string, defaultValue string, opts ...entryOption[string]) Entry[string] {
+	return newEntry(key, defaultValue, getString, opts...)
 }
 
 // String array is separated by commas, so this will work incorrectly if we have comma in the elements
-func NewStringSliceEntry(key string, defaultValue []string) Entry[[]string] {
-	return newEntry(key, defaultValue, getStringSlice)
+func NewStringSliceEntry(key string, defaultValue []string, opts ...entryOption[[]string]) Entry[[]string] {
+	return newEntry(key, defaultValue, getStringSlice, opts...)
 }
 
 func (e *entryImpl[T]) Get() T {
@@ -80,7 +95,7 @@ func (e *entryImpl[T]) GetWithErr() (T, error) {
 		return e.defaultValue, errors.New("getterFn is nil")
 	}
 
-	v, err := e.getterFn(client, e.key)
+	v, err := e.getterFn(client, e.namespace, e.key)
 	if err != nil {
 		return e.defaultValue, errors.Wrap(err, "getterFn error")
 	}
@@ -89,8 +104,8 @@ func (e *entryImpl[T]) GetWithErr() (T, error) {
 
 // ----- Getter functions -----
 
-func getString(client *agollo.Client, key string) (string, error) {
-	v, err := client.GetDefaultConfigCache().Get(key)
+func getString(client *agollo.Client, namespace, key string) (string, error) {
+	v, err := client.GetConfig(namespace).GetCache().Get(key)
 	if err != nil {
 		return "", err
 	}
@@ -102,16 +117,16 @@ func getString(client *agollo.Client, key string) (string, error) {
 }
 
 // String array is separated by commas, so this will work incorrectly if we have comma in the elements
-func getStringSlice(client *agollo.Client, key string) ([]string, error) {
-	s, err := getString(client, key)
+func getStringSlice(client *agollo.Client, namespace, key string) ([]string, error) {
+	s, err := getString(client, namespace, key)
 	if err != nil {
 		return nil, err
 	}
 	return strings.Split(s, comma), nil
 }
 
-func getInt[T constraints.Integer](client *agollo.Client, key string) (T, error) {
-	s, err := getString(client, key)
+func getInt[T constraints.Integer](client *agollo.Client, namespace, key string) (T, error) {
+	s, err := getString(client, namespace, key)
 	if err != nil {
 		return 0, err
 	}
@@ -119,8 +134,8 @@ func getInt[T constraints.Integer](client *agollo.Client, key string) (T, error)
 	return T(res), err
 }
 
-func getIntSlice[T constraints.Integer](client *agollo.Client, key string) ([]T, error) {
-	s, err := getString(client, key)
+func getIntSlice[T constraints.Integer](client *agollo.Client, namespace, key string) ([]T, error) {
+	s, err := getString(client, namespace, key)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +152,8 @@ func getIntSlice[T constraints.Integer](client *agollo.Client, key string) ([]T,
 	return result, nil
 }
 
-func getBool(client *agollo.Client, key string) (bool, error) {
-	s, err := getString(client, key)
+func getBool(client *agollo.Client, namespace, key string) (bool, error) {
+	s, err := getString(client, namespace, key)
 	if err != nil {
 		return false, err
 	}

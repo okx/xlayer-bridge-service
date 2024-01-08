@@ -7,5 +7,6 @@ const (
 	parseIntBase    = 10
 	parseIntBitSize = 64
 
-	comma = ","
+	comma            = ","
+	defaultNamespace = "application"
 )

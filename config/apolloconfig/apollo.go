@@ -1,6 +1,7 @@
 package apolloconfig
 
 import (
+	"encoding"
 	"encoding/json"
 	"reflect"
 
@@ -12,6 +13,8 @@ import (
 var (
 	enabled       = false
 	defaultClient *agollo.Client
+
+	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 )
 
 const (
@@ -86,7 +89,9 @@ func handleStruct(v reflect.Value) error {
 
 			// If config key is not empty, use it to query from Apollo server
 			// Process differently for each type
-			if field.Kind() == reflect.Struct {
+			if field.CanAddr() && field.Addr().Type().Implements(textUnmarshalerType) {
+				loadTextUnmarshaler(field, key)
+			} else if field.Kind() == reflect.Struct {
 				loadStruct(field, key)
 			} else if field.CanInt() {
 				field.SetInt(NewIntEntry(key, field.Int()).Get())
@@ -105,7 +110,11 @@ func handleStruct(v reflect.Value) error {
 				case reflect.String:
 					loadStringSlice(field, key)
 				default:
-					logger.Debugf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
+					if reflect.New(field.Type().Elem()).Type().Implements(textUnmarshalerType) {
+						loadTextUnmarshalerSlice(field, key)
+					} else {
+						logger.Debugf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
+					}
 				}
 			} else {
 				logger.Errorf("Load apollo: field %v has invalid type %v", structField.Name, structField.Type)
@@ -176,4 +185,38 @@ func loadStringSlice(v reflect.Value, key string) {
 		return
 	}
 	v.Set(reflect.ValueOf(list))
+}
+
+func loadTextUnmarshaler(v reflect.Value, key string) {
+	s, err := NewStringEntry(key, "").GetWithErr()
+	if err != nil {
+		return
+	}
+	temp := reflect.New(v.Type()).Interface().(encoding.TextUnmarshaler)
+	err = temp.UnmarshalText([]byte(s))
+	if err != nil {
+		return
+	}
+
+	v.Set(reflect.Indirect(reflect.ValueOf(temp)))
+}
+
+func loadTextUnmarshalerSlice(v reflect.Value, key string) {
+	list, err := NewStringSliceEntry(key, []string{}).GetWithErr()
+	if err != nil {
+		return
+	}
+
+	temp := reflect.MakeSlice(v.Type(), len(list), len(list))
+	elemType := v.Type().Elem()
+	for i, s := range list {
+		tempElem := reflect.New(elemType).Interface().(encoding.TextUnmarshaler)
+		err = tempElem.UnmarshalText([]byte(s))
+		if err != nil {
+			return
+		}
+		temp.Index(i).Set(reflect.Indirect(reflect.ValueOf(tempElem)))
+	}
+
+	v.Set(temp)
 }
