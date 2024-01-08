@@ -4,9 +4,9 @@ Outputs = ["stdout"]
 
 [Apollo]
 Enabled = false
-AppID = "x1-bridge-service"
+AppID = "haibridgetest"
 Cluster = "default"
-MetaAddress = "http://127.0.0.1:8080"
+MetaAddress = "http://81.68.181.139:8080"
 Namespaces = ["application"]
 Secret = ""
 IsBackupConfig = true
