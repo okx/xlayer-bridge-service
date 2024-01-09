@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"os"
 	"os/signal"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/0xPolygonHermez/zkevm-node/log"
@@ -195,7 +195,6 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 
 	// ---------- Run push tasks ----------
 	if opt.runPushTasks {
-
 		// Initialize the push task for L1 block num change
 		l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
 		if err != nil {

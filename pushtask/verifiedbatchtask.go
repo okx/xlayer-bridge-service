@@ -2,11 +2,12 @@ package pushtask
 
 import (
 	"context"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 const (

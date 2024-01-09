@@ -2,6 +2,8 @@ package pushtask
 
 import (
 	"context"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
@@ -10,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 const (
