@@ -573,7 +573,7 @@ func (p *PostgresStorage) GetL1Deposits(ctx context.Context, exitRoot []byte, db
 	updateDepositsStatusSQL := fmt.Sprintf(`Select d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 			FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
 			WHERE deposit_cnt <= (SELECT deposit_cnt FROM mt.root%[1]v WHERE root = $1 AND network = 0) 
-			AND network_id = 0 AND ready_for_claim = false`, p.tableSuffix)
+			AND d.network_id = 0 AND ready_for_claim = false`, p.tableSuffix)
 	rows, err := p.getExecQuerier(dbTx).Query(ctx, updateDepositsStatusSQL, exitRoot)
 	if err != nil {
 		return nil, err
