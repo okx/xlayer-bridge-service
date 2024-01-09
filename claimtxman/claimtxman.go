@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
@@ -283,6 +284,17 @@ func (tm *ClaimTxManager) processDepositStatusL1(newGer *etherman.GlobalExitRoot
 		err = tm.storage.UpdateL1DepositStatus(tm.ctx, deposit.DepositCount, ger.Time, dbTx)
 		if err != nil {
 			log.Errorf("error update deposit %d status. Error: %v", deposit.DepositCount, err)
+			tm.rollbackStore(dbTx)
+			return err
+		}
+
+		// There can be cases that the deposit can be ready for claim (and even claimed) before it reached 64 block confirmations
+		// (for example, in devnet where the block confirmations required is lower)
+		// To prevent duplicated push in such cases (which can cause unexpected behavior), we need to remove the tx from
+		// the block->tx mapping cache
+		err = tm.redisStorage.DeleteBlockDeposit(tm.ctx, deposit)
+		if err != nil {
+			log.Errorf("failed to delete deposit %d from block num cache, error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
 			return err
 		}

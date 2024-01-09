@@ -18,6 +18,7 @@ type RedisStorage interface {
 	SetL1BlockNum(ctx context.Context, blockNum uint64) error
 	GetL1BlockNum(ctx context.Context) (uint64, error)
 	AddBlockDeposit(ctx context.Context, deposit *etherman.Deposit) error
+	DeleteBlockDeposit(ctx context.Context, deposit *etherman.Deposit) error
 	GetBlockDepositList(ctx context.Context, networkID uint, blockNum uint64) ([]*etherman.Deposit, error)
 
 	// General lock
@@ -49,6 +50,8 @@ type RedisClient interface {
 	Ping(ctx context.Context) *redis.StatusCmd
 	HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
 	HMGet(ctx context.Context, key string, fields ...string) *redis.SliceCmd
+	HVals(ctx context.Context, key string) *redis.StringSliceCmd
+	HDel(ctx context.Context, key string, fields ...string) *redis.IntCmd
 	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
 	Get(ctx context.Context, key string) *redis.StringCmd
 	SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
@@ -56,6 +59,5 @@ type RedisClient interface {
 	LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
 	RPop(ctx context.Context, key string) *redis.StringCmd
 	LLen(ctx context.Context, key string) *redis.IntCmd
-	LRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd
 	Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd
 }

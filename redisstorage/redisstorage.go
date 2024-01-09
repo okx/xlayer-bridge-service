@@ -205,10 +205,10 @@ func (s *redisStorageImpl) AddBlockDeposit(ctx context.Context, deposit *etherma
 	if err != nil {
 		return errors.Wrap(err, "json encode error")
 	}
-	key := getL1BlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
-	err = s.lPushFoundation(ctx, key, string(val))
+	key := getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
+	err = s.client.HSet(ctx, key, deposit.TxHash.String(), string(val)).Err()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "AddBlockDeposit HSet error")
 	}
 
 	// If add successfully, expire the list in 24 hours, no need to check for result
@@ -216,15 +216,28 @@ func (s *redisStorageImpl) AddBlockDeposit(ctx context.Context, deposit *etherma
 	return nil
 }
 
+func (s *redisStorageImpl) DeleteBlockDeposit(ctx context.Context, deposit *etherman.Deposit) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	if deposit == nil {
+		return nil
+	}
+	key := getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
+	err := s.client.HDel(ctx, key, deposit.TxHash.String()).Err()
+	return errors.Wrap(err, "DeleteBlockDeposit HDel error")
+}
+
 func (s *redisStorageImpl) GetBlockDepositList(ctx context.Context, networkID uint, blockNum uint64) ([]*etherman.Deposit, error) {
 	if s == nil || s.client == nil {
 		return nil, errors.New("redis client is nil")
 	}
 
-	key := getL1BlockDepositListKey(networkID, blockNum)
-	res, err := s.client.LRange(ctx, key, 0, -1).Result()
+	key := getBlockDepositListKey(networkID, blockNum)
+	res, err := s.client.HVals(ctx, key).Result()
+
 	if err != nil {
-		return nil, errors.Wrap(err, "GetL1BlockDeposits LRange error")
+		return nil, errors.Wrap(err, "GetBlockDeposits HVals error")
 	}
 
 	// Decode the deposit list
@@ -233,7 +246,7 @@ func (s *redisStorageImpl) GetBlockDepositList(ctx context.Context, networkID ui
 		deposit := &etherman.Deposit{}
 		err = json.Unmarshal([]byte(s), deposit)
 		if err != nil {
-			return nil, errors.Wrap(err, "GetL1BlockDeposits json decode error")
+			return nil, errors.Wrap(err, "GetBlockDeposits json decode error")
 		}
 		depositList[i] = deposit
 	}
@@ -417,6 +430,6 @@ func convertPricesToSymbols(prices []*pb.SymbolPrice) []*pb.SymbolInfo {
 	return result
 }
 
-func getL1BlockDepositListKey(networkID uint, blockNum uint64) string {
+func getBlockDepositListKey(networkID uint, blockNum uint64) string {
 	return fmt.Sprintf(l1BlockDepositListKey, networkID, blockNum)
 }
