@@ -389,6 +389,16 @@ func (tm *ClaimTxManager) processDepositStatus(ger *etherman.GlobalExitRoot, dbT
 			}
 			log.Debugf("claimTx for deposit %d save successfully %d", deposit.DepositCount)
 
+			// There can be cases that the deposit can be ready for claim (and even claimed) before it reached 64 block confirmations
+			// (for example, in devnet where the block confirmations required is lower)
+			// To prevent duplicated push in such cases (which can cause unexpected behavior), we need to remove the tx from
+			// the block->tx mapping cache
+			err = tm.redisStorage.DeleteBlockDeposit(tm.ctx, deposit)
+			if err != nil {
+				log.Errorf("failed to delete deposit %d from block num cache, error: %v", deposit.DepositCount, err)
+				return err
+			}
+
 			// Notify FE that tx is pending auto claim
 			go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 		}
