@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"math/big"
-	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
@@ -559,6 +560,21 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			return rollbackErr
 		}
 		return err
+	}
+
+	// Add the deposit to Redis for L1
+	if deposit.NetworkID == 0 {
+		err := s.redisStorage.AddBlockDeposit(context.Background(), &deposit)
+		if err != nil {
+			log.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+			if rollbackErr != nil {
+				log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+					s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
+				return rollbackErr
+			}
+			return err
+		}
 	}
 
 	// Notify FE about a new deposit

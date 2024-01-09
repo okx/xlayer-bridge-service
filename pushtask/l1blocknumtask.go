@@ -109,16 +109,15 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		return
 	}
 
-	// Scan the DB and push events to FE
 	var (
 		totalDeposits = 0
-		offset        = uint(0)
 	)
-	for {
-		deposits, err := t.storage.GetNotReadyTransactionsWithBlockRange(ctx, 0, oldBlockNum+1,
-			blockNum, queryLimit, offset, nil)
+
+	for block := oldBlockNum + 1; block <= blockNum; block++ {
+		// For each block num, get the list of deposit and push the events to FE
+		deposits, err := t.redisStorage.GetBlockDepositList(ctx, 0, block)
 		if err != nil {
-			log.Errorf("L1BlockNumTask query error: %v", err)
+			log.Errorf("L1BlockNumTask query Redis error: %v", err)
 			return
 		}
 		totalDeposits += len(deposits)
@@ -142,11 +141,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 				}
 			}(deposit)
 		}
-
-		if len(deposits) < queryLimit {
-			break
-		}
-		offset += queryLimit
 	}
+
 	log.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
 }

@@ -2,12 +2,14 @@ package redisstorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
@@ -15,8 +17,10 @@ import (
 )
 
 const (
-	coinPriceHashKey = "bridge_coin_prices"
-	l1BlockNumKey    = "bridge_l1_block_num"
+	coinPriceHashKey         = "bridge_coin_prices"
+	l1BlockNumKey            = "bridge_l1_block_num"
+	l1BlockDepositListKey    = "bridge_l1_block_deposits_%d_%d" // Params: networkID and block num
+	l1BlockDepositListExpiry = 24 * time.Hour
 
 	//batch info key
 	latestCommitBatchNumKey = "bridge_latest_commit_batch_num"
@@ -187,6 +191,54 @@ func (s *redisStorageImpl) GetL1BlockNum(ctx context.Context) (uint64, error) {
 	}
 	num, err := strconv.ParseInt(res, 10, 64) //nolint:gomnd
 	return uint64(num), errors.Wrap(err, "GetL1BlockNum convert error")
+}
+
+func (s *redisStorageImpl) AddBlockDeposit(ctx context.Context, deposit *etherman.Deposit) error {
+	if s == nil || s.client == nil {
+		return errors.New("redis client is nil")
+	}
+	if deposit == nil {
+		return nil
+	}
+	// Encode to json
+	val, err := json.Marshal(deposit)
+	if err != nil {
+		return errors.Wrap(err, "json encode error")
+	}
+	key := getL1BlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
+	err = s.lPushFoundation(ctx, key, string(val))
+	if err != nil {
+		return err
+	}
+
+	// If add successfully, expire the list in 24 hours, no need to check for result
+	s.client.Expire(ctx, key, l1BlockDepositListExpiry)
+	return nil
+}
+
+func (s *redisStorageImpl) GetBlockDepositList(ctx context.Context, networkID uint, blockNum uint64) ([]*etherman.Deposit, error) {
+	if s == nil || s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+
+	key := getL1BlockDepositListKey(networkID, blockNum)
+	res, err := s.client.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, errors.Wrap(err, "GetL1BlockDeposits LRange error")
+	}
+
+	// Decode the deposit list
+	depositList := make([]*etherman.Deposit, len(res))
+	for i, s := range res {
+		deposit := &etherman.Deposit{}
+		err = json.Unmarshal([]byte(s), deposit)
+		if err != nil {
+			return nil, errors.Wrap(err, "GetL1BlockDeposits json decode error")
+		}
+		depositList[i] = deposit
+	}
+
+	return depositList, nil
 }
 
 func (s *redisStorageImpl) TryLock(ctx context.Context, lockKey string) (bool, error) {
@@ -363,4 +415,8 @@ func convertPricesToSymbols(prices []*pb.SymbolPrice) []*pb.SymbolInfo {
 		}
 	}
 	return result
+}
+
+func getL1BlockDepositListKey(networkID uint, blockNum uint64) string {
+	return fmt.Sprintf(l1BlockDepositListKey, networkID, blockNum)
 }
