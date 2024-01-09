@@ -19,7 +19,7 @@ import (
 const (
 	coinPriceHashKey         = "bridge_coin_prices"
 	l1BlockNumKey            = "bridge_l1_block_num"
-	l1BlockDepositListKey    = "bridge_l1_block_deposits_%d_%d" // Params: networkID and block num
+	l1BlockDepositListKey    = "bridge_block_deposits_%d_%d" // Params: networkID and block num
 	l1BlockDepositListExpiry = 24 * time.Hour
 
 	//batch info key
