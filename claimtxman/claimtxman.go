@@ -15,8 +15,6 @@ import (
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/log"
