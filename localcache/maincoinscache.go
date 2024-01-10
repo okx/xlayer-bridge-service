@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
@@ -52,17 +53,20 @@ func NewMainCoinsCache(storage interface{}) (MainCoinsCache, error) {
 
 // Refresh loops indefinitely and refresh the cache data every 5 minutes
 func (c *mainCoinsCacheImpl) Refresh(ctx context.Context) {
+	logger := utils.LoggerWithRandomTraceID(nil)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	ctx = log.CtxWithLogger(ctx, logger)
+
 	ticker := time.NewTicker(cacheRefreshInterval)
 	for range ticker.C {
-		log.Info("start refreshing main coins cache")
+		logger.Info("start refreshing main coins cache")
 		err := c.doRefresh(ctx)
 		if err != nil {
-			log.Errorf("refresh main coins cache error[%v]", err)
+			logger.Errorf("refresh main coins cache error[%v]", err)
 		}
-		log.Infof("finish refreshing main coins cache")
+		logger.Infof("finish refreshing main coins cache")
 	}
 }
 
