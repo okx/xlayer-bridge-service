@@ -189,4 +189,4 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/0xPolygonHermez/zkevm-node => github.com/okx/x1-node v0.2.6-RC3.0.20240109092750-15610b87af93
+replace github.com/0xPolygonHermez/zkevm-node => github.com/okx/x1-node v0.2.6-RC3.0.20240109095707-508cd1777afe
