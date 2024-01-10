@@ -745,20 +745,3 @@ func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFake
 		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
 	}, nil
 }
-
-func (s *bridgeService) pushTransactionUpdate(deposit *etherman.Deposit, status uint32) {
-	if s.messagePushProducer == nil {
-		return
-	}
-	err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
-		FromChain: uint32(deposit.NetworkID),
-		ToChain:   uint32(deposit.DestinationNetwork),
-		TxHash:    deposit.TxHash.String(),
-		Index:     uint64(deposit.DepositCount),
-		Status:    status,
-		DestAddr:  deposit.DestinationAddress.Hex(),
-	})
-	if err != nil {
-		log.Errorf("PushTransactionUpdate error: %v", err)
-	}
-}
