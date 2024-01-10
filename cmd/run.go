@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"os"
 	"os/signal"
+
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman"

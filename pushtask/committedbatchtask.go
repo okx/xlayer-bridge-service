@@ -2,6 +2,8 @@ package pushtask
 
 import (
 	"context"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
@@ -10,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 const (
@@ -217,8 +218,8 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 	}
 	log.Debugf("count for avg commit duration, currTime: %v, oldest time: %v, list len: %v", currTimestamp, fistTimestamp, listLen)
 	timestampDiff := currTimestamp - fistTimestamp
-	newAvgDuration := (timestampDiff) / (listLen - 1) / 60
-	remainder := timestampDiff / (listLen - 1) % 60
+	newAvgDuration := (timestampDiff) / (listLen - 1) / secondsPreMinute
+	remainder := timestampDiff / (listLen - 1) % secondsPreMinute
 	if remainder > 0 {
 		newAvgDuration++
 	}

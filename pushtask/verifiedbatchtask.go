@@ -2,11 +2,12 @@ package pushtask
 
 import (
 	"context"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 const (
@@ -113,8 +114,8 @@ func (ins *VerifiedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Cont
 		return err
 	}
 	timestampDiff := currTimestamp - fistTimestamp
-	newAvgDuration := (timestampDiff) / (listLen - 1) / 60
-	remainder := timestampDiff / (listLen - 1) % 60
+	newAvgDuration := (timestampDiff) / (listLen - 1) / secondsPreMinute
+	remainder := timestampDiff / (listLen - 1) % secondsPreMinute
 	if remainder > 0 {
 		newAvgDuration++
 	}

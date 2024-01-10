@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/0xPolygonHermez/zkevm-node/hex"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/0xPolygonHermez/zkevm-node/log"
@@ -15,6 +16,7 @@ import (
 const (
 	queryLatestCommitBatchNumMethod = "zkevm_virtualBatchNumber"
 	queryLatestVerifyBatchNumMethod = "zkevm_verifiedBatchNumber"
+	secondsPreMinute                = 60
 )
 
 // BatchInfo just simple info, can get more from https://okg-block.larksuite.com/wiki/DqM0wLcm1i5fztk5iKAu2Tw6spg
@@ -61,7 +63,7 @@ func QueryMaxBlockHashByBatchNum(rpcUrl string, batchNum uint64) (string, error)
 		log.Errorf("query for %v, batch: %v, error: %v", "zkevm_getBatchByNumber", batchNum, err)
 		return "", err
 	}
-	if blocks == nil || len(blocks) == 0 {
+	if len(blocks) == 0 {
 		log.Errorf("query for %v, blocks is empty, batch num: %v", "zkevm_getBatchByNumber", batchNum)
 		return "", nil
 	}
@@ -72,7 +74,7 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 	response, err := client.JSONRPCCall(rpcUrl, "zkevm_getBatchByNumber", batchNum)
 	if err != nil {
 		log.Errorf("query for %v error: %v", "zkevm_getBatchByNumber", err)
-		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber error"))
+		return nil, errors.Wrap(err, "query zkevm_getBatchByNumber error")
 	}
 
 	if response.Error != nil {
@@ -84,7 +86,7 @@ func queryBlockHashListByBatchNum(rpcUrl string, batchNum uint64) ([]string, err
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		log.Errorf("query for %v, parse json error: %v", "zkevm_getBatchByNumber", err)
-		return nil, errors.Wrap(err, fmt.Sprintf("query zkevm_getBatchByNumber, parse json error"))
+		return nil, errors.Wrap(err, "query zkevm_getBatchByNumber, parse json error")
 	}
 	return result.Blocks, nil
 }
@@ -93,7 +95,7 @@ func QueryBlockNumByBlockHash(ctx context.Context, client *ethclient.Client, blo
 	block, err := client.BlockByHash(ctx, common.HexToHash(blockHash))
 	if err != nil {
 		log.Errorf("query for blockByHash, block hash: %v, error: %v", blockHash, err)
-		return 0, errors.Wrap(err, fmt.Sprintf("query blockByHash error"))
+		return 0, errors.Wrap(err, "query blockByHash error")
 	}
 	return block.Number().Uint64(), nil
 }
