@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"math/rand"
 	"time"
+
+	"github.com/0xPolygonHermez/zkevm-node/log"
 )
 
 func generateRandomString(length int) string {
@@ -25,4 +27,12 @@ func GenerateRandomHash() [sha256.Size]byte {
 // GenerateTraceID generates a random trace ID.
 func GenerateTraceID() string {
 	return generateRandomString(traceIDLen)
+}
+
+// LoggerWithRandomTraceID returns a wrapping logger with a random trace id
+func LoggerWithRandomTraceID(logger *log.Logger) *log.Logger {
+	if logger == nil {
+		logger = log.GetDefaultLog()
+	}
+	return logger.WithFields(TraceID, GenerateTraceID())
 }

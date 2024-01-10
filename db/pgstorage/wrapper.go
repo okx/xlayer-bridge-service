@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -17,7 +16,7 @@ type execQuerierWrapper struct {
 }
 
 func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...interface{}) (commandTag pgconn.CommandTag, err error) {
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
+	logger := log.LoggerFromCtx(ctx)
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Exec], sql[%v], arguments[%v]", removeNewLine(sql), arguments)
 
@@ -28,7 +27,7 @@ func (w *execQuerierWrapper) Exec(ctx context.Context, sql string, arguments ...
 }
 
 func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
+	logger := log.LoggerFromCtx(ctx)
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[Query], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -39,7 +38,7 @@ func (w *execQuerierWrapper) Query(ctx context.Context, sql string, args ...inte
 }
 
 func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
+	logger := log.LoggerFromCtx(ctx)
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[QueryRow], sql[%v], arguments[%v]", removeNewLine(sql), args)
 
@@ -50,7 +49,7 @@ func (w *execQuerierWrapper) QueryRow(ctx context.Context, sql string, args ...i
 }
 
 func (w *execQuerierWrapper) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	logger := log.WithFields(utils.TraceID, ctx.Value(utils.CtxTraceID))
+	logger := log.LoggerFromCtx(ctx)
 	startTime := time.Now()
 	logger.Debugf("DB query begin, method[CopyFrom], tableName[%v]", tableName)
 

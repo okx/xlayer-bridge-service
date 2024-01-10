@@ -746,7 +746,7 @@ func (p *PostgresStorage) GetAllMainCoins(ctx context.Context, limit uint, offse
 		coin := &pb.CoinInfo{}
 		err = rows.Scan(&coin.Symbol, &coin.Name, &coin.Decimals, &coin.Address, &coin.ChainId, &coin.NetworkId, &coin.LogoLink)
 		if err != nil {
-			log.Errorf("GetAllMainCoins scan row error[%v]", err)
+			log.LoggerFromCtx(ctx).Errorf("GetAllMainCoins scan row error[%v]", err)
 			return nil, err
 		}
 		if coin.Address != "" {
