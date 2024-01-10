@@ -202,8 +202,6 @@ func (ins *CommittedBatchHandler) freshRedisForAvgCommitDuration(ctx context.Con
 	if err != nil {
 		return err
 	}
-	//todo: bard delete test log
-	log.Debugf("success push commit time for batch: %v, time: %v", latestBatchNum, currTimestamp)
 	listLen, err := ins.redisStorage.LLenCommitTimeList(ctx)
 	if err != nil {
 		return err
@@ -250,7 +248,6 @@ func (ins *CommittedBatchHandler) pushStatusChangedMsg(ctx context.Context, late
 			log.Errorf("query l2 pending deposits error: %v", err)
 			return nil
 		}
-		// todo: bard delete test log
 		log.Debugf("success get deposit for batch: %v, size: %v", latestBatchNum, len(deposits))
 		// Notify FE for each transaction
 		for _, deposit := range deposits {

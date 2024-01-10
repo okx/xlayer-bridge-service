@@ -22,22 +22,21 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	BridgeService_CheckAPI_FullMethodName                  = "/bridge.v1.BridgeService/CheckAPI"
-	BridgeService_GetBridges_FullMethodName                = "/bridge.v1.BridgeService/GetBridges"
-	BridgeService_GetProof_FullMethodName                  = "/bridge.v1.BridgeService/GetProof"
-	BridgeService_GetBridge_FullMethodName                 = "/bridge.v1.BridgeService/GetBridge"
-	BridgeService_GetClaims_FullMethodName                 = "/bridge.v1.BridgeService/GetClaims"
-	BridgeService_GetTokenWrapped_FullMethodName           = "/bridge.v1.BridgeService/GetTokenWrapped"
-	BridgeService_GetCoinPrice_FullMethodName              = "/bridge.v1.BridgeService/GetCoinPrice"
-	BridgeService_GetMainCoins_FullMethodName              = "/bridge.v1.BridgeService/GetMainCoins"
-	BridgeService_GetPendingTransactions_FullMethodName    = "/bridge.v1.BridgeService/GetPendingTransactions"
-	BridgeService_GetAllTransactions_FullMethodName        = "/bridge.v1.BridgeService/GetAllTransactions"
-	BridgeService_GetSmtProof_FullMethodName               = "/bridge.v1.BridgeService/GetSmtProof"
-	BridgeService_GetNotReadyTransactions_FullMethodName   = "/bridge.v1.BridgeService/GetNotReadyTransactions"
-	BridgeService_GetMonitoredTxsByStatus_FullMethodName   = "/bridge.v1.BridgeService/GetMonitoredTxsByStatus"
-	BridgeService_GetEstimateTime_FullMethodName           = "/bridge.v1.BridgeService/GetEstimateTime"
-	BridgeService_GetFakePushMessages_FullMethodName       = "/bridge.v1.BridgeService/GetFakePushMessages"
-	BridgeService_TestUpL2DepositReadyClaim_FullMethodName = "/bridge.v1.BridgeService/TestUpL2DepositReadyClaim"
+	BridgeService_CheckAPI_FullMethodName                = "/bridge.v1.BridgeService/CheckAPI"
+	BridgeService_GetBridges_FullMethodName              = "/bridge.v1.BridgeService/GetBridges"
+	BridgeService_GetProof_FullMethodName                = "/bridge.v1.BridgeService/GetProof"
+	BridgeService_GetBridge_FullMethodName               = "/bridge.v1.BridgeService/GetBridge"
+	BridgeService_GetClaims_FullMethodName               = "/bridge.v1.BridgeService/GetClaims"
+	BridgeService_GetTokenWrapped_FullMethodName         = "/bridge.v1.BridgeService/GetTokenWrapped"
+	BridgeService_GetCoinPrice_FullMethodName            = "/bridge.v1.BridgeService/GetCoinPrice"
+	BridgeService_GetMainCoins_FullMethodName            = "/bridge.v1.BridgeService/GetMainCoins"
+	BridgeService_GetPendingTransactions_FullMethodName  = "/bridge.v1.BridgeService/GetPendingTransactions"
+	BridgeService_GetAllTransactions_FullMethodName      = "/bridge.v1.BridgeService/GetAllTransactions"
+	BridgeService_GetSmtProof_FullMethodName             = "/bridge.v1.BridgeService/GetSmtProof"
+	BridgeService_GetNotReadyTransactions_FullMethodName = "/bridge.v1.BridgeService/GetNotReadyTransactions"
+	BridgeService_GetMonitoredTxsByStatus_FullMethodName = "/bridge.v1.BridgeService/GetMonitoredTxsByStatus"
+	BridgeService_GetEstimateTime_FullMethodName         = "/bridge.v1.BridgeService/GetEstimateTime"
+	BridgeService_GetFakePushMessages_FullMethodName     = "/bridge.v1.BridgeService/GetFakePushMessages"
 )
 
 // BridgeServiceClient is the client API for BridgeService service.
@@ -75,7 +74,6 @@ type BridgeServiceClient interface {
 	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
 	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
 	GetFakePushMessages(ctx context.Context, in *GetFakePushMessagesRequest, opts ...grpc.CallOption) (*GetFakePushMessagesResponse, error)
-	TestUpL2DepositReadyClaim(ctx context.Context, in *TestUpL2DepositReadyClaimRequest, opts ...grpc.CallOption) (*TestUpL2DepositReadyClaimResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -221,15 +219,6 @@ func (c *bridgeServiceClient) GetFakePushMessages(ctx context.Context, in *GetFa
 	return out, nil
 }
 
-func (c *bridgeServiceClient) TestUpL2DepositReadyClaim(ctx context.Context, in *TestUpL2DepositReadyClaimRequest, opts ...grpc.CallOption) (*TestUpL2DepositReadyClaimResponse, error) {
-	out := new(TestUpL2DepositReadyClaimResponse)
-	err := c.cc.Invoke(ctx, BridgeService_TestUpL2DepositReadyClaim_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -265,7 +254,6 @@ type BridgeServiceServer interface {
 	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
 	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
 	GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error)
-	TestUpL2DepositReadyClaim(context.Context, *TestUpL2DepositReadyClaimRequest) (*TestUpL2DepositReadyClaimResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -317,9 +305,6 @@ func (UnimplementedBridgeServiceServer) GetEstimateTime(context.Context, *GetEst
 }
 func (UnimplementedBridgeServiceServer) GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFakePushMessages not implemented")
-}
-func (UnimplementedBridgeServiceServer) TestUpL2DepositReadyClaim(context.Context, *TestUpL2DepositReadyClaimRequest) (*TestUpL2DepositReadyClaimResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TestUpL2DepositReadyClaim not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -604,24 +589,6 @@ func _BridgeService_GetFakePushMessages_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _BridgeService_TestUpL2DepositReadyClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TestUpL2DepositReadyClaimRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BridgeServiceServer).TestUpL2DepositReadyClaim(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: BridgeService_TestUpL2DepositReadyClaim_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BridgeServiceServer).TestUpL2DepositReadyClaim(ctx, req.(*TestUpL2DepositReadyClaimRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -688,10 +655,6 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFakePushMessages",
 			Handler:    _BridgeService_GetFakePushMessages_Handler,
-		},
-		{
-			MethodName: "TestUpL2DepositReadyClaim",
-			Handler:    _BridgeService_TestUpL2DepositReadyClaim_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

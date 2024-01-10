@@ -849,26 +849,3 @@ func (p *PostgresStorage) GetLatestReadyDeposits(ctx context.Context, networkID 
 
 	return deposits, nil
 }
-
-func (p *PostgresStorage) UpdateReadyClaimForL2Deposit(ctx context.Context, txHash string, currTime time.Time, dbTx pgx.Tx) error {
-	updateDepositsStatusSQL := fmt.Sprintf(`UPDATE sync.deposit%[1]v SET ready_for_claim = true, ready_time = $1
-		WHERE tx_hash = $2;`, p.tableSuffix)
-	_, err := p.getExecQuerier(dbTx).Exec(ctx, updateDepositsStatusSQL, currTime, txHash)
-	return err
-}
-
-// GetDepositByTxHash todo: bard delete test code
-func (p *PostgresStorage) GetDepositByTxHash(ctx context.Context, txHash string, dbTx pgx.Tx) (*etherman.Deposit, error) {
-	var deposit etherman.Deposit
-	getDepositSQL := fmt.Sprintf(`
-		SELECT leaf_type, orig_net, orig_addr, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim
-		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE tx_hash = $1`, p.tableSuffix)
-	err := p.getExecQuerier(dbTx).QueryRow(ctx, getDepositSQL, txHash).Scan(
-		&deposit.LeafType, &deposit.OriginalNetwork, &deposit.OriginalAddress, &deposit.DestinationNetwork, &deposit.DestinationAddress,
-		&deposit.DepositCount, &deposit.BlockID, &deposit.BlockNumber, &deposit.NetworkID, &deposit.TxHash, &deposit.Metadata, &deposit.ReadyForClaim)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, gerror.ErrStorageNotFound
-	}
-	return &deposit, nil
-}
