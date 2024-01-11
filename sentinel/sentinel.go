@@ -25,10 +25,11 @@ const (
 
 var (
 	initOnce sync.Once
-	logger   = log.WithFields(loggerFieldKey, loggerFieldValue)
+	logger   *log.Logger
 )
 
 func initSentinel() {
+	logger = log.WithFields(loggerFieldKey, loggerFieldValue)
 	initOnce.Do(func() {
 		conf := config.NewDefaultConfig()
 		err := api.InitWithConfig(conf)
