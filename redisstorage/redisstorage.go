@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
@@ -37,12 +38,14 @@ const (
 
 	// time for 48 hour
 	durationFor48h = 48 * time.Hour
+
+	enableCoinPriceCfgKey = "coinPrice.enabled"
 )
 
 // redisStorageImpl implements RedisStorage interface
 type redisStorageImpl struct {
-	client    RedisClient
-	mockPrice bool
+	client             RedisClient
+	enableCoinPriceCfg apolloconfig.Entry[bool]
 }
 
 func NewRedisStorage(cfg Config) (RedisStorage, error) {
@@ -69,7 +72,7 @@ func NewRedisStorage(cfg Config) (RedisStorage, error) {
 		return nil, errors.Wrap(err, "cannot connect to redis server")
 	}
 	log.Debugf("redis health check done, result: %v", res)
-	return &redisStorageImpl{client: client, mockPrice: cfg.MockPrice}, nil
+	return &redisStorageImpl{client: client, enableCoinPriceCfg: apolloconfig.NewBoolEntry(enableCoinPriceCfgKey, cfg.EnablePrice)}, nil
 }
 
 func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.SymbolPrice) error {
@@ -155,18 +158,20 @@ func (s *redisStorageImpl) getCoinPrice(ctx context.Context, symbols []*pb.Symbo
 
 func (s *redisStorageImpl) GetCoinPrice(ctx context.Context, symbols []*pb.SymbolInfo) ([]*pb.SymbolPrice, error) {
 	log.Debugf("GetCoinPrice size[%v]", len(symbols))
-	priceList, err := s.getCoinPrice(ctx, symbols)
-	if err != nil {
-		return nil, err
-	}
-
-	// If enable mock price, always return no price to the front end
-	if s.mockPrice {
-		for _, price := range priceList {
-			price.Price = 0
-			price.Time = 0
+	var priceList []*pb.SymbolPrice
+	var err error
+	if s.enableCoinPriceCfg.Get() {
+		priceList, err = s.getCoinPrice(ctx, symbols)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// If disable coin price, just return a list of empty prices
+		for _, si := range symbols {
+			priceList = append(priceList, &pb.SymbolPrice{ChainId: si.ChainId, Address: si.Address})
 		}
 	}
+
 	return priceList, nil
 }
 
