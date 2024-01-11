@@ -25,14 +25,14 @@ import (
 type Config struct {
 	Log                 log.Config
 	Apollo              apolloconfig.Config
-	SyncDB              db.Config             `apollo:"SyncDB"`
+	SyncDB              db.Config             `apollo:"DB"`
 	ClaimTxManager      claimtxman.Config     `apollo:"ClaimTxManager"`
 	Etherman            etherman.Config       `apollo:"Etherman"`
 	Synchronizer        synchronizer.Config   `apollo:"Synchronizer"`
 	BridgeController    bridgectrl.Config     `apollo:"BridgeController"`
 	BridgeServer        server.Config         `apollo:"BridgeServer"`
 	CoinKafkaConsumer   coinmiddleware.Config `apollo:"CoinKafkaConsumer"`
-	MessagePushProducer messagepush.Config
+	MessagePushProducer messagepush.Config    `apollo:"MessagePushProducer"`
 	NetworkConfig       `apollo:"NetworkConfig"`
 	NacosConfig         nacos.Config `apollo:"NacosConfig"`
 }

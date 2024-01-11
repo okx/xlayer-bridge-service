@@ -38,14 +38,13 @@ const (
 
 	// time for 48 hour
 	durationFor48h = 48 * time.Hour
-
-	enableCoinPriceCfgKey = "coinPrice.enabled"
 )
 
 // redisStorageImpl implements RedisStorage interface
 type redisStorageImpl struct {
 	client             RedisClient
 	enableCoinPriceCfg apolloconfig.Entry[bool]
+	keyPrefix          apolloconfig.Entry[string]
 }
 
 func NewRedisStorage(cfg Config) (RedisStorage, error) {
@@ -72,7 +71,14 @@ func NewRedisStorage(cfg Config) (RedisStorage, error) {
 		return nil, errors.Wrap(err, "cannot connect to redis server")
 	}
 	log.Debugf("redis health check done, result: %v", res)
-	return &redisStorageImpl{client: client, enableCoinPriceCfg: apolloconfig.NewBoolEntry(enableCoinPriceCfgKey, cfg.EnablePrice)}, nil
+	return &redisStorageImpl{client: client,
+		enableCoinPriceCfg: apolloconfig.NewBoolEntry("CoinPrice.Enabled", cfg.EnablePrice),
+		keyPrefix:          apolloconfig.NewStringEntry("Redis.KeyPrefix", cfg.KeyPrefix),
+	}, nil
+}
+
+func (s *redisStorageImpl) addKeyPrefix(key string) string {
+	return s.keyPrefix.Get() + key
 }
 
 func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.SymbolPrice) error {
@@ -104,7 +110,7 @@ func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.Symbol
 	if len(valueList) < 2 { // nolint:gomnd
 		return nil
 	}
-	err = s.client.HSet(ctx, coinPriceHashKey, valueList...).Err()
+	err = s.client.HSet(ctx, s.addKeyPrefix(coinPriceHashKey), valueList...).Err()
 	if err != nil {
 		return errors.Wrap(err, "SetCoinPrice redis HSet error")
 	}
@@ -131,7 +137,7 @@ func (s *redisStorageImpl) getCoinPrice(ctx context.Context, symbols []*pb.Symbo
 		keyList = append(keyList, priceKey)
 	}
 
-	redisResult, err := s.client.HMGet(ctx, coinPriceHashKey, keyList...).Result()
+	redisResult, err := s.client.HMGet(ctx, s.addKeyPrefix(coinPriceHashKey), keyList...).Result()
 	if err != nil {
 		return nil, errors.Wrap(err, "getCoinPrice redis HMGet error")
 	}
@@ -179,7 +185,7 @@ func (s *redisStorageImpl) SetL1BlockNum(ctx context.Context, blockNum uint64) e
 	if s == nil || s.client == nil {
 		return errors.New("redis client is nil")
 	}
-	err := s.client.Set(ctx, l1BlockNumKey, blockNum, 0).Err()
+	err := s.client.Set(ctx, s.addKeyPrefix(l1BlockNumKey), blockNum, 0).Err()
 	if err != nil {
 		return errors.Wrap(err, "SetL1BlockNum error")
 	}
@@ -190,7 +196,7 @@ func (s *redisStorageImpl) GetL1BlockNum(ctx context.Context) (uint64, error) {
 	if s == nil || s.client == nil {
 		return 0, errors.New("redis client is nil")
 	}
-	res, err := s.client.Get(ctx, l1BlockNumKey).Result()
+	res, err := s.client.Get(ctx, s.addKeyPrefix(l1BlockNumKey)).Result()
 	if err != nil {
 		return 0, errors.Wrap(err, "GetL1BlockNum error")
 	}
@@ -210,7 +216,7 @@ func (s *redisStorageImpl) AddBlockDeposit(ctx context.Context, deposit *etherma
 	if err != nil {
 		return errors.Wrap(err, "json encode error")
 	}
-	key := getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
+	key := s.addKeyPrefix(getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber))
 	err = s.client.HSet(ctx, key, deposit.TxHash.String(), string(val)).Err()
 	if err != nil {
 		return errors.Wrap(err, "AddBlockDeposit HSet error")
@@ -228,7 +234,7 @@ func (s *redisStorageImpl) DeleteBlockDeposit(ctx context.Context, deposit *ethe
 	if deposit == nil {
 		return nil
 	}
-	key := getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber)
+	key := s.addKeyPrefix(getBlockDepositListKey(deposit.NetworkID, deposit.BlockNumber))
 	err := s.client.HDel(ctx, key, deposit.TxHash.String()).Err()
 	return errors.Wrap(err, "DeleteBlockDeposit HDel error")
 }
@@ -238,7 +244,7 @@ func (s *redisStorageImpl) GetBlockDepositList(ctx context.Context, networkID ui
 		return nil, errors.New("redis client is nil")
 	}
 
-	key := getBlockDepositListKey(networkID, blockNum)
+	key := s.addKeyPrefix(getBlockDepositListKey(networkID, blockNum))
 	res, err := s.client.HVals(ctx, key).Result()
 
 	if err != nil {
@@ -263,7 +269,7 @@ func (s *redisStorageImpl) TryLock(ctx context.Context, lockKey string) (bool, e
 	if s == nil || s.client == nil {
 		return false, errors.New("redis client is nil")
 	}
-	success, err := s.client.SetNX(ctx, lockKey, true, lockExpire).Result()
+	success, err := s.client.SetNX(ctx, s.addKeyPrefix(lockKey), true, lockExpire).Result()
 	return success, errors.Wrap(err, "TryLock error")
 }
 
@@ -271,36 +277,36 @@ func (s *redisStorageImpl) ReleaseLock(ctx context.Context, lockKey string) erro
 	if s == nil || s.client == nil {
 		return errors.New("redis client is nil")
 	}
-	err := s.client.Del(ctx, lockKey).Err()
+	err := s.client.Del(ctx, s.addKeyPrefix(lockKey)).Err()
 	return errors.Wrap(err, "ReleaseLock error")
 }
 
 func (s *redisStorageImpl) SetCommitBatchNum(ctx context.Context, batchNum uint64) error {
-	return s.setFoundation(ctx, latestCommitBatchNumKey, batchNum, 0)
+	return s.setFoundation(ctx, s.addKeyPrefix(latestCommitBatchNumKey), batchNum, 0)
 }
 
 func (s *redisStorageImpl) GetCommitBatchNum(ctx context.Context) (uint64, error) {
-	return s.getIntCacheFoundation(ctx, latestCommitBatchNumKey)
+	return s.getIntCacheFoundation(ctx, s.addKeyPrefix(latestCommitBatchNumKey))
 }
 
 func (s *redisStorageImpl) SetCommitMaxBlockNum(ctx context.Context, blockNum uint64) error {
-	return s.setFoundation(ctx, maxCommitBlockNumKey, blockNum, 0)
+	return s.setFoundation(ctx, s.addKeyPrefix(maxCommitBlockNumKey), blockNum, 0)
 }
 
 func (s *redisStorageImpl) GetCommitMaxBlockNum(ctx context.Context) (uint64, error) {
-	return s.getIntCacheFoundation(ctx, maxCommitBlockNumKey)
+	return s.getIntCacheFoundation(ctx, s.addKeyPrefix(maxCommitBlockNumKey))
 }
 
 func (s *redisStorageImpl) SetAvgCommitDuration(ctx context.Context, duration int64) error {
-	return s.setFoundation(ctx, avgCommitDurationKey, duration, 0)
+	return s.setFoundation(ctx, s.addKeyPrefix(avgCommitDurationKey), duration, 0)
 }
 
 func (s *redisStorageImpl) SetL2BlockCommitTime(ctx context.Context, blockNum uint64, commitTimestamp int64) error {
-	key := s.buildL2BlockCommitTimeCacheKey(blockNum)
+	key := s.addKeyPrefix(s.buildL2BlockCommitTimeCacheKey(blockNum))
 	return s.setFoundation(ctx, key, commitTimestamp, durationFor48h)
 }
 func (s *redisStorageImpl) GetL2BlockCommitTime(ctx context.Context, blockNum uint64) (uint64, error) {
-	key := s.buildL2BlockCommitTimeCacheKey(blockNum)
+	key := s.addKeyPrefix(s.buildL2BlockCommitTimeCacheKey(blockNum))
 	return s.getIntCacheFoundation(ctx, key)
 }
 
@@ -309,47 +315,47 @@ func (s *redisStorageImpl) buildL2BlockCommitTimeCacheKey(blockNum uint64) strin
 }
 
 func (s *redisStorageImpl) GetAvgCommitDuration(ctx context.Context) (uint64, error) {
-	return s.getIntCacheFoundation(ctx, avgCommitDurationKey)
+	return s.getIntCacheFoundation(ctx, s.addKeyPrefix(avgCommitDurationKey))
 }
 
 func (s *redisStorageImpl) LPushCommitTime(ctx context.Context, commitTimeTimestamp int64) error {
-	return s.lPushFoundation(ctx, commitBatchTimeListKey, commitTimeTimestamp)
+	return s.lPushFoundation(ctx, s.addKeyPrefix(commitBatchTimeListKey), commitTimeTimestamp)
 }
 
 func (s *redisStorageImpl) LLenCommitTimeList(ctx context.Context) (int64, error) {
-	return s.lLenFoundation(ctx, commitBatchTimeListKey)
+	return s.lLenFoundation(ctx, s.addKeyPrefix(commitBatchTimeListKey))
 }
 
 func (s *redisStorageImpl) RPopCommitTime(ctx context.Context) (int64, error) {
-	return s.rPopIntCacheFoundation(ctx, commitBatchTimeListKey)
+	return s.rPopIntCacheFoundation(ctx, s.addKeyPrefix(commitBatchTimeListKey))
 }
 
 func (s *redisStorageImpl) SetVerifyBatchNum(ctx context.Context, batchNum uint64) error {
-	return s.setFoundation(ctx, latestVerifyBatchNumKey, batchNum, 0)
+	return s.setFoundation(ctx, s.addKeyPrefix(latestVerifyBatchNumKey), batchNum, 0)
 }
 
 func (s *redisStorageImpl) GetVerifyBatchNum(ctx context.Context) (uint64, error) {
-	return s.getIntCacheFoundation(ctx, latestVerifyBatchNumKey)
+	return s.getIntCacheFoundation(ctx, s.addKeyPrefix(latestVerifyBatchNumKey))
 }
 
 func (s *redisStorageImpl) SetAvgVerifyDuration(ctx context.Context, duration int64) error {
-	return s.setFoundation(ctx, avgVerifyDurationKey, duration, 0)
+	return s.setFoundation(ctx, s.addKeyPrefix(avgVerifyDurationKey), duration, 0)
 }
 
 func (s *redisStorageImpl) GetAvgVerifyDuration(ctx context.Context) (uint64, error) {
-	return s.getIntCacheFoundation(ctx, avgVerifyDurationKey)
+	return s.getIntCacheFoundation(ctx, s.addKeyPrefix(avgVerifyDurationKey))
 }
 
 func (s *redisStorageImpl) LPushVerifyTime(ctx context.Context, commitTimeTimestamp int64) error {
-	return s.lPushFoundation(ctx, verifyBatchTimeListKey, commitTimeTimestamp)
+	return s.lPushFoundation(ctx, s.addKeyPrefix(verifyBatchTimeListKey), commitTimeTimestamp)
 }
 
 func (s *redisStorageImpl) LLenVerifyTimeList(ctx context.Context) (int64, error) {
-	return s.lLenFoundation(ctx, verifyBatchTimeListKey)
+	return s.lLenFoundation(ctx, s.addKeyPrefix(verifyBatchTimeListKey))
 }
 
 func (s *redisStorageImpl) RPopVerifyTime(ctx context.Context) (int64, error) {
-	return s.rPopIntCacheFoundation(ctx, verifyBatchTimeListKey)
+	return s.rPopIntCacheFoundation(ctx, s.addKeyPrefix(verifyBatchTimeListKey))
 }
 
 func (s *redisStorageImpl) setFoundation(ctx context.Context, key string, value interface{}, expiration time.Duration) error {

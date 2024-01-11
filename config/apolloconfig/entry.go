@@ -70,6 +70,10 @@ func NewStringSliceEntry(key string, defaultValue []string, opts ...entryOption[
 	return newEntry(key, defaultValue, getStringSlice, opts...)
 }
 
+func (e *entryImpl[T]) String() string {
+	return fmt.Sprintf("%v", e.Get())
+}
+
 func (e *entryImpl[T]) Get() T {
 	logger := getLogger().WithFields("key", e.key)
 	v, err := e.GetWithErr()
