@@ -11,7 +11,7 @@ Database = "postgres"
 User = "test_user"
 Password = "test_password"
 Name = "test_db"
-Host = "xgon-bridge-db"
+Host = "x1-bridge-db"
 Port = "5432"
 MaxConns = 20
 
@@ -21,6 +21,7 @@ FrequencyToMonitorTxs = "1s"
 PrivateKey = {Path = "./test/test.keystore", Password = "testonly"}
 RetryInterval = "1s"
 RetryNumber = 10
+AuthorizedClaimMessageAddresses = []
 
 [Etherman]
 L1URL = "http://localhost:8545"
@@ -46,7 +47,7 @@ BridgeVersion = "v1"
     User = "test_user"
     Password = "test_password"
     Name = "test_db"
-    Host = "xgon-bridge-db"
+    Host = "x1-bridge-db"
     Port = "5432"
     MaxConns = 20
 `
