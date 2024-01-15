@@ -437,6 +437,21 @@ func (p *PostgresStorage) GetDeposits(ctx context.Context, destAddr string, limi
 		WHERE dest_addr = $1
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`, p.tableSuffix)
 	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, common.FromHex(destAddr), limit, offset)
+	return p.convertDepositBase(rows, err)
+}
+
+// GetDepositsWithLeafType gets the deposit list which be smaller than depositCount.
+func (p *PostgresStorage) GetDepositsWithLeafType(ctx context.Context, destAddr string, limit uint, offset uint, leafType uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+	getDepositsSQL := fmt.Sprintf(`
+		SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
+		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
+		WHERE dest_addr = $1 AND leaf_type = $4
+		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`, p.tableSuffix)
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, common.FromHex(destAddr), limit, offset, leafType)
+	return p.convertDepositBase(rows, err)
+}
+
+func (p *PostgresStorage) convertDepositBase(rows pgx.Rows, err error) ([]*etherman.Deposit, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -461,14 +476,14 @@ func (p *PostgresStorage) GetDeposits(ctx context.Context, destAddr string, limi
 }
 
 // GetPendingTransactions gets all the deposit transactions of a user that have not been claimed
-func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
+func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr string, limit uint, offset uint, leafType uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	getDepositsSQL := fmt.Sprintf(`SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 		FROM sync.deposit%[1]v as d INNER JOIN sync.block%[1]v as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE dest_addr = $1 AND NOT EXISTS
+		WHERE dest_addr = $1 AND leaf_type = $4 AND NOT EXISTS
 			(SELECT 1 FROM sync.claim%[1]v as c WHERE c.index = d.deposit_cnt AND c.network_id = d.dest_net)
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`, p.tableSuffix)
 
-	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, common.FromHex(destAddr), limit, offset)
+	rows, err := p.getExecQuerier(dbTx).Query(ctx, getDepositsSQL, common.FromHex(destAddr), limit, offset, leafType)
 	if err != nil {
 		return nil, err
 	}

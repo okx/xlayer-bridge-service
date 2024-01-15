@@ -8,6 +8,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
@@ -264,6 +265,10 @@ func (ins *CommittedBatchHandler) pushStatusChangedMsg(ctx context.Context, late
 func (ins *CommittedBatchHandler) pushMsgForDeposit(deposit *etherman.Deposit, l2AvgVerifyDuration uint64) {
 	go func(deposit *etherman.Deposit) {
 		if ins.messagePushProducer == nil {
+			return
+		}
+		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
+			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
 		err := ins.messagePushProducer.PushTransactionUpdate(&pb.Transaction{

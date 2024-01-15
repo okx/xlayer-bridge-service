@@ -795,6 +795,10 @@ func (tm *ClaimTxManager) pushTransactionUpdate(deposit *etherman.Deposit, statu
 	if tm.messagePushProducer == nil {
 		return
 	}
+	if deposit.LeafType != uint8(utils.LeafTypeAsset) {
+		log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+		return
+	}
 	estimateTime := uint64(0)
 	if deposit.NetworkID != 0 {
 		estimateTime = pushtask.GetAvgVerifyDuration(tm.ctx, tm.redisStorage)

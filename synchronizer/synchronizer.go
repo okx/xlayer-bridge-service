@@ -581,6 +581,10 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 		if s.messagePushProducer == nil {
 			return
 		}
+		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
+			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+			return
+		}
 		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
@@ -640,6 +644,10 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
 		if err != nil {
 			log.Errorf("push message: GetDeposit error: %v", err)
+			return
+		}
+		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
+			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
 		err = s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
