@@ -10,6 +10,7 @@ cd x1-bridge-service
 go mod tidy
 
 # setup all components 
+make build-docker
 make run
 
 # build bridge tools
