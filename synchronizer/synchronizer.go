@@ -576,7 +576,7 @@ func (s *ClientSynchronizer) processDeposit(ctx context.Context, deposit etherma
 
 	// Add the deposit to Redis for L1
 	if deposit.NetworkID == 0 {
-		err := s.redisStorage.AddBlockDeposit(context.Background(), &deposit)
+		err := s.redisStorage.AddBlockDeposit(ctx, &deposit)
 		if err != nil {
 			log.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
 			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
