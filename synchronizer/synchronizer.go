@@ -598,7 +598,7 @@ func (s *ClientSynchronizer) processDeposit(ctx context.Context, deposit etherma
 			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
-		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+		err := s.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
 			BridgeToken:  deposit.OriginalAddress.Hex(),
@@ -664,7 +664,7 @@ func (s *ClientSynchronizer) processClaim(ctx context.Context, claim etherman.Cl
 			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
-		err = s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+		err = s.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 			FromChain:   uint32(deposit.NetworkID),
 			ToChain:     uint32(deposit.DestinationNetwork),
 			TxHash:      deposit.TxHash.String(),

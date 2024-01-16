@@ -44,22 +44,25 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 }
 
 func (t *L1BlockNumTask) Start(ctx context.Context) {
-	log.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
+	logger := log.LoggerFromCtx(ctx).WithFields("component", "L1BlockNumTask")
+	logger.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
 	ticker := time.NewTicker(l1BlockNumTaskInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			ctx := log.CtxWithLogger(ctx, utils.LoggerWithRandomTraceID(logger))
 			t.doTask(ctx)
 		}
 	}
 }
 
 func (t *L1BlockNumTask) doTask(ctx context.Context) {
+	logger := log.LoggerFromCtx(ctx)
 	ok, err := t.redisStorage.TryLock(ctx, l1BlockNumTaskLockKey)
 	if err != nil {
-		log.Errorf("TryLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
+		logger.Errorf("TryLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
 		return
 	}
 
@@ -71,21 +74,21 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 	defer func() {
 		err = t.redisStorage.ReleaseLock(ctx, l1BlockNumTaskLockKey)
 		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
+			logger.Errorf("ReleaseLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
 		}
 	}()
 
 	// Get the latest block num from the chain RPC
 	blockNum, err := t.client.BlockNumber(ctx)
 	if err != nil {
-		log.Errorf("eth_blockNumber error: %v", err)
+		logger.Errorf("eth_blockNumber error: %v", err)
 		return
 	}
 
 	// Get the previous block num from Redis cache and check
 	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
 	if err != nil && !errors.Is(err, redis.Nil) {
-		log.Errorf("Get L1 block num from Redis error: %v", err)
+		logger.Errorf("Get L1 block num from Redis error: %v", err)
 		return
 	}
 
@@ -98,7 +101,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		// Update Redis cached block num
 		err = t.redisStorage.SetL1BlockNum(ctx, blockNum)
 		if err != nil {
-			log.Errorf("SetL1BlockNum error: %v", err)
+			logger.Errorf("SetL1BlockNum error: %v", err)
 		}
 	}(blockNum)
 
@@ -117,7 +120,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		// For each block num, get the list of deposit and push the events to FE
 		deposits, err := t.redisStorage.GetBlockDepositList(ctx, 0, block)
 		if err != nil {
-			log.Errorf("L1BlockNumTask query Redis error: %v", err)
+			logger.Errorf("L1BlockNumTask query Redis error: %v", err)
 			return
 		}
 		totalDeposits += len(deposits)
@@ -129,10 +132,10 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 					return
 				}
 				if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-					log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+					logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 					return
 				}
-				err := t.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+				err := t.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 					FromChain: uint32(deposit.NetworkID),
 					ToChain:   uint32(deposit.DestinationNetwork),
 					TxHash:    deposit.TxHash.String(),
@@ -141,11 +144,11 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 					DestAddr:  deposit.DestinationAddress.Hex(),
 				})
 				if err != nil {
-					log.Errorf("PushTransactionUpdate error: %v", err)
+					logger.Errorf("PushTransactionUpdate error: %v", err)
 				}
 			}(deposit)
 		}
 	}
 
-	log.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
+	logger.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
 }

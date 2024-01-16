@@ -151,13 +151,13 @@ func (s *bridgeService) getProof(index uint, root [bridgectrl.KeyLen]byte, dbTx 
 }
 
 // GetClaimProof returns the merkle proof to claim the given deposit.
-func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, error) {
-	ctx := context.Background()
+func (s *bridgeService) GetClaimProof(ctx context.Context, depositCnt, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, error) {
+	logger := log.LoggerFromCtx(ctx)
 
 	if dbTx == nil { // if the call comes from the rest API
 		deposit, err := s.storage.GetDeposit(ctx, depositCnt, networkID, nil)
 		if err != nil {
-			log.Errorf("failed to get deposit from db for GetClaimProof, depositCnt: %v, networkID: %v, error: %v", depositCnt, networkID, err)
+			logger.Errorf("failed to get deposit from db for GetClaimProof, depositCnt: %v, networkID: %v, error: %v", depositCnt, networkID, err)
 			return nil, nil, gerror.ErrInternalErrorForRpcCall
 		}
 
@@ -173,7 +173,7 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 
 	globalExitRoot, err := s.storage.GetLatestExitRoot(ctx, tID != 0, dbTx)
 	if err != nil {
-		log.Errorf("get latest exit root failed fot network: %v, error: %v", networkID, err)
+		logger.Errorf("get latest exit root failed fot network: %v, error: %v", networkID, err)
 		return nil, nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -213,6 +213,7 @@ func (s *bridgeService) CheckAPI(ctx context.Context, req *pb.CheckAPIRequest) (
 // GetBridges returns bridges for the destination address both in L1 and L2.
 // Bridge rest API endpoint
 func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesRequest) (*pb.GetBridgesResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit
@@ -222,7 +223,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 	}
 	totalCount, err := s.storage.GetDepositCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		log.Errorf("get deposit count from db failed for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get deposit count from db failed for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	deposits, err := s.storage.GetDeposits(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil)
@@ -264,6 +265,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 // GetClaims returns claims for the specific smart contract address both in L1 and L2.
 // Bridge rest API endpoint
 func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest) (*pb.GetClaimsResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit
@@ -273,12 +275,12 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 	}
 	totalCount, err := s.storage.GetClaimCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		log.Errorf("get claim count from db for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get claim count from db for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	claims, err := s.storage.GetClaims(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil) //nolint:gomnd
 	if err != nil {
-		log.Errorf("get claim infos from db for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get claim infos from db for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -305,7 +307,7 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 // GetProof returns the merkle proof for the given deposit.
 // Bridge rest API endpoint
 func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (*pb.GetProofResponse, error) {
-	globalExitRoot, merkleProof, err := s.GetClaimProof(uint(req.DepositCnt), uint(req.NetId), nil)
+	globalExitRoot, merkleProof, err := s.GetClaimProof(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +326,7 @@ func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (
 }
 
 func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequest) (*pb.CommonProofResponse, error) {
-	globalExitRoot, merkleProof, err := s.GetClaimProof(uint(req.Index), uint(req.FromChain), nil)
+	globalExitRoot, merkleProof, err := s.GetClaimProof(ctx, uint(req.Index), uint(req.FromChain), nil)
 	if err != nil {
 		return &pb.CommonProofResponse{
 			Code: defaultErrorCode,
@@ -350,9 +352,10 @@ func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequ
 // GetBridge returns the bridge  with status whether it is able to send a claim transaction or not.
 // Bridge rest API endpoint
 func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest) (*pb.GetBridgeResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	deposit, err := s.storage.GetDeposit(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
-		log.Errorf("get deposit info failed for depositCnt: %v, net: %v, error: %v", req.DepositCnt, req.NetId, err)
+		logger.Errorf("get deposit info failed for depositCnt: %v, net: %v, error: %v", req.DepositCnt, req.NetId, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -383,9 +386,10 @@ func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest)
 // GetTokenWrapped returns the token wrapped created for a specific network
 // Bridge rest API endpoint
 func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWrappedRequest) (*pb.GetTokenWrappedResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	tokenWrapped, err := s.storage.GetTokenWrapped(ctx, uint(req.OrigNet), common.HexToAddress(req.OrigTokenAddr), nil)
 	if err != nil {
-		log.Errorf("get token wrap info failed, origNet: %v, origTokenAddr: %v, error: %v", req.OrigNet, req.OrigTokenAddr, err)
+		logger.Errorf("get token wrap info failed, origNet: %v, origTokenAddr: %v, error: %v", req.OrigNet, req.OrigTokenAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	return &pb.GetTokenWrappedResponse{
@@ -404,9 +408,10 @@ func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWra
 // GetCoinPrice returns the price for each coin symbol in the request
 // Bridge rest API endpoint
 func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRequest) (*pb.CommonCoinPricesResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
 	if err != nil {
-		log.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
+		logger.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
 		return &pb.CommonCoinPricesResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -422,9 +427,10 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 // GetMainCoins returns the info of the main coins in a network
 // Bridge rest API endpoint
 func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRequest) (*pb.CommonCoinsResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	coins, err := s.mainCoinsCache.GetMainCoinsByNetwork(ctx, req.NetworkId)
 	if err != nil {
-		log.Errorf("get main coins from cache failed for net: %v, error: %v", req.NetworkId, err)
+		logger.Errorf("get main coins from cache failed for net: %v, error: %v", req.NetworkId, err)
 		return &pb.CommonCoinsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -440,6 +446,7 @@ func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRe
 // GetPendingTransactions returns the pending transactions of an account
 // Bridge rest API endpoint
 func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit
@@ -450,7 +457,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 
 	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
-		log.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
+		logger.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -521,6 +528,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 
 func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currTime time.Time,
 	tx *pb.Transaction, depositCreateTime time.Time) {
+	logger := log.LoggerFromCtx(ctx)
 	var duration int
 	if tx.Status == uint32(pb.TransactionStatus_TX_CREATED) {
 		duration = pushtask.GetLeftCommitTime(depositCreateTime, l2AvgCommitDuration, currTime)
@@ -528,7 +536,7 @@ func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommit
 		duration = pushtask.GetLeftVerifyTime(ctx, s.redisStorage, tx.BlockNumber, depositCreateTime, l2AvgCommitDuration, l2AvgVerifyDuration, currTime)
 	}
 	if duration <= 0 {
-		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
+		logger.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
 		tx.EstimateTime = uint32(defaultMinDuration)
 		return
 	}
@@ -538,6 +546,7 @@ func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommit
 // GetAllTransactions returns all the transactions of an account, similar to GetBridges
 // Bridge rest API endpoint
 func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit
@@ -548,7 +557,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 
 	deposits, err := s.storage.GetDepositsWithLeafType(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
-		log.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
+		logger.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -753,6 +762,6 @@ func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFake
 
 	return &pb.GetFakePushMessagesResponse{
 		Code: defaultSuccessCode,
-		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
+		Data: s.messagePushProducer.GetFakeMessages(ctx, req.Topic),
 	}, nil
 }

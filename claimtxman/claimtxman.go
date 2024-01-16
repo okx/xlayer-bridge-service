@@ -260,7 +260,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(ctx context.Context, newGer *et
 			continue
 		}
 		logger.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
-		ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
+		ger, proves, err := tm.bridgeService.GetClaimProof(ctx, deposit.DepositCount, deposit.NetworkID, dbTx)
 		if err != nil {
 			logger.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(ctx, dbTx)
@@ -361,7 +361,7 @@ func (tm *ClaimTxManager) processDepositStatus(ctx context.Context, ger *etherma
 				continue
 			}
 			logger.Infof("create the claim tx for the deposit %d", deposit.DepositCount)
-			ger, proves, err := tm.bridgeService.GetClaimProof(deposit.DepositCount, deposit.NetworkID, dbTx)
+			ger, proves, err := tm.bridgeService.GetClaimProof(ctx, deposit.DepositCount, deposit.NetworkID, dbTx)
 			if err != nil {
 				logger.Errorf("error getting Claim Proof for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
@@ -812,7 +812,7 @@ func (tm *ClaimTxManager) pushTransactionUpdate(ctx context.Context, deposit *et
 	if deposit.NetworkID != 0 {
 		estimateTime = pushtask.GetAvgVerifyDuration(tm.ctx, tm.redisStorage)
 	}
-	err := tm.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+	err := tm.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 		FromChain:    uint32(deposit.NetworkID),
 		ToChain:      uint32(deposit.DestinationNetwork),
 		TxHash:       deposit.TxHash.String(),
