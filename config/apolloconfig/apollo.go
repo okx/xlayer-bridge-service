@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	enabled       = false
-	defaultClient *agollo.Client
+	enabled              = false
+	disableEntryDebugLog = false
+	defaultClient        *agollo.Client
 
 	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 )
@@ -30,7 +31,7 @@ func GetClient() *agollo.Client {
 // This should not be called if Apollo config is disabled for the service
 func Init(c Config) error {
 	enabled = true
-	agollo.SetLogger(getLogger())
+	SetLogger()
 	cfg := &agolloConfig.AppConfig{
 		AppID:          c.AppID,
 		Cluster:        c.Cluster,
@@ -49,6 +50,7 @@ func Init(c Config) error {
 	}
 
 	defaultClient = client
+	disableEntryDebugLog = c.DisableEntryDebugLog
 	return nil
 }
 

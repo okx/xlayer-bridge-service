@@ -77,7 +77,7 @@ func (e *entryImpl[T]) String() string {
 func (e *entryImpl[T]) Get() T {
 	logger := getLogger().WithFields("key", e.key)
 	v, err := e.GetWithErr()
-	if err != nil {
+	if err != nil && !disableEntryDebugLog {
 		logger.Debugf("error[%v], returning default value", err)
 	}
 	return v
