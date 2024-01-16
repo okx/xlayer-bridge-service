@@ -49,6 +49,7 @@ type Client struct {
 
 // NewClient creates client.
 func NewClient(ctx context.Context, nodeURL string, bridgeSCAddr common.Address) (*Client, error) {
+	logger := log.LoggerFromCtx(ctx)
 	client, err := ethclient.Dial(nodeURL)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func NewClient(ctx context.Context, nodeURL string, bridgeSCAddr common.Address)
 		br, _ = polygonzkevmbridge.NewPolygonzkevmbridge(bridgeSCAddr, client)
 		brl2, err = polygonzkevmbridgel2.NewPolygonzkevmbridgel2(bridgeSCAddr, client)
 	}
-	log.Infof("nodeURL:%v, bridgeSCAddr:%v, ", nodeURL, bridgeSCAddr.String())
+	logger.Infof("nodeURL:%v, bridgeSCAddr:%v, ", nodeURL, bridgeSCAddr.String())
 	return &Client{
 		Client:   client,
 		bridge:   br,
@@ -165,6 +166,7 @@ func (c *Client) MintERC20(ctx context.Context, erc20Addr common.Address, amount
 func (c *Client) SendBridgeAsset(ctx context.Context, tokenAddr common.Address, amount *big.Int, destNetwork uint32,
 	destAddr *common.Address, metadata []byte, auth *bind.TransactOpts,
 ) error {
+	logger := log.LoggerFromCtx(ctx)
 	emptyAddr := common.Address{}
 	if tokenAddr == emptyAddr {
 		auth.Value = amount
@@ -172,10 +174,10 @@ func (c *Client) SendBridgeAsset(ctx context.Context, tokenAddr common.Address, 
 	if destAddr == nil {
 		destAddr = &auth.From
 	}
-	log.Infof("token address:%v, amount:%v, destnetwork:%v, dest address:%v", tokenAddr.String(), amount.String(), destNetwork, destAddr.String())
+	logger.Infof("token address:%v, amount:%v, destnetwork:%v, dest address:%v", tokenAddr.String(), amount.String(), destNetwork, destAddr.String())
 	tx, err := c.bridge.BridgeAsset(auth, destNetwork, *destAddr, amount, tokenAddr, true, metadata)
 	if err != nil {
-		log.Error("Error: ", err)
+		logger.Error("Error: ", err)
 		return err
 	}
 	// wait transfer to be included in a batch
@@ -187,9 +189,10 @@ func (c *Client) SendBridgeAsset(ctx context.Context, tokenAddr common.Address, 
 func (c *Client) SendBridgeMessage(ctx context.Context, destNetwork uint32, destAddr common.Address, metadata []byte,
 	auth *bind.TransactOpts,
 ) error {
+	logger := log.LoggerFromCtx(ctx)
 	tx, err := c.bridge.BridgeMessage(auth, destNetwork, destAddr, true, metadata)
 	if err != nil {
-		log.Error("Error: ", err)
+		logger.Error("Error: ", err)
 		return err
 	}
 	// wait transfer to be included in a batch
@@ -201,9 +204,10 @@ func (c *Client) SendBridgeMessage(ctx context.Context, destNetwork uint32, dest
 func (c *Client) SendL2BridgeMessage(ctx context.Context, destNetwork uint32, amountWETH *big.Int, destAddr common.Address, metadata []byte,
 	auth *bind.TransactOpts,
 ) error {
+	logger := log.LoggerFromCtx(ctx)
 	tx, err := c.bridgeL2.BridgeMessage(auth, destNetwork, destAddr, amountWETH, true, metadata)
 	if err != nil {
-		log.Error("Error: ", err)
+		logger.Error("Error: ", err)
 		return err
 	}
 	// wait transfer to be included in a batch
@@ -213,6 +217,7 @@ func (c *Client) SendL2BridgeMessage(ctx context.Context, destNetwork uint32, am
 
 // BuildSendClaim builds a tx data to be sent to the bridge method SendClaim.
 func (c *Client) BuildSendClaim(ctx context.Context, deposit *etherman.Deposit, smtProof [mtHeight][keyLen]byte, globalExitRoot *etherman.GlobalExitRoot, nonce, gasPrice int64, gasLimit uint64, auth *bind.TransactOpts) (*types.Transaction, error) {
+	logger := log.LoggerFromCtx(ctx)
 	opts := *auth
 	opts.NoSend = true
 	// force nonce, gas limit and gas price to avoid querying it from the chain
@@ -234,7 +239,7 @@ func (c *Client) BuildSendClaim(ctx context.Context, deposit *etherman.Deposit, 
 		if tx != nil {
 			txHash = tx.Hash().String()
 		}
-		log.Error("Error: ", err, ". Tx Hash: ", txHash)
+		logger.Error("Error: ", err, ". Tx Hash: ", txHash)
 		return nil, fmt.Errorf("failed to build SendClaim tx, err: %w", err)
 	}
 
@@ -243,6 +248,7 @@ func (c *Client) BuildSendClaim(ctx context.Context, deposit *etherman.Deposit, 
 
 // SendClaim sends a claim transaction.
 func (c *Client) SendClaim(ctx context.Context, deposit *pb.Deposit, smtProof [mtHeight][keyLen]byte, globalExitRoot *etherman.GlobalExitRoot, auth *bind.TransactOpts) error {
+	logger := log.LoggerFromCtx(ctx)
 	amount, _ := new(big.Int).SetString(deposit.Amount, encoding.Base10)
 	var (
 		tx  *types.Transaction
@@ -258,7 +264,7 @@ func (c *Client) SendClaim(ctx context.Context, deposit *pb.Deposit, smtProof [m
 		if tx != nil {
 			txHash = tx.Hash().String()
 		}
-		log.Error("Error: ", err, ". Tx Hash: ", txHash)
+		logger.Error("Error: ", err, ". Tx Hash: ", txHash)
 		return err
 	}
 
@@ -269,15 +275,16 @@ func (c *Client) SendClaim(ctx context.Context, deposit *pb.Deposit, smtProof [m
 
 // SetL2TokensAllowed set l2 token allowed.
 func (c *Client) SetL2TokensAllowed(ctx context.Context, allowed bool, auth *bind.TransactOpts) error {
+	logger := log.LoggerFromCtx(ctx)
 	result, _ := c.bridgeL2.IsAllL2TokensAllowed(&bind.CallOpts{})
 	if result == allowed {
-		log.Infof("Do nothing, allowed:%v", allowed)
+		logger.Infof("Do nothing, allowed:%v", allowed)
 		return nil
 	}
 
 	tx, err := c.bridgeL2.SetAllL2TokensAllowed(auth, allowed)
 	if err != nil {
-		log.Error("Error: ", err)
+		logger.Error("Error: ", err)
 		return err
 	}
 	// wait transfer to be included in a batch

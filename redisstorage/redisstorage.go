@@ -73,7 +73,7 @@ func NewRedisStorage(cfg Config) (RedisStorage, error) {
 }
 
 func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.SymbolPrice) error {
-	log.Debugf("SetCoinPrice size[%v]", len(prices))
+	log.LoggerFromCtx(ctx).Debugf("SetCoinPrice size[%v]", len(prices))
 	if s == nil || s.client == nil {
 		return errors.New("redis client is nil")
 	}
@@ -110,6 +110,7 @@ func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.Symbol
 }
 
 func (s *redisStorageImpl) getCoinPrice(ctx context.Context, symbols []*pb.SymbolInfo) ([]*pb.SymbolPrice, error) {
+	logger := log.LoggerFromCtx(ctx)
 	if len(symbols) == 0 {
 		return nil, nil
 	}
@@ -136,14 +137,14 @@ func (s *redisStorageImpl) getCoinPrice(ctx context.Context, symbols []*pb.Symbo
 	var priceList []*pb.SymbolPrice
 	for i, res := range redisResult {
 		if res == nil {
-			log.Infof("getCoinPrice price not found chainId[%v] address[%v]", symbols[i].ChainId, symbols[i].Address)
+			logger.Infof("getCoinPrice price not found chainId[%v] address[%v]", symbols[i].ChainId, symbols[i].Address)
 			priceList = append(priceList, &pb.SymbolPrice{ChainId: symbols[i].ChainId, Address: symbols[i].Address})
 			continue
 		}
 		price := &pb.SymbolPrice{}
 		err := protojson.Unmarshal([]byte(res.(string)), price)
 		if err != nil {
-			log.Infof("cannot unmarshal price object[%v] error[%v]", res, err)
+			logger.Infof("cannot unmarshal price object[%v] error[%v]", res, err)
 			priceList = append(priceList, &pb.SymbolPrice{ChainId: symbols[i].ChainId, Address: symbols[i].Address})
 		} else {
 			priceList = append(priceList, price)
@@ -154,7 +155,7 @@ func (s *redisStorageImpl) getCoinPrice(ctx context.Context, symbols []*pb.Symbo
 }
 
 func (s *redisStorageImpl) GetCoinPrice(ctx context.Context, symbols []*pb.SymbolInfo) ([]*pb.SymbolPrice, error) {
-	log.Debugf("GetCoinPrice size[%v]", len(symbols))
+	log.LoggerFromCtx(ctx).Debugf("GetCoinPrice size[%v]", len(symbols))
 	priceList, err := s.getCoinPrice(ctx, symbols)
 	if err != nil {
 		return nil, err

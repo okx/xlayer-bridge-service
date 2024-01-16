@@ -132,6 +132,7 @@ type Order struct {
 }
 
 func (etherMan *Client) readEvents(ctx context.Context, query ethereum.FilterQuery) ([]Block, map[common.Hash][]Order, error) {
+	logger := log.LoggerFromCtx(ctx)
 	logs, err := etherMan.EtherClient.FilterLogs(ctx, query)
 	if err != nil {
 		return nil, nil, err
@@ -141,7 +142,7 @@ func (etherMan *Client) readEvents(ctx context.Context, query ethereum.FilterQue
 	for _, vLog := range logs {
 		err := etherMan.processEvent(ctx, vLog, &blocks, &blocksOrder)
 		if err != nil {
-			log.Warnf("error processing event. Retrying... Error: %s. vLog: %+v", err.Error(), vLog)
+			logger.Warnf("error processing event. Retrying... Error: %s. vLog: %+v", err.Error(), vLog)
 			return nil, nil, err
 		}
 	}
@@ -149,6 +150,7 @@ func (etherMan *Client) readEvents(ctx context.Context, query ethereum.FilterQue
 }
 
 func (etherMan *Client) processEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
+	logger := log.LoggerFromCtx(ctx)
 	switch vLog.Topics[0] {
 	case updateGlobalExitRootSignatureHash:
 		return etherMan.updateGlobalExitRootEvent(ctx, vLog, blocks, blocksOrder)
@@ -159,27 +161,28 @@ func (etherMan *Client) processEvent(ctx context.Context, vLog types.Log, blocks
 	case newWrappedTokenEventSignatureHash:
 		return etherMan.tokenWrappedEvent(ctx, vLog, blocks, blocksOrder)
 	case initializedSignatureHash:
-		log.Debug("Initialized event detected")
+		logger.Debug("Initialized event detected")
 		return nil
 	case adminChangedSignatureHash:
-		log.Debug("AdminChanged event detected")
+		logger.Debug("AdminChanged event detected")
 		return nil
 	case beaconUpgradedSignatureHash:
-		log.Debug("BeaconUpgraded event detected")
+		logger.Debug("BeaconUpgraded event detected")
 		return nil
 	case upgradedSignatureHash:
-		log.Debug("Upgraded event detected")
+		logger.Debug("Upgraded event detected")
 		return nil
 	case transferOwnershipSignatureHash:
-		log.Debug("TransferOwnership event detected")
+		logger.Debug("TransferOwnership event detected")
 		return nil
 	}
-	log.Warnf("Event not registered: %+v", vLog)
+	logger.Warnf("Event not registered: %+v", vLog)
 	return nil
 }
 
 func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
-	log.Debug("UpdateGlobalExitRoot event detected")
+	logger := log.LoggerFromCtx(ctx)
+	logger.Debug("UpdateGlobalExitRoot event detected")
 	globalExitRoot, err := etherMan.PolygonZkEVMGlobalExitRoot.ParseUpdateGlobalExitRoot(vLog)
 	if err != nil {
 		return err
@@ -196,7 +199,7 @@ func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog type
 	gExitRoot.GlobalExitRoot = hash(globalExitRoot.MainnetExitRoot, globalExitRoot.RollupExitRoot)
 	gExitRoot.BlockNumber = vLog.BlockNumber
 	gExitRoot.Time = t
-	log.Debugf("UpdateGlobalExitRoot event[%+v] blockNumber[%v]", gExitRoot, vLog.BlockNumber)
+	logger.Debugf("UpdateGlobalExitRoot event[%+v] blockNumber[%v]", gExitRoot, vLog.BlockNumber)
 
 	if len(*blocks) == 0 || ((*blocks)[len(*blocks)-1].BlockHash != vLog.BlockHash || (*blocks)[len(*blocks)-1].BlockNumber != vLog.BlockNumber) {
 		block := prepareBlock(vLog, t, fullBlock)
@@ -205,7 +208,7 @@ func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog type
 	} else if (*blocks)[len(*blocks)-1].BlockHash == vLog.BlockHash && (*blocks)[len(*blocks)-1].BlockNumber == vLog.BlockNumber {
 		(*blocks)[len(*blocks)-1].GlobalExitRoots = append((*blocks)[len(*blocks)-1].GlobalExitRoots, gExitRoot)
 	} else {
-		log.Error("Error processing UpdateGlobalExitRoot event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
+		logger.Error("Error processing UpdateGlobalExitRoot event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing UpdateGlobalExitRoot event")
 	}
 	or := Order{
@@ -217,7 +220,8 @@ func (etherMan *Client) updateGlobalExitRootEvent(ctx context.Context, vLog type
 }
 
 func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
-	log.Debug("Deposit event detected")
+	logger := log.LoggerFromCtx(ctx)
+	logger.Debug("Deposit event detected")
 	d, err := etherMan.PolygonBridge.ParseBridgeEvent(vLog)
 	if err != nil {
 		return err
@@ -233,7 +237,7 @@ func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks
 	deposit.TxHash = vLog.TxHash
 	deposit.Metadata = d.Metadata
 	deposit.LeafType = d.LeafType
-	log.Debugf("Deposit event[%+v] blockNumber[%v]", deposit, vLog.BlockNumber)
+	logger.Debugf("Deposit event[%+v] blockNumber[%v]", deposit, vLog.BlockNumber)
 
 	if len(*blocks) == 0 || ((*blocks)[len(*blocks)-1].BlockHash != vLog.BlockHash || (*blocks)[len(*blocks)-1].BlockNumber != vLog.BlockNumber) {
 		fullBlock, err := etherMan.EtherClient.BlockByHash(ctx, vLog.BlockHash)
@@ -248,7 +252,7 @@ func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks
 		deposit.Time = (*blocks)[len(*blocks)-1].ReceivedAt
 		(*blocks)[len(*blocks)-1].Deposits = append((*blocks)[len(*blocks)-1].Deposits, deposit)
 	} else {
-		log.Error("Error processing deposit event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
+		logger.Error("Error processing deposit event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing Deposit event")
 	}
 	or := Order{
@@ -260,7 +264,8 @@ func (etherMan *Client) depositEvent(ctx context.Context, vLog types.Log, blocks
 }
 
 func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
-	log.Debug("Claim event detected")
+	logger := log.LoggerFromCtx(ctx)
+	logger.Debug("Claim event detected")
 	c, err := etherMan.PolygonBridge.ParseClaimEvent(vLog)
 	if err != nil {
 		return err
@@ -273,7 +278,7 @@ func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *
 	claim.OriginalAddress = c.OriginAddress
 	claim.BlockNumber = vLog.BlockNumber
 	claim.TxHash = vLog.TxHash
-	log.Debugf("Claim event[%+v] blockNumber[%v]", claim, vLog.BlockNumber)
+	logger.Debugf("Claim event[%+v] blockNumber[%v]", claim, vLog.BlockNumber)
 
 	if len(*blocks) == 0 || ((*blocks)[len(*blocks)-1].BlockHash != vLog.BlockHash || (*blocks)[len(*blocks)-1].BlockNumber != vLog.BlockNumber) {
 		fullBlock, err := etherMan.EtherClient.BlockByHash(ctx, vLog.BlockHash)
@@ -288,7 +293,7 @@ func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *
 		claim.Time = (*blocks)[len(*blocks)-1].ReceivedAt
 		(*blocks)[len(*blocks)-1].Claims = append((*blocks)[len(*blocks)-1].Claims, claim)
 	} else {
-		log.Error("Error processing claim event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
+		logger.Error("Error processing claim event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing claim event")
 	}
 	or := Order{
@@ -300,7 +305,8 @@ func (etherMan *Client) claimEvent(ctx context.Context, vLog types.Log, blocks *
 }
 
 func (etherMan *Client) tokenWrappedEvent(ctx context.Context, vLog types.Log, blocks *[]Block, blocksOrder *map[common.Hash][]Order) error {
-	log.Debug("TokenWrapped event detected")
+	logger := log.LoggerFromCtx(ctx)
+	logger.Debug("TokenWrapped event detected")
 	tw, err := etherMan.PolygonBridge.ParseNewWrappedToken(vLog)
 	if err != nil {
 		return err
@@ -310,7 +316,7 @@ func (etherMan *Client) tokenWrappedEvent(ctx context.Context, vLog types.Log, b
 	tokenWrapped.OriginalTokenAddress = tw.OriginTokenAddress
 	tokenWrapped.WrappedTokenAddress = tw.WrappedTokenAddress
 	tokenWrapped.BlockNumber = vLog.BlockNumber
-	log.Debugf("TokenWrapped event[%+v] blockNumber[%v]", tokenWrapped, vLog.BlockNumber)
+	logger.Debugf("TokenWrapped event[%+v] blockNumber[%v]", tokenWrapped, vLog.BlockNumber)
 
 	if len(*blocks) == 0 || ((*blocks)[len(*blocks)-1].BlockHash != vLog.BlockHash || (*blocks)[len(*blocks)-1].BlockNumber != vLog.BlockNumber) {
 		fullBlock, err := etherMan.EtherClient.BlockByHash(ctx, vLog.BlockHash)
@@ -323,7 +329,7 @@ func (etherMan *Client) tokenWrappedEvent(ctx context.Context, vLog types.Log, b
 	} else if (*blocks)[len(*blocks)-1].BlockHash == vLog.BlockHash && (*blocks)[len(*blocks)-1].BlockNumber == vLog.BlockNumber {
 		(*blocks)[len(*blocks)-1].Tokens = append((*blocks)[len(*blocks)-1].Tokens, tokenWrapped)
 	} else {
-		log.Error("Error processing TokenWrapped event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
+		logger.Error("Error processing TokenWrapped event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing TokenWrapped event")
 	}
 	or := Order{

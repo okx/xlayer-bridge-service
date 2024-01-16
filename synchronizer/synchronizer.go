@@ -72,6 +72,9 @@ func NewSynchronizer(
 		}
 	}
 
+	logger := log.WithFields("component", fmt.Sprintf("synchronizer_%v", networkID))
+	ctx = log.CtxWithLogger(ctx, logger)
+
 	if networkID == 0 {
 		return &ClientSynchronizer{
 			bridgeCtrl:          bridge,
@@ -110,37 +113,40 @@ var waitDuration = time.Duration(0)
 // Sync function will read the last state synced and will continue from that point.
 // Sync() will read blockchain events to detect rollup updates
 func (s *ClientSynchronizer) Sync() error {
+	logger := log.LoggerFromCtx(s.ctx)
 	// If there is no lastEthereumBlock means that sync from the beginning is necessary. If not, it continues from the retrieved ethereum block
 	// Get the latest synced block. If there is no block on db, use genesis block
-	log.Infof("NetworkID: %d, Synchronization started", s.networkID)
+	logger.Infof("NetworkID: %d, Synchronization started", s.networkID)
 	lastBlockSynced, err := s.storage.GetLastBlock(s.ctx, s.networkID, nil)
 	if err != nil {
 		if err == gerror.ErrStorageNotFound {
-			log.Warnf("networkID: %d, error getting the latest ethereum block. No data stored. Setting genesis block. Error: %w", s.networkID, err)
+			logger.Warnf("networkID: %d, error getting the latest ethereum block. No data stored. Setting genesis block. Error: %w", s.networkID, err)
 			lastBlockSynced = &etherman.Block{
 				BlockNumber: s.genBlockNumber,
 				NetworkID:   s.networkID,
 			}
-			log.Warnf("networkID: %d, error getting the latest block. No data stored. Using initial block: %+v. Error: %s",
+			logger.Warnf("networkID: %d, error getting the latest block. No data stored. Using initial block: %+v. Error: %s",
 				s.networkID, lastBlockSynced, err.Error())
 		} else {
-			log.Fatalf("networkID: %d, unexpected error getting the latest block. Error: %s", s.networkID, err.Error())
+			logger.Fatalf("networkID: %d, unexpected error getting the latest block. Error: %s", s.networkID, err.Error())
 		}
 	}
-	log.Debugf("NetworkID: %d, initial lastBlockSynced: %+v", s.networkID, lastBlockSynced)
+	logger.Debugf("NetworkID: %d, initial lastBlockSynced: %+v", s.networkID, lastBlockSynced)
 	for {
 		select {
 		case <-s.ctx.Done():
-			log.Debugf("NetworkID: %d, synchronizer ctx done", s.networkID)
+			logger.Debugf("NetworkID: %d, synchronizer ctx done", s.networkID)
 			return nil
 		case <-time.After(waitDuration):
-			log.Debugf("NetworkID: %d, syncing...", s.networkID)
+			logger := utils.LoggerWithRandomTraceID(logger)
+			ctx := log.CtxWithLogger(s.ctx, logger)
+			logger.Debugf("NetworkID: %d, syncing...", s.networkID)
 			//Sync L1Blocks
-			if lastBlockSynced, err = s.syncBlocks(lastBlockSynced); err != nil {
-				log.Warnf("networkID: %d, error syncing blocks: ", s.networkID, err)
-				lastBlockSynced, err = s.storage.GetLastBlock(s.ctx, s.networkID, nil)
+			if lastBlockSynced, err = s.syncBlocks(ctx, lastBlockSynced); err != nil {
+				logger.Warnf("networkID: %d, error syncing blocks: ", s.networkID, err)
+				lastBlockSynced, err = s.storage.GetLastBlock(ctx, s.networkID, nil)
 				if err != nil {
-					log.Fatalf("networkID: %d, error getting lastBlockSynced to resume the synchronization... Error: ", s.networkID, err)
+					logger.Fatalf("networkID: %d, error getting lastBlockSynced to resume the synchronization... Error: ", s.networkID, err)
 				}
 				if s.ctx.Err() != nil {
 					continue
@@ -148,26 +154,26 @@ func (s *ClientSynchronizer) Sync() error {
 			}
 			if !s.synced {
 				// Check latest Block
-				header, err := s.etherMan.HeaderByNumber(s.ctx, nil)
+				header, err := s.etherMan.HeaderByNumber(ctx, nil)
 				if err != nil {
-					log.Warnf("networkID: %d, error getting latest block from. Error: %s", s.networkID, err.Error())
+					logger.Warnf("networkID: %d, error getting latest block from. Error: %s", s.networkID, err.Error())
 					continue
 				}
 				lastKnownBlock := header.Number.Uint64()
 				if lastBlockSynced.BlockNumber == lastKnownBlock && !s.synced {
-					log.Infof("NetworkID %d Synced!", s.networkID)
+					logger.Infof("NetworkID %d Synced!", s.networkID)
 					waitDuration = s.cfg.SyncInterval.Duration
 					s.synced = true
 					s.chSynced <- s.networkID
 				}
 				if lastBlockSynced.BlockNumber > lastKnownBlock {
 					if s.networkID == 0 {
-						log.Fatalf("networkID: %d, error: latest Synced BlockNumber (%d) is higher than the latest Proposed block (%d) in the network", s.networkID, lastBlockSynced.BlockNumber, lastKnownBlock)
+						logger.Fatalf("networkID: %d, error: latest Synced BlockNumber (%d) is higher than the latest Proposed block (%d) in the network", s.networkID, lastBlockSynced.BlockNumber, lastKnownBlock)
 					} else {
-						log.Errorf("networkID: %d, error: latest Synced BlockNumber (%d) is higher than the latest Proposed block (%d) in the network", s.networkID, lastBlockSynced.BlockNumber, lastKnownBlock)
-						err = s.resetState(lastKnownBlock)
+						logger.Errorf("networkID: %d, error: latest Synced BlockNumber (%d) is higher than the latest Proposed block (%d) in the network", s.networkID, lastBlockSynced.BlockNumber, lastKnownBlock)
+						err = s.resetState(ctx, lastKnownBlock)
 						if err != nil {
-							log.Errorf("networkID: %d, error resetting the state to a previous block. Error: %v", s.networkID, err)
+							logger.Errorf("networkID: %d, error resetting the state to a previous block. Error: %v", s.networkID, err)
 							continue
 						}
 					}
@@ -176,10 +182,10 @@ func (s *ClientSynchronizer) Sync() error {
 				if s.networkID != 0 {
 					continue
 				}
-				log.Infof("networkID: %d, Virtual state is synced, getting trusted state", s.networkID)
-				err = s.syncTrustedState()
+				logger.Infof("networkID: %d, Virtual state is synced, getting trusted state", s.networkID)
+				err = s.syncTrustedState(ctx)
 				if err != nil {
-					log.Errorf("networkID: %d, error getting current trusted state", s.networkID)
+					logger.Errorf("networkID: %d, error getting current trusted state", s.networkID)
 				}
 			}
 		}
@@ -191,15 +197,16 @@ func (s *ClientSynchronizer) Stop() {
 	s.cancelCtx()
 }
 
-func (s *ClientSynchronizer) syncTrustedState() error {
-	lastBatchNumber, err := s.zkEVMClient.BatchNumber(s.ctx)
+func (s *ClientSynchronizer) syncTrustedState(ctx context.Context) error {
+	logger := log.LoggerFromCtx(ctx)
+	lastBatchNumber, err := s.zkEVMClient.BatchNumber(ctx)
 	if err != nil {
-		log.Errorf("networkID: %d, error getting latest batch number from rpc. Error: %w", s.networkID, err)
+		logger.Errorf("networkID: %d, error getting latest batch number from rpc. Error: %w", s.networkID, err)
 		return err
 	}
-	lastBatch, err := s.zkEVMClient.BatchByNumber(s.ctx, big.NewInt(0).SetUint64(lastBatchNumber))
+	lastBatch, err := s.zkEVMClient.BatchByNumber(ctx, big.NewInt(0).SetUint64(lastBatchNumber))
 	if err != nil {
-		log.Warnf("networkID: %d, failed to get batch %v from trusted state. Error: %v", s.networkID, lastBatchNumber, err)
+		logger.Warnf("networkID: %d, failed to get batch %v from trusted state. Error: %v", s.networkID, lastBatchNumber, err)
 		return err
 	}
 	ger := &etherman.GlobalExitRoot{
@@ -210,9 +217,9 @@ func (s *ClientSynchronizer) syncTrustedState() error {
 		},
 		Time: time.Unix(int64(lastBatch.Timestamp), 0),
 	}
-	isUpdated, err := s.storage.AddTrustedGlobalExitRoot(s.ctx, ger, nil)
+	isUpdated, err := s.storage.AddTrustedGlobalExitRoot(ctx, ger, nil)
 	if err != nil {
-		log.Error("networkID: %d, error storing latest trusted globalExitRoot. Error: %w", s.networkID, err)
+		logger.Error("networkID: %d, error storing latest trusted globalExitRoot. Error: %w", s.networkID, err)
 		return err
 	}
 	if isUpdated {
@@ -222,24 +229,25 @@ func (s *ClientSynchronizer) syncTrustedState() error {
 }
 
 // This function syncs the node from a specific block to the latest
-func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*etherman.Block, error) {
+func (s *ClientSynchronizer) syncBlocks(ctx context.Context, lastBlockSynced *etherman.Block) (*etherman.Block, error) {
+	logger := log.LoggerFromCtx(ctx)
 	// This function will read events fromBlockNum to latestEthBlock. Check reorg to be sure that everything is ok.
-	block, err := s.checkReorg(lastBlockSynced)
+	block, err := s.checkReorg(ctx, lastBlockSynced)
 	if err != nil {
-		log.Errorf("networkID: %d, error checking reorgs. Retrying... Err: %s", s.networkID, err.Error())
+		logger.Errorf("networkID: %d, error checking reorgs. Retrying... Err: %s", s.networkID, err.Error())
 		return lastBlockSynced, fmt.Errorf("networkID: %d, error checking reorgs", s.networkID)
 	}
 	if block != nil {
-		err = s.resetState(block.BlockNumber)
+		err = s.resetState(ctx, block.BlockNumber)
 		if err != nil {
-			log.Errorf("networkID: %d, error resetting the state to a previous block. Retrying... Error: %s", s.networkID, err.Error())
+			logger.Errorf("networkID: %d, error resetting the state to a previous block. Retrying... Error: %s", s.networkID, err.Error())
 			return lastBlockSynced, fmt.Errorf("networkID: %d, error resetting the state to a previous block", s.networkID)
 		}
 		return block, nil
 	}
-	log.Debugf("NetworkID: %d, after checkReorg: no reorg detected", s.networkID)
+	logger.Debugf("NetworkID: %d, after checkReorg: no reorg detected", s.networkID)
 	// Call the blockchain to retrieve data
-	header, err := s.etherMan.HeaderByNumber(s.ctx, nil)
+	header, err := s.etherMan.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return lastBlockSynced, err
 	}
@@ -253,30 +261,30 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 	for {
 		toBlock := fromBlock + s.cfg.SyncChunkSize
 
-		log.Debugf("NetworkID: %d, Getting bridge info from block %d to block %d", s.networkID, fromBlock, toBlock)
+		logger.Debugf("NetworkID: %d, Getting bridge info from block %d to block %d", s.networkID, fromBlock, toBlock)
 		// This function returns the rollup information contained in the ethereum blocks and an extra param called order.
 		// Order param is a map that contains the event order to allow the synchronizer store the info in the same order that is read.
 		// Name can be different in the order struct. This name is an identifier to check if the next info that must be stored in the db.
 		// The value pos (position) tells what is the array index where this value is.
-		blocks, order, err := s.etherMan.GetRollupInfoByBlockRange(s.ctx, fromBlock, &toBlock)
+		blocks, order, err := s.etherMan.GetRollupInfoByBlockRange(ctx, fromBlock, &toBlock)
 		if err != nil {
 			return lastBlockSynced, err
 		}
-		err = s.processBlockRange(blocks, order)
+		err = s.processBlockRange(ctx, blocks, order)
 		if err != nil {
 			return lastBlockSynced, err
 		}
 		if len(blocks) > 0 {
 			lastBlockSynced = &blocks[len(blocks)-1]
 			for i := range blocks {
-				log.Debug("NetworkID: ", s.networkID, ", Position: ", i, ". BlockNumber: ", blocks[i].BlockNumber, ". BlockHash: ", blocks[i].BlockHash)
+				logger.Debug("NetworkID: ", s.networkID, ", Position: ", i, ". BlockNumber: ", blocks[i].BlockNumber, ". BlockHash: ", blocks[i].BlockHash)
 			}
 		}
 		fromBlock = toBlock + 1
 
 		if lastKnownBlock.Cmp(new(big.Int).SetUint64(toBlock)) < 1 {
 			if !s.synced {
-				log.Infof("NetworkID %d Synced!", s.networkID)
+				logger.Infof("NetworkID %d Synced!", s.networkID)
 				waitDuration = s.cfg.SyncInterval.Duration
 				s.synced = true
 				s.chSynced <- s.networkID
@@ -285,7 +293,7 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 		}
 		if len(blocks) == 0 { // If there is no events in the checked blocks range and lastKnownBlock > fromBlock.
 			// Store the latest block of the block range. Get block info and process the block
-			fb, err := s.etherMan.EthBlockByNumber(s.ctx, toBlock)
+			fb, err := s.etherMan.EthBlockByNumber(ctx, toBlock)
 			if err != nil {
 				return lastBlockSynced, err
 			}
@@ -295,13 +303,13 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 				ParentHash:  fb.ParentHash(),
 				ReceivedAt:  time.Unix(int64(fb.Time()), 0),
 			}
-			err = s.processBlockRange([]etherman.Block{b}, order)
+			err = s.processBlockRange(ctx, []etherman.Block{b}, order)
 			if err != nil {
 				return lastBlockSynced, err
 			}
 
 			lastBlockSynced = &b
-			log.Debugf("NetworkID: %d, Storing empty block. BlockNumber: %d. BlockHash: %s",
+			logger.Debugf("NetworkID: %d, Storing empty block. BlockNumber: %d. BlockHash: %s",
 				s.networkID, b.BlockNumber, b.BlockHash.String())
 		}
 	}
@@ -309,106 +317,108 @@ func (s *ClientSynchronizer) syncBlocks(lastBlockSynced *etherman.Block) (*ether
 	return lastBlockSynced, nil
 }
 
-func (s *ClientSynchronizer) processBlockRange(blocks []etherman.Block, order map[common.Hash][]etherman.Order) error {
+func (s *ClientSynchronizer) processBlockRange(ctx context.Context, blocks []etherman.Block, order map[common.Hash][]etherman.Order) error {
+	logger := log.LoggerFromCtx(ctx)
 	// New info has to be included into the db using the state
 	for i := range blocks {
 		// Begin db transaction
-		dbTx, err := s.storage.BeginDBTransaction(s.ctx)
+		dbTx, err := s.storage.BeginDBTransaction(ctx)
 		if err != nil {
-			log.Errorf("networkID: %d, error creating db transaction to store block. BlockNumber: %d. Error: %v",
+			logger.Errorf("networkID: %d, error creating db transaction to store block. BlockNumber: %d. Error: %v",
 				s.networkID, blocks[i].BlockNumber, err)
 			return err
 		}
 		// Add block information
 		blocks[i].NetworkID = s.networkID
-		log.Infof("NetworkID: %d. Syncing block: %d", s.networkID, blocks[i].BlockNumber)
-		blockID, err := s.storage.AddBlock(s.ctx, &blocks[i], dbTx)
-		log.Infof("NetworkID: %d. add block: %d", s.networkID, blocks[i].BlockNumber)
+		logger.Infof("NetworkID: %d. Syncing block: %d", s.networkID, blocks[i].BlockNumber)
+		blockID, err := s.storage.AddBlock(ctx, &blocks[i], dbTx)
+		logger.Infof("NetworkID: %d. add block: %d", s.networkID, blocks[i].BlockNumber)
 		if err != nil {
-			log.Errorf("networkID: %d, error storing block. BlockNumber: %d, error: %v", s.networkID, blocks[i].BlockNumber, err)
-			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+			logger.Errorf("networkID: %d, error storing block. BlockNumber: %d, error: %v", s.networkID, blocks[i].BlockNumber, err)
+			rollbackErr := s.storage.Rollback(ctx, dbTx)
 			if rollbackErr != nil {
-				log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
+				logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
 					s.networkID, blocks[i].BlockNumber, rollbackErr, err.Error())
 				return rollbackErr
 			}
 			return err
 		} else {
-			log.Infof("NetworkID: %d. add block success: %d", s.networkID, blocks[i].BlockNumber)
+			logger.Infof("NetworkID: %d. add block success: %d", s.networkID, blocks[i].BlockNumber)
 		}
 		counter := 0
 		for _, element := range order[blocks[i].BlockHash] {
 			counter++
 			switch element.Name {
 			case etherman.GlobalExitRootsOrder:
-				log.Infof("NetworkID: %d. block %d GlobalExitRootsOrder", s.networkID, blocks[i].BlockNumber)
-				err = s.processGlobalExitRoot(blocks[i].GlobalExitRoots[element.Pos], blockID, dbTx)
+				logger.Infof("NetworkID: %d. block %d GlobalExitRootsOrder", s.networkID, blocks[i].BlockNumber)
+				err = s.processGlobalExitRoot(ctx, blocks[i].GlobalExitRoots[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.DepositsOrder:
-				log.Infof("NetworkID: %d. block %d DepositsOrder", s.networkID, blocks[i].BlockNumber)
-				err = s.processDeposit(blocks[i].Deposits[element.Pos], blockID, dbTx)
+				logger.Infof("NetworkID: %d. block %d DepositsOrder", s.networkID, blocks[i].BlockNumber)
+				err = s.processDeposit(ctx, blocks[i].Deposits[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.ClaimsOrder:
-				log.Infof("NetworkID: %d. block %d ClaimsOrder", s.networkID, blocks[i].BlockNumber)
-				err = s.processClaim(blocks[i].Claims[element.Pos], blockID, dbTx)
+				logger.Infof("NetworkID: %d. block %d ClaimsOrder", s.networkID, blocks[i].BlockNumber)
+				err = s.processClaim(ctx, blocks[i].Claims[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			case etherman.TokensOrder:
-				log.Infof("NetworkID: %d. block %d TokensOrder", s.networkID, blocks[i].BlockNumber)
-				err = s.processTokenWrapped(blocks[i].Tokens[element.Pos], blockID, dbTx)
+				logger.Infof("NetworkID: %d. block %d TokensOrder", s.networkID, blocks[i].BlockNumber)
+				err = s.processTokenWrapped(ctx, blocks[i].Tokens[element.Pos], blockID, dbTx)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		log.Infof("NetworkID: %d. block %d element number %d", s.networkID, blocks[i].BlockNumber, counter)
-		err = s.storage.Commit(s.ctx, dbTx)
+		logger.Infof("NetworkID: %d. block %d element number %d", s.networkID, blocks[i].BlockNumber, counter)
+		err = s.storage.Commit(ctx, dbTx)
 		if err != nil {
-			log.Errorf("networkID: %d, error committing state to store block. BlockNumber: %d, err: %v",
+			logger.Errorf("networkID: %d, error committing state to store block. BlockNumber: %d, err: %v",
 				s.networkID, blocks[i].BlockNumber, err)
-			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+			rollbackErr := s.storage.Rollback(ctx, dbTx)
 			if rollbackErr != nil {
-				log.Errorf("networkID: %d, error rolling back state. BlockNumber: %d, rollbackErr: %v, err: %s",
+				logger.Errorf("networkID: %d, error rolling back state. BlockNumber: %d, rollbackErr: %v, err: %s",
 					s.networkID, blocks[i].BlockNumber, rollbackErr, err.Error())
 				return rollbackErr
 			}
 			return err
 		}
-		log.Infof("NetworkID: %d. block %d Commit", s.networkID, blocks[i].BlockNumber)
+		logger.Infof("NetworkID: %d. block %d Commit", s.networkID, blocks[i].BlockNumber)
 	}
 	return nil
 }
 
 // This function allows reset the state until an specific ethereum block
-func (s *ClientSynchronizer) resetState(blockNumber uint64) error {
-	log.Infof("NetworkID: %d. Reverting synchronization to block: %d", s.networkID, blockNumber)
-	dbTx, err := s.storage.BeginDBTransaction(s.ctx)
+func (s *ClientSynchronizer) resetState(ctx context.Context, blockNumber uint64) error {
+	logger := log.LoggerFromCtx(ctx)
+	logger.Infof("NetworkID: %d. Reverting synchronization to block: %d", s.networkID, blockNumber)
+	dbTx, err := s.storage.BeginDBTransaction(ctx)
 	if err != nil {
-		log.Errorf("networkID: %d, Error starting a db transaction to reset the state. Error: %v", s.networkID, err)
+		logger.Errorf("networkID: %d, Error starting a db transaction to reset the state. Error: %v", s.networkID, err)
 		return err
 	}
-	err = s.storage.Reset(s.ctx, blockNumber, s.networkID, dbTx)
+	err = s.storage.Reset(ctx, blockNumber, s.networkID, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, error resetting the state. Error: %v", s.networkID, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, error resetting the state. Error: %v", s.networkID, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
 				s.networkID, blockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
 		return err
 	}
-	depositCnt, err := s.storage.GetNumberDeposits(s.ctx, s.networkID, blockNumber, dbTx)
+	depositCnt, err := s.storage.GetNumberDeposits(ctx, s.networkID, blockNumber, dbTx)
 	if err != nil {
-		log.Error("networkID: %d, error getting GetNumberDeposits. Error: %v", s.networkID, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Error("networkID: %d, error getting GetNumberDeposits. Error: %v", s.networkID, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
 				s.networkID, blockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -417,21 +427,21 @@ func (s *ClientSynchronizer) resetState(blockNumber uint64) error {
 
 	err = s.bridgeCtrl.ReorgMT(uint(depositCnt), s.networkID, dbTx)
 	if err != nil {
-		log.Error("networkID: %d, error resetting ReorgMT the state. Error: %v", s.networkID, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Error("networkID: %d, error resetting ReorgMT the state. Error: %v", s.networkID, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
 				s.networkID, blockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
 		return err
 	}
-	err = s.storage.Commit(s.ctx, dbTx)
+	err = s.storage.Commit(ctx, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, error committing the resetted state. Error: %v", s.networkID, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, error committing the resetted state. Error: %v", s.networkID, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, error : %s",
 				s.networkID, blockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -449,56 +459,57 @@ If hash or hash parent don't match, reorg detected and the function will return 
 must be reverted. Then, check the previous ethereum block synced, get block info from the blockchain and check
 hash and has parent. This operation has to be done until a match is found.
 */
-func (s *ClientSynchronizer) checkReorg(latestBlock *etherman.Block) (*etherman.Block, error) {
+func (s *ClientSynchronizer) checkReorg(ctx context.Context, latestBlock *etherman.Block) (*etherman.Block, error) {
+	logger := log.LoggerFromCtx(ctx)
 	// This function only needs to worry about reorgs if some of the reorganized blocks contained rollup info.
 	latestBlockSynced := *latestBlock
 	var depth uint64
 	for {
-		block, err := s.etherMan.EthBlockByNumber(s.ctx, latestBlock.BlockNumber)
+		block, err := s.etherMan.EthBlockByNumber(ctx, latestBlock.BlockNumber)
 		if err != nil {
-			log.Errorf("networkID: %d, error getting latest block synced from blockchain. Block: %d, error: %v",
+			logger.Errorf("networkID: %d, error getting latest block synced from blockchain. Block: %d, error: %v",
 				s.networkID, latestBlock.BlockNumber, err)
 			return nil, err
 		}
 		if block.NumberU64() != latestBlock.BlockNumber {
 			err = fmt.Errorf("networkID: %d, wrong ethereum block retrieved from blockchain. Block numbers don't match."+
 				" BlockNumber stored: %d. BlockNumber retrieved: %d", s.networkID, latestBlock.BlockNumber, block.NumberU64())
-			log.Error("error: ", err)
+			logger.Error("error: ", err)
 			return nil, err
 		}
 		// Compare hashes
 		if (block.Hash() != latestBlock.BlockHash || block.ParentHash() != latestBlock.ParentHash) && latestBlock.BlockNumber > s.genBlockNumber {
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockNumber: ", latestBlock.BlockNumber)
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockHash: ", latestBlock.BlockHash)
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockHashParent: ", latestBlock.ParentHash)
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockNumber: ", latestBlock.BlockNumber, block.NumberU64())
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockHash: ", block.Hash())
-			log.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockHashParent: ", block.ParentHash())
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockNumber: ", latestBlock.BlockNumber)
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockHash: ", latestBlock.BlockHash)
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => latestBlockHashParent: ", latestBlock.ParentHash)
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockNumber: ", latestBlock.BlockNumber, block.NumberU64())
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockHash: ", block.Hash())
+			logger.Info("NetworkID: ", s.networkID, ", [checkReorg function] => BlockHashParent: ", block.ParentHash())
 			depth++
-			log.Info("NetworkID: ", s.networkID, ", REORG: Looking for the latest correct block. Depth: ", depth)
+			logger.Info("NetworkID: ", s.networkID, ", REORG: Looking for the latest correct block. Depth: ", depth)
 			// Reorg detected. Getting previous block
-			dbTx, err := s.storage.BeginDBTransaction(s.ctx)
+			dbTx, err := s.storage.BeginDBTransaction(ctx)
 			if err != nil {
-				log.Errorf("networkID: %d, error creating db transaction to get previous blocks. Error: %v", s.networkID, err)
+				logger.Errorf("networkID: %d, error creating db transaction to get previous blocks. Error: %v", s.networkID, err)
 				return nil, err
 			}
-			latestBlock, err = s.storage.GetPreviousBlock(s.ctx, s.networkID, depth, dbTx)
-			errC := s.storage.Commit(s.ctx, dbTx)
+			latestBlock, err = s.storage.GetPreviousBlock(ctx, s.networkID, depth, dbTx)
+			errC := s.storage.Commit(ctx, dbTx)
 			if errC != nil {
-				log.Errorf("networkID: %d, error committing dbTx, err: %v", s.networkID, errC)
-				rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+				logger.Errorf("networkID: %d, error committing dbTx, err: %v", s.networkID, errC)
+				rollbackErr := s.storage.Rollback(ctx, dbTx)
 				if rollbackErr != nil {
-					log.Errorf("networkID: %d, error rolling back state. RollbackErr: %v, err: %s",
+					logger.Errorf("networkID: %d, error rolling back state. RollbackErr: %v, err: %s",
 						s.networkID, rollbackErr, errC.Error())
 					return nil, rollbackErr
 				}
 				return nil, errC
 			}
 			if errors.Is(err, gerror.ErrStorageNotFound) {
-				log.Warnf("networkID: %d, error checking reorg: previous block not found in db: %v", s.networkID, err)
+				logger.Warnf("networkID: %d, error checking reorg: previous block not found in db: %v", s.networkID, err)
 				return &etherman.Block{}, nil
 			} else if err != nil {
-				log.Errorf("networkID: %d, error detected getting previous block: %v", s.networkID, err)
+				logger.Errorf("networkID: %d, error detected getting previous block: %v", s.networkID, err)
 				return nil, err
 			}
 		} else {
@@ -506,22 +517,23 @@ func (s *ClientSynchronizer) checkReorg(latestBlock *etherman.Block) (*etherman.
 		}
 	}
 	if latestBlockSynced.BlockHash != latestBlock.BlockHash {
-		log.Infof("NetworkID: %d, reorg detected in block: %d", s.networkID, latestBlockSynced.BlockNumber)
+		logger.Infof("NetworkID: %d, reorg detected in block: %d", s.networkID, latestBlockSynced.BlockNumber)
 		return latestBlock, nil
 	}
-	log.Debugf("NetworkID: %d, no reorg detected", s.networkID)
+	logger.Debugf("NetworkID: %d, no reorg detected", s.networkID)
 	return nil, nil
 }
 
-func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.GlobalExitRoot, blockID uint64, dbTx pgx.Tx) error {
+func (s *ClientSynchronizer) processGlobalExitRoot(ctx context.Context, globalExitRoot etherman.GlobalExitRoot, blockID uint64, dbTx pgx.Tx) error {
+	logger := log.LoggerFromCtx(ctx)
 	// Store GlobalExitRoot
 	globalExitRoot.BlockID = blockID
-	err := s.storage.AddGlobalExitRoot(s.ctx, &globalExitRoot, dbTx)
+	err := s.storage.AddGlobalExitRoot(ctx, &globalExitRoot, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, error storing the GlobalExitRoot in processGlobalExitRoot. BlockNumber: %d. Error: %v", s.networkID, globalExitRoot.BlockNumber, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, error storing the GlobalExitRoot in processGlobalExitRoot. BlockNumber: %d. Error: %v", s.networkID, globalExitRoot.BlockNumber, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state. BlockNumber: %d, rollbackErr: %v, error : %s",
+			logger.Errorf("networkID: %d, error rolling back state. BlockNumber: %d, rollbackErr: %v, error : %s",
 				s.networkID, globalExitRoot.BlockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -534,15 +546,16 @@ func (s *ClientSynchronizer) processGlobalExitRoot(globalExitRoot etherman.Globa
 	return nil
 }
 
-func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID uint64, dbTx pgx.Tx) error {
+func (s *ClientSynchronizer) processDeposit(ctx context.Context, deposit etherman.Deposit, blockID uint64, dbTx pgx.Tx) error {
+	logger := log.LoggerFromCtx(ctx)
 	deposit.BlockID = blockID
 	deposit.NetworkID = s.networkID
-	depositID, err := s.storage.AddDeposit(s.ctx, &deposit, dbTx)
+	depositID, err := s.storage.AddDeposit(ctx, &deposit, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, failed to store new deposit locally, BlockNumber: %d, Deposit: %+v err: %v", s.networkID, deposit.BlockNumber, deposit, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, failed to store new deposit locally, BlockNumber: %d, Deposit: %+v err: %v", s.networkID, deposit.BlockNumber, deposit, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
 				s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -551,10 +564,10 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 
 	err = s.bridgeCtrl.AddDeposit(&deposit, depositID, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, failed to store new deposit in the bridge tree, BlockNumber: %d, Deposit: %+v err: %v", s.networkID, deposit.BlockNumber, deposit, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, failed to store new deposit in the bridge tree, BlockNumber: %d, Deposit: %+v err: %v", s.networkID, deposit.BlockNumber, deposit, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
 				s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -565,10 +578,10 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 	if deposit.NetworkID == 0 {
 		err := s.redisStorage.AddBlockDeposit(context.Background(), &deposit)
 		if err != nil {
-			log.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
-			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+			logger.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+			rollbackErr := s.storage.Rollback(ctx, dbTx)
 			if rollbackErr != nil {
-				log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+				logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
 					s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
 				return rollbackErr
 			}
@@ -582,7 +595,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
 		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
@@ -590,7 +603,7 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			ToChain:      uint32(deposit.DestinationNetwork),
 			BridgeToken:  deposit.OriginalAddress.Hex(),
 			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: s.getEstimateTimeForDepositCreated(deposit.NetworkID),
+			EstimateTime: s.getEstimateTimeForDepositCreated(ctx, deposit.NetworkID),
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
 			Id:           depositID,
@@ -602,28 +615,29 @@ func (s *ClientSynchronizer) processDeposit(deposit etherman.Deposit, blockID ui
 			ToChainId:    utils.GetChainIdByNetworkId(deposit.DestinationNetwork),
 		})
 		if err != nil {
-			log.Errorf("PushTransactionUpdate error: %v", err)
+			logger.Errorf("PushTransactionUpdate error: %v", err)
 		}
 	}()
 	return nil
 }
 
-func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(networkId uint) uint32 {
+func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(ctx context.Context, networkId uint) uint32 {
 	if networkId == 0 {
 		return estimatetime.GetDefaultCalculator().Get(networkId)
 	}
-	return uint32(pushtask.GetAvgCommitDuration(s.ctx, s.redisStorage))
+	return uint32(pushtask.GetAvgCommitDuration(ctx, s.redisStorage))
 }
 
-func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, dbTx pgx.Tx) error {
+func (s *ClientSynchronizer) processClaim(ctx context.Context, claim etherman.Claim, blockID uint64, dbTx pgx.Tx) error {
+	logger := log.LoggerFromCtx(ctx)
 	claim.BlockID = blockID
 	claim.NetworkID = s.networkID
-	err := s.storage.AddClaim(s.ctx, &claim, dbTx)
+	err := s.storage.AddClaim(ctx, &claim, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, error storing new Claim in Block:  %d, Claim: %+v, err: %v", s.networkID, claim.BlockNumber, claim, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, error storing new Claim in Block:  %d, Claim: %+v, err: %v", s.networkID, claim.BlockNumber, claim, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
 				s.networkID, claim.BlockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}
@@ -641,13 +655,13 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 		originNetwork := 1 - s.networkID
 
 		// Retrieve deposit transaction info
-		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
+		deposit, err := s.storage.GetDeposit(ctx, claim.Index, originNetwork, nil)
 		if err != nil {
-			log.Errorf("push message: GetDeposit error: %v", err)
+			logger.Errorf("push message: GetDeposit error: %v", err)
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
 		err = s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
@@ -661,21 +675,22 @@ func (s *ClientSynchronizer) processClaim(claim etherman.Claim, blockID uint64, 
 			DestAddr:    deposit.DestinationAddress.Hex(),
 		})
 		if err != nil {
-			log.Errorf("PushTransactionUpdate error: %v", err)
+			logger.Errorf("PushTransactionUpdate error: %v", err)
 		}
 	}()
 	return nil
 }
 
-func (s *ClientSynchronizer) processTokenWrapped(tokenWrapped etherman.TokenWrapped, blockID uint64, dbTx pgx.Tx) error {
+func (s *ClientSynchronizer) processTokenWrapped(ctx context.Context, tokenWrapped etherman.TokenWrapped, blockID uint64, dbTx pgx.Tx) error {
+	logger := log.LoggerFromCtx(ctx)
 	tokenWrapped.BlockID = blockID
 	tokenWrapped.NetworkID = s.networkID
-	err := s.storage.AddTokenWrapped(s.ctx, &tokenWrapped, dbTx)
+	err := s.storage.AddTokenWrapped(ctx, &tokenWrapped, dbTx)
 	if err != nil {
-		log.Errorf("networkID: %d, error storing new L1 TokenWrapped in Block:  %d, ExitRoot: %+v, err: %v", s.networkID, tokenWrapped.BlockNumber, tokenWrapped, err)
-		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		logger.Errorf("networkID: %d, error storing new L1 TokenWrapped in Block:  %d, ExitRoot: %+v, err: %v", s.networkID, tokenWrapped.BlockNumber, tokenWrapped, err)
+		rollbackErr := s.storage.Rollback(ctx, dbTx)
 		if rollbackErr != nil {
-			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
+			logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %d, rollbackErr: %v, err: %s",
 				s.networkID, tokenWrapped.BlockNumber, rollbackErr, err.Error())
 			return rollbackErr
 		}

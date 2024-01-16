@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"golang.org/x/exp/constraints"
 )
 
@@ -34,4 +35,17 @@ func Min[T constraints.Ordered](x, y T) T {
 		return x
 	}
 	return y
+}
+
+// LoggerWithTraceID returns a wrapping logger with a specific trace id
+func LoggerWithTraceID(logger *log.Logger, traceID string) *log.Logger {
+	if logger == nil {
+		logger = log.GetDefaultLog()
+	}
+	return logger.WithFields(TraceID, traceID)
+}
+
+// LoggerWithRandomTraceID returns a wrapping logger with a random trace id
+func LoggerWithRandomTraceID(logger *log.Logger) *log.Logger {
+	return LoggerWithTraceID(logger, GenerateTraceID())
 }
