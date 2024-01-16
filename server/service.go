@@ -100,11 +100,10 @@ func (s *bridgeService) getNode(ctx context.Context, parentHash [bridgectrl.KeyL
 }
 
 // getProof returns the merkle proof for a given index and root.
-func (s *bridgeService) getProof(index uint, root [bridgectrl.KeyLen]byte, dbTx pgx.Tx) ([][bridgectrl.KeyLen]byte, error) {
+func (s *bridgeService) getProof(ctx context.Context, index uint, root [bridgectrl.KeyLen]byte, dbTx pgx.Tx) ([][bridgectrl.KeyLen]byte, error) {
 	var siblings [][bridgectrl.KeyLen]byte
 
 	cur := root
-	ctx := context.Background()
 	// It starts in height-1 because 0 is the level of the leafs
 	for h := int(s.height - 1); h >= 0; h-- {
 		left, right, err := s.getNode(ctx, cur, dbTx)
@@ -177,7 +176,7 @@ func (s *bridgeService) GetClaimProof(ctx context.Context, depositCnt, networkID
 		return nil, nil, gerror.ErrInternalErrorForRpcCall
 	}
 
-	merkleProof, err := s.getProof(depositCnt, globalExitRoot.ExitRoots[tID], dbTx)
+	merkleProof, err := s.getProof(ctx, depositCnt, globalExitRoot.ExitRoots[tID], dbTx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting the proof failed, error: %v, network: %d", err, networkID)
 	}
