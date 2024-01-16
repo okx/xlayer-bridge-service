@@ -47,7 +47,7 @@ func (h *MessageHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 
 			// Retry for 5 times, if still fails, ignore this message
 			for i := 0; i < maxRetries; i++ {
-				err := h.handleMessage(message)
+				err := h.handleMessage(session.Context(), message)
 				if err == nil {
 					break
 				}
@@ -61,7 +61,7 @@ func (h *MessageHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 	}
 }
 
-func (h *MessageHandler) handleMessage(message *sarama.ConsumerMessage) error {
+func (h *MessageHandler) handleMessage(ctx context.Context, message *sarama.ConsumerMessage) error {
 	body := &MessageBody{}
 	err := json.Unmarshal(message.Value, body)
 	if err != nil {
@@ -72,7 +72,7 @@ func (h *MessageHandler) handleMessage(message *sarama.ConsumerMessage) error {
 		return errors.New("message data is nil")
 	}
 	pbPriceList := h.convertToPbPriceList(body.Data.PriceList)
-	return h.storage.SetCoinPrice(context.Background(), pbPriceList)
+	return h.storage.SetCoinPrice(ctx, pbPriceList)
 }
 
 func (h *MessageHandler) convertToPbPriceList(priceList []*PriceInfo) []*pb.SymbolPrice {
