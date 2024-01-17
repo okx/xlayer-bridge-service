@@ -63,7 +63,7 @@ func NewKafkaConsumer(cfg Config, redisStorage redisstorage.RedisStorage) (Kafka
 }
 
 func (c *kafkaConsumerImpl) Start(ctx context.Context) {
-	logger := log.LoggerFromCtx(ctx)
+	logger := log.LoggerFromCtx(ctx).WithFields("component", "kafkaconsumer")
 	logger.Debug("starting kafka consumer")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
