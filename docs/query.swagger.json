@@ -1,0 +1,1257 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "x1-bridge-service",
+    "description": "X1 Bridge Service",
+    "version": "v1"
+  },
+  "tags": [
+    {
+      "name": "BridgeService"
+    }
+  ],
+  "basePath": "/priapi/v1/ob/bridge",
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/all/{destAddr}": {
+      "get": {
+        "summary": "/ Get all the transactions of an account. Similar to GetBridges but the field names are changed",
+        "operationId": "BridgeService_GetAllTransactions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonTransactionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "destAddr",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "Get API version",
+        "description": "This endpoint returns the API version of the service",
+        "operationId": "BridgeService_CheckAPI",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CheckAPIResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/bridge": {
+      "get": {
+        "summary": "/ Get the specific deposit",
+        "operationId": "BridgeService_GetBridge",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBridgeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "netId",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "depositCnt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/bridge/tokenwrapped": {
+      "get": {
+        "summary": "/ Get token wrapped for the specific smart contract address both in L1 and L2",
+        "operationId": "BridgeService_GetTokenWrapped",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTokenWrappedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "origTokenAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "origNet",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/bridges/{destAddr}": {
+      "get": {
+        "summary": "/ Get bridges for the destination address both in L1 and L2",
+        "operationId": "BridgeService_GetBridges",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBridgesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "destAddr",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/claims/{destAddr}": {
+      "get": {
+        "summary": "/ Get claims for the specific smart contract address both in L1 and L2",
+        "operationId": "BridgeService_GetClaims",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetClaimsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "destAddr",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/coin-price": {
+      "post": {
+        "summary": "/ Get the latest price of the specified coins",
+        "operationId": "BridgeService_GetCoinPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonCoinPricesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetCoinPriceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/estimate-time": {
+      "get": {
+        "summary": "/ Return the estimated deposit wait time for L1 and L2",
+        "operationId": "BridgeService_GetEstimateTime",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonEstimateTimeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/fake-push-messages/{topic}": {
+      "get": {
+        "summary": "/ Return the messages from the fake producer, only for testing when UseFakeProducer is enabled\n/ Return at most 100 latest messages, there's no offset management so client should handle duplications",
+        "operationId": "BridgeService_GetFakePushMessages",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetFakePushMessagesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "topic",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/main-coins/{networkId}": {
+      "get": {
+        "summary": "/ Get the list of all the main coins of a specified network",
+        "operationId": "BridgeService_GetMainCoins",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonCoinsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "networkId",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/merkle-proof": {
+      "get": {
+        "summary": "/ Get the merkle proof for the specific deposit",
+        "operationId": "BridgeService_GetProof",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetProofResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "netId",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "depositCnt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/monitored-txs/status/{status}": {
+      "get": {
+        "summary": "/ Get list of monitored transactions, filtered by status",
+        "operationId": "BridgeService_GetMonitoredTxsByStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonMonitoredTxsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "description": "created/failed/confirmed",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/not-ready": {
+      "get": {
+        "summary": "/ Get all transactions with ready_for_claim = false",
+        "operationId": "BridgeService_GetNotReadyTransactions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonTransactionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/pending/{destAddr}": {
+      "get": {
+        "summary": "/ Get the pending (not claimed) transactions of an account",
+        "operationId": "BridgeService_GetPendingTransactions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonTransactionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "destAddr",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    },
+    "/smt-proof": {
+      "get": {
+        "operationId": "BridgeService_GetSmtProof",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CommonProofResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "fromChain",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "BridgeService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1CheckAPIResponse": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Claim": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "origNet": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "origAddr": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string"
+        },
+        "networkId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "destAddr": {
+          "type": "string"
+        },
+        "blockNum": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "txHash": {
+          "type": "string"
+        }
+      },
+      "title": "Claim message"
+    },
+    "v1CoinInfo": {
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "decimals": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "chainId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "networkId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "logoLink": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        }
+      },
+      "title": "Coin info message"
+    },
+    "v1CommonCoinPricesResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SymbolPrice"
+          }
+        }
+      }
+    },
+    "v1CommonCoinsResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CoinInfo"
+          }
+        }
+      }
+    },
+    "v1CommonEstimateTimeResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": "Has 2 numbers which are the estimate time of L1 and L2"
+        }
+      }
+    },
+    "v1CommonMonitoredTxsResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/v1MonitoredTxsDetail"
+        }
+      }
+    },
+    "v1CommonProofResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/v1ProofDetail"
+        }
+      }
+    },
+    "v1CommonTransactionsResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/v1TransactionDetail"
+        }
+      }
+    },
+    "v1Deposit": {
+      "type": "object",
+      "properties": {
+        "leafType": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "origNet": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "origAddr": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string"
+        },
+        "destNet": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "destAddr": {
+          "type": "string"
+        },
+        "blockNum": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "depositCnt": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "networkId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "txHash": {
+          "type": "string"
+        },
+        "claimTxHash": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "string"
+        },
+        "readyForClaim": {
+          "type": "boolean"
+        }
+      },
+      "title": "Deposit message"
+    },
+    "v1GetBridgeResponse": {
+      "type": "object",
+      "properties": {
+        "deposit": {
+          "$ref": "#/definitions/v1Deposit"
+        }
+      }
+    },
+    "v1GetBridgesResponse": {
+      "type": "object",
+      "properties": {
+        "deposits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Deposit"
+          }
+        },
+        "totalCnt": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1GetClaimsResponse": {
+      "type": "object",
+      "properties": {
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Claim"
+          }
+        },
+        "totalCnt": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1GetCoinPriceRequest": {
+      "type": "object",
+      "properties": {
+        "symbolInfos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SymbolInfo"
+          }
+        }
+      }
+    },
+    "v1GetFakePushMessagesResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "msg": {
+          "type": "string"
+        },
+        "errorCode": {
+          "type": "string"
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "detailMsg": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1GetProofResponse": {
+      "type": "object",
+      "properties": {
+        "proof": {
+          "$ref": "#/definitions/v1Proof"
+        }
+      }
+    },
+    "v1GetTokenWrappedResponse": {
+      "type": "object",
+      "properties": {
+        "tokenwrapped": {
+          "$ref": "#/definitions/v1TokenWrapped"
+        }
+      }
+    },
+    "v1MonitoredTx": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "from": {
+          "type": "string",
+          "title": "Sender address of the tx"
+        },
+        "to": {
+          "type": "string",
+          "title": "Receiver address of the tx"
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Nonce used to create the tx"
+        },
+        "value": {
+          "type": "string",
+          "title": "Transaction value"
+        },
+        "data": {
+          "type": "string",
+          "title": "Transaction data"
+        },
+        "gas": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "gasPrice": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "created/confirmed/failed"
+        },
+        "blockId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of all transaction hashes created from this tx and sent to the network. The order of transactions is NOT guaranteed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Unix timestamp ms"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Unix timestamp ms"
+        }
+      },
+      "title": "Monitored tx"
+    },
+    "v1MonitoredTxsDetail": {
+      "type": "object",
+      "properties": {
+        "hasNext": {
+          "type": "boolean"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1MonitoredTx"
+          }
+        }
+      }
+    },
+    "v1Proof": {
+      "type": "object",
+      "properties": {
+        "merkleProof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mainExitRoot": {
+          "type": "string"
+        },
+        "rollupExitRoot": {
+          "type": "string"
+        }
+      },
+      "title": "Merkle Proof message"
+    },
+    "v1ProofDetail": {
+      "type": "object",
+      "properties": {
+        "smtProof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mainnetExitRoot": {
+          "type": "string"
+        },
+        "rollupExitRoot": {
+          "type": "string"
+        }
+      }
+    },
+    "v1SymbolInfo": {
+      "type": "object",
+      "properties": {
+        "chainId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "address": {
+          "type": "string"
+        }
+      },
+      "title": "Symbol info message"
+    },
+    "v1SymbolPrice": {
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number",
+          "format": "double"
+        },
+        "time": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "address": {
+          "type": "string"
+        },
+        "chainId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1TokenWrapped": {
+      "type": "object",
+      "properties": {
+        "origNet": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "originalTokenAddr": {
+          "type": "string"
+        },
+        "wrappedTokenAddr": {
+          "type": "string"
+        },
+        "networkId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "decimals": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "title": "TokenWrapped message"
+    },
+    "v1Transaction": {
+      "type": "object",
+      "properties": {
+        "fromChain": {
+          "type": "integer",
+          "format": "int64",
+          "title": "0:L1, 1:L2"
+        },
+        "toChain": {
+          "type": "integer",
+          "format": "int64",
+          "title": "0:L1, 1:L2"
+        },
+        "bridgeToken": {
+          "type": "string"
+        },
+        "tokenAmount": {
+          "type": "string"
+        },
+        "estimateTime": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Enum: TransactionStatus"
+        },
+        "time": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Deposit's block time"
+        },
+        "txHash": {
+          "type": "string",
+          "title": "Deposit tx hash"
+        },
+        "claimTxHash": {
+          "type": "string"
+        },
+        "claimTime": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Claim's block time"
+        },
+        "fromChainId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "toChainId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "index": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "metadata": {
+          "type": "string"
+        },
+        "destAddr": {
+          "type": "string"
+        },
+        "blockNumber": {
+          "type": "string",
+          "format": "uint64"
+        }
+      },
+      "title": "Transaction message"
+    },
+    "v1TransactionDetail": {
+      "type": "object",
+      "properties": {
+        "hasNext": {
+          "type": "boolean"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Transaction"
+          }
+        }
+      }
+    }
+  }
+}
