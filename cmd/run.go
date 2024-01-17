@@ -37,6 +37,10 @@ func runPushTask(ctx *cli.Context) error {
 	return startServer(ctx, withPushTasks())
 }
 
+func runXxlJobs(ctx *cli.Context) error {
+	return startServer(ctx, withXxlJobs())
+}
+
 func runAll(ctx *cli.Context) error {
 	return startServer(ctx, withAPI(), withTasks(), withPushTasks())
 }
@@ -45,6 +49,7 @@ type runOption struct {
 	runAPI       bool
 	runTasks     bool
 	runPushTasks bool
+	runXxlJobs   bool
 }
 
 type runOptionFunc func(opt *runOption)
@@ -64,6 +69,12 @@ func withTasks() runOptionFunc {
 func withPushTasks() runOptionFunc {
 	return func(opt *runOption) {
 		opt.runPushTasks = true
+	}
+}
+
+func withXxlJobs() runOptionFunc {
+	return func(opt *runOption) {
+		opt.runXxlJobs = true
 	}
 }
 
@@ -274,6 +285,11 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 				log.Errorf("close kafka consumer error: %v", err)
 			}
 		}()
+	}
+
+	// ---------- Run xxl-jobs executor ----------
+	if opt.runXxlJobs {
+
 	}
 
 	// Wait for an in interrupt.
