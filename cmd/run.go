@@ -20,6 +20,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljobs"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/urfave/cli/v2"
@@ -289,7 +290,8 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 
 	// ---------- Run xxl-jobs executor ----------
 	if opt.runXxlJobs {
-
+		xxljobs.InitExecutor(c.XxlJobExecutor)
+		// TODO: Register tasks
 	}
 
 	// Wait for an in interrupt.

@@ -15,6 +15,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljobs"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -32,7 +33,8 @@ type Config struct {
 	CoinKafkaConsumer   coinmiddleware.Config
 	MessagePushProducer messagepush.Config
 	NetworkConfig
-	NacosConfig nacos.Config
+	NacosConfig    nacos.Config
+	XxlJobExecutor xxljobs.Config
 }
 
 // Load loads the configuration

@@ -15,6 +15,7 @@ func getLogger() *log.Logger {
 
 func InitExecutor(cfg Config) {
 	logger := getLogger()
+	logger.Infof("Starting to initialize xxl-job executor")
 
 	// Prepare the params for initialization
 	opts := []xxl.Option{
@@ -28,7 +29,16 @@ func InitExecutor(cfg Config) {
 
 	executor = xxl.NewExecutor(opts...)
 	executor.Init()
-	log.Fatal(executor.Run())
+	go executor.Run()
+}
+
+func RegisterTask(taskKey string, fn xxl.TaskFunc) {
+	logger := getLogger()
+	if executor == nil {
+		logger.Errorf("xxl-job register task failed: executor is nil")
+		return
+	}
+	executor.RegTask(taskKey, fn)
 }
 
 type customLogger struct {
