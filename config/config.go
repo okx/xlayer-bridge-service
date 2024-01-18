@@ -25,7 +25,7 @@ import (
 type Config struct {
 	Log                 log.Config
 	Apollo              apolloconfig.Config
-	SyncDB              db.Config             `apollo:"DB"`
+	SyncDB              db.Config             `apollo:"SyncDB"`
 	ClaimTxManager      claimtxman.Config     `apollo:"ClaimTxManager"`
 	Etherman            etherman.Config       `apollo:"Etherman"`
 	Synchronizer        synchronizer.Config   `apollo:"Synchronizer"`
