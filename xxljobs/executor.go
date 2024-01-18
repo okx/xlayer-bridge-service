@@ -51,7 +51,9 @@ func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 
 // Stop should be called when the service exits
 func Stop() {
+	logger := getLogger()
 	if executor != nil {
+		logger.Infof("stopping xxl-job executor")
 		executor.Stop()
 	}
 }
