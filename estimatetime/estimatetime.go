@@ -24,6 +24,23 @@ const (
 	defaultSampleLimit   = 10
 )
 
+var (
+	defaultCalculator Calculator
+)
+
+func InitDefaultCalculator(storage interface{}) error {
+	calculator, err := NewCalculator(storage)
+	if err != nil {
+		return err
+	}
+	defaultCalculator = calculator
+	return nil
+}
+
+func GetDefaultCalculator() Calculator {
+	return defaultCalculator
+}
+
 type calculatorImpl struct {
 	storage              DBStorage
 	estimateTime         []uint32 // In minutes
