@@ -15,7 +15,7 @@ const (
 	syncL1VerifiedBatchLockKey        = "sync_l1_verified_batch_lock"
 	minVerifyDuration                 = 2
 	defaultVerifyDuration             = 10
-	maxVerifyDuration                 = 30
+	maxVerifyDuration                 = 60
 	verifiedBatchCacheRefreshInterval = 10 * time.Second
 )
 
