@@ -30,6 +30,9 @@ func InitExecutor(cfg Config) {
 	if cfg.ExecutorPort != "" {
 		opts = append(opts, xxl.ExecutorPort(cfg.ExecutorPort))
 	}
+	if cfg.RegistryKey != "" {
+		opts = append(opts, xxl.RegistryKey(cfg.RegistryKey))
+	}
 
 	executor = xxl.NewExecutor(opts...)
 	executor.Init()
