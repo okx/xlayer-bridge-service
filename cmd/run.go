@@ -291,6 +291,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	// ---------- Run xxl-jobs executor ----------
 	if opt.runXxlJobs {
 		xxljobs.InitExecutor(c.XxlJobExecutor)
+		defer xxljobs.Stop()
 		// TODO: Register tasks
 	}
 

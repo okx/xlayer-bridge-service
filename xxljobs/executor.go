@@ -49,6 +49,13 @@ func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 	executor.RegTask(taskKey, fn)
 }
 
+// Stop should be called when the service exits
+func Stop() {
+	if executor != nil {
+		executor.Stop()
+	}
+}
+
 func executorMiddleware(fn xxl.TaskFunc) xxl.TaskFunc {
 	return func(ctx context.Context, param *xxl.RunReq) string {
 		startTime := time.Now()
