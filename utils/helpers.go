@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-node/log"
+	"golang.org/x/exp/constraints"
 )
 
 func generateRandomString(length int) string {
@@ -40,4 +41,11 @@ func LoggerWithTraceID(logger *log.Logger, traceID string) *log.Logger {
 // LoggerWithRandomTraceID returns a wrapping logger with a random trace id
 func LoggerWithRandomTraceID(logger *log.Logger) *log.Logger {
 	return LoggerWithTraceID(logger, GenerateTraceID())
+}
+
+func Min[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
 }
