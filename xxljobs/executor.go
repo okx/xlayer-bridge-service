@@ -1,6 +1,10 @@
 package xxljobs
 
 import (
+	"context"
+	"encoding/json"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/xxl-job/xxl-job-executor-go"
 )
@@ -29,6 +33,7 @@ func InitExecutor(cfg Config) {
 
 	executor = xxl.NewExecutor(opts...)
 	executor.Init()
+	executor.Use(executorMiddleware)
 	go executor.Run()
 }
 
@@ -39,6 +44,19 @@ func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 		return
 	}
 	executor.RegTask(taskKey, fn)
+}
+
+func executorMiddleware(fn xxl.TaskFunc) xxl.TaskFunc {
+	return func(ctx context.Context, param *xxl.RunReq) string {
+		startTime := time.Now()
+		logger := getLogger()
+		b, _ := json.Marshal(param)
+		logger.Debugf("received task: %v", string(b))
+
+		res := fn(ctx, param)
+		logger.Infof("task done, res[%v] processTime[%v]", res, time.Since(startTime).String())
+		return res
+	}
 }
 
 type customLogger struct {
