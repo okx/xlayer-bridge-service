@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/xxl-job/xxl-job-executor-go"
 	"os"
 	"os/signal"
 
@@ -194,6 +195,15 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	}
 
 	// ---------- Run push tasks ----------
+	//register handler
+	log.Debugf("start initializing xxjob...")
+	exec := xxl.NewExecutor(
+		xxl.ServerAddr(c.XxjobConfig.ServerAddress),
+		xxl.AccessToken(c.XxjobConfig.AccessToken),
+		xxl.ExecutorPort(c.XxjobConfig.ExecutorPort),
+		xxl.RegistryKey(c.XxjobConfig.RegisterKey),
+	)
+	exec.Init()
 	if opt.runPushTasks {
 		// Initialize the push task for L1 block num change
 		l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer)
@@ -201,7 +211,9 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
-		go l1BlockNumTask.Start(ctx.Context)
+		exec.RegTask("l1BlockNumTask.ExecuteL1BlockPush", l1BlockNumTask.ExecuteL1BlockPush)
+
+		//go l1BlockNumTask.Start(ctx.Context)
 
 		// Initialize the push task for sync l2 commit batch
 		syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L2URLs[0], apiStorage, redisStorage, messagePushProducer)
@@ -209,7 +221,8 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
-		go syncCommitBatchTask.Start(ctx.Context)
+		exec.RegTask("syncCommitBatchTask.ExecuteCommittedBatchedTask", syncCommitBatchTask.ExecuteCommittedBatchedTask)
+		//go syncCommitBatchTask.Start(ctx.Context)
 
 		// Initialize the push task for sync verify batch
 		syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L2URLs[0], redisStorage)
@@ -217,11 +230,13 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
-		go syncVerifyBatchTask.Start(ctx.Context)
+		exec.RegTask("syncVerifyBatchTask.ExecuteNewVerifiedBatchTask", syncVerifyBatchTask.ExecuteNewVerifiedBatchTask)
+		//go syncVerifyBatchTask.Start(ctx.Context)
 	}
 
-	// ---------- Run synchronizer tasks ----------
+	// ---------- Run synchronizer tasks(access xxjob) ----------
 	if opt.runTasks {
+
 		log.Debug("trusted sequencer URL ", c.Etherman.L2URLs[0])
 		zkEVMClient := client.NewClient(c.Etherman.L2URLs[0])
 		chExitRootEvent := make(chan *etherman.GlobalExitRoot)
@@ -257,6 +272,13 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 				}
 			}()
 		}
+
+		err = exec.Run()
+		if err != nil {
+			log.Error("run xxjob error:", err)
+			return err
+		}
+		log.Debugf("finish initializing xxjob")
 
 		// Start the coin middleware kafka consumer
 		log.Debugf("start initializing kafka consumer...")

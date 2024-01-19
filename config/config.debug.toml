@@ -82,3 +82,9 @@ NacosUrls = ""
 NamespaceId = "public"
 ApplicationName = ""
 ExternalListenAddr = "127.0.0.1:26659"
+
+[XxjobConfig]
+ServerAddress = "http://localhost:8800/xxl-job-admin"
+AccessToken = ""
+RegisterKey = "x1bridge-dev"
+ExecutorPort = "9999"

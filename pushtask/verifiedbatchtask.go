@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"github.com/xxl-job/xxl-job-executor-go"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
@@ -29,6 +30,12 @@ func NewVerifiedBatchHandler(rpcUrl string, redisStorage redisstorage.RedisStora
 		rpcUrl:       rpcUrl,
 		redisStorage: redisStorage,
 	}, nil
+}
+
+func (ins *VerifiedBatchHandler) ExecuteNewVerifiedBatchTask(ctx context.Context, param *xxl.RunReq) (msg string) {
+	log.Debugf("Starting processSyncVerifyBatchTask, interval:%v", verifiedBatchCacheRefreshInterval)
+	ins.processSyncVerifyBatchTask(ctx)
+	return "finish execute task"
 }
 
 func (ins *VerifiedBatchHandler) Start(ctx context.Context) {

@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"github.com/xxl-job/xxl-job-executor-go"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -41,6 +42,12 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 		client:              client,
 		messagePushProducer: producer,
 	}, nil
+}
+
+func (t *L1BlockNumTask) ExecuteL1BlockPush(ctx context.Context, param *xxl.RunReq) (msg string) {
+	log.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
+	t.doTask(ctx)
+	return "finish execute task"
 }
 
 func (t *L1BlockNumTask) Start(ctx context.Context) {

@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"github.com/xxl-job/xxl-job-executor-go"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -46,6 +47,12 @@ func NewCommittedBatchHandler(rpcUrl string, storage interface{}, redisStorage r
 		redisStorage:        redisStorage,
 		messagePushProducer: producer,
 	}, nil
+}
+
+func (ins *CommittedBatchHandler) ExecuteCommittedBatchedTask(ctx context.Context, param *xxl.RunReq) (msg string) {
+	log.Debugf("Starting processSyncCommitBatchTask, interval:%v", committedBatchCacheRefreshInterval)
+	ins.processSyncCommitBatchTask(ctx)
+	return "finish execute task"
 }
 
 func (ins *CommittedBatchHandler) Start(ctx context.Context) {
