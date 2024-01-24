@@ -17,10 +17,10 @@ const (
 )
 
 var (
-	minVerifyDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.minVerifyDuration", 2)
-	defaultVerifyDuration = apolloconfig.NewIntEntry[uint64]("pushtask.defaultVerifyDuration", 10)
-	maxVerifyDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.maxVerifyDuration", 60)
-	verifyDurationListLen = apolloconfig.NewIntEntry("pushtask.verifyDurationListLen", 5)
+	minVerifyDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.minVerifyDuration", 2)      //nolint:gomnd
+	defaultVerifyDuration = apolloconfig.NewIntEntry[uint64]("pushtask.defaultVerifyDuration", 10) //nolint:gomnd
+	maxVerifyDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.maxVerifyDuration", 60)     //nolint:gomnd
+	verifyDurationListLen = apolloconfig.NewIntEntry("pushtask.verifyDurationListLen", 5)          //nolint:gomnd
 )
 
 type VerifiedBatchHandler struct {

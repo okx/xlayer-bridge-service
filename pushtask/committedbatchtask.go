@@ -24,9 +24,9 @@ const (
 )
 
 var (
-	minCommitDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.minCommitDuration", 2)
-	defaultCommitDuration = apolloconfig.NewIntEntry[uint64]("pushtask.defaultCommitDuration", 10)
-	commitDurationListLen = apolloconfig.NewIntEntry[int]("pushtask.commitDurationListLen", 5)
+	minCommitDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.minCommitDuration", 2)      //nolint:gomnd
+	defaultCommitDuration = apolloconfig.NewIntEntry[uint64]("pushtask.defaultCommitDuration", 10) //nolint:gomnd
+	commitDurationListLen = apolloconfig.NewIntEntry[int]("pushtask.commitDurationListLen", 5)     //nolint:gomnd
 )
 
 type CommittedBatchHandler struct {
