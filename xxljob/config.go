@@ -1,4 +1,4 @@
-package xxjob
+package xxljob
 
 type Config struct {
 	ServerAddress string `mapstructure:"serverAddress"`

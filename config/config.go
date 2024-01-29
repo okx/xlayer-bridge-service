@@ -3,7 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/xxjob"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljob"
 	"path/filepath"
 	"strings"
 
@@ -34,7 +34,7 @@ type Config struct {
 	MessagePushProducer messagepush.Config
 	NetworkConfig
 	NacosConfig nacos.Config
-	XxjobConfig xxjob.Config
+	XxjobConfig xxljob.Config
 }
 
 // Load loads the configuration
