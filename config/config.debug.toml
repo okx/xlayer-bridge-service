@@ -2,6 +2,15 @@
 Level = "debug"
 Outputs = ["stdout"]
 
+[Apollo]
+Enabled = false
+AppID = "haibridgetest"
+Cluster = "default"
+MetaAddress = "http://81.68.181.139:8080"
+Namespaces = ["application"]
+Secret = ""
+IsBackupConfig = true
+
 [SyncDB]
 Database = "postgres"
 User = "test_user"
@@ -67,6 +76,9 @@ InitialOffset = -1
 Username = ""
 Password = ""
 RootCAPath = "/app/root-ca-cert"
+
+[MessagePushProducer]
+Enabled = false
 
 [NetworkConfig]
 GenBlockNumber = 1

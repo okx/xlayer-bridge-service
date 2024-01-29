@@ -11,6 +11,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-node/encoding"
 	"github.com/ethereum/go-ethereum/common"
+	"golang.org/x/exp/constraints"
 )
 
 func generateRandomString(length int) string {
@@ -67,10 +68,18 @@ func EthermanDepositToPbTransaction(deposit *etherman.Deposit) *pb.Transaction {
 		Metadata:    "0x" + hex.EncodeToString(deposit.Metadata),
 		DestAddr:    deposit.DestinationAddress.Hex(),
 		LeafType:    uint32(deposit.LeafType),
+		BlockNumber: deposit.BlockNumber,
 	}
 }
 
 // GenerateTraceID generates a random trace ID.
 func GenerateTraceID() string {
 	return generateRandomString(traceIDLen)
+}
+
+func Min[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
 }

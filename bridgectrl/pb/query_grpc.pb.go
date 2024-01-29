@@ -53,6 +53,9 @@ type BridgeServiceClient interface {
 	ManualClaim(ctx context.Context, in *ManualClaimRequest, opts ...grpc.CallOption) (*CommonManualClaimResponse, error)
 	// / Returns all transactions from a network that are ready_for_claim but not claimed
 	GetReadyPendingTransactions(ctx context.Context, in *GetReadyPendingTransactionsRequest, opts ...grpc.CallOption) (*CommonTransactionsResponse, error)
+	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
+	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
+	GetFakePushMessages(ctx context.Context, in *GetFakePushMessagesRequest, opts ...grpc.CallOption) (*GetFakePushMessagesResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -207,6 +210,15 @@ func (c *bridgeServiceClient) GetReadyPendingTransactions(ctx context.Context, i
 	return out, nil
 }
 
+func (c *bridgeServiceClient) GetFakePushMessages(ctx context.Context, in *GetFakePushMessagesRequest, opts ...grpc.CallOption) (*GetFakePushMessagesResponse, error) {
+	out := new(GetFakePushMessagesResponse)
+	err := c.cc.Invoke(ctx, "/bridge.v1.BridgeService/GetFakePushMessages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -242,6 +254,9 @@ type BridgeServiceServer interface {
 	ManualClaim(context.Context, *ManualClaimRequest) (*CommonManualClaimResponse, error)
 	// / Returns all transactions from a network that are ready_for_claim but not claimed
 	GetReadyPendingTransactions(context.Context, *GetReadyPendingTransactionsRequest) (*CommonTransactionsResponse, error)
+	// / Return the messages from the fake producer, only for testing when UseFakeProducer is enabled
+	// / Return at most 100 latest messages, there's no offset management so client should handle duplications
+	GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error)
 	mustEmbedUnimplementedBridgeServiceServer()
 }
 
@@ -296,6 +311,9 @@ func (UnimplementedBridgeServiceServer) ManualClaim(context.Context, *ManualClai
 }
 func (UnimplementedBridgeServiceServer) GetReadyPendingTransactions(context.Context, *GetReadyPendingTransactionsRequest) (*CommonTransactionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetReadyPendingTransactions not implemented")
+}
+func (UnimplementedBridgeServiceServer) GetFakePushMessages(context.Context, *GetFakePushMessagesRequest) (*GetFakePushMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFakePushMessages not implemented")
 }
 func (UnimplementedBridgeServiceServer) mustEmbedUnimplementedBridgeServiceServer() {}
 
@@ -598,6 +616,24 @@ func _BridgeService_GetReadyPendingTransactions_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_GetFakePushMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFakePushMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).GetFakePushMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/bridge.v1.BridgeService/GetFakePushMessages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).GetFakePushMessages(ctx, req.(*GetFakePushMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -668,6 +704,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReadyPendingTransactions",
 			Handler:    _BridgeService_GetReadyPendingTransactions_Handler,
+		},
+		{
+			MethodName: "GetFakePushMessages",
+			Handler:    _BridgeService_GetFakePushMessages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

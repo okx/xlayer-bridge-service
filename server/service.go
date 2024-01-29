@@ -4,13 +4,17 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/estimatetime"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
@@ -26,35 +30,34 @@ const (
 	defaultErrorCode   = 1
 	defaultSuccessCode = 0
 	mtHeight           = 32 // For sending mtProof to bridge contract, it requires constant-sized array...
+	defaultMinDuration = 1
 )
 
 type bridgeService struct {
-	storage           BridgeServiceStorage
-	redisStorage      redisstorage.RedisStorage
-	mainCoinsCache    localcache.MainCoinsCache
-	networkIDs        map[uint]uint8
-	chainIDs          map[uint]uint32
-	nodeClients       map[uint]*utils.Client
-	auths             map[uint]*bind.TransactOpts
-	height            uint8
-	defaultPageLimit  uint32
-	maxPageLimit      uint32
-	version           string
-	cache             *lru.Cache[string, [][]byte]
-	estTimeCalculator estimatetime.Calculator
+	storage             BridgeServiceStorage
+	redisStorage        redisstorage.RedisStorage
+	mainCoinsCache      localcache.MainCoinsCache
+	networkIDs          map[uint]uint8
+	nodeClients         map[uint]*utils.Client
+	auths               map[uint]*bind.TransactOpts
+	height              uint8
+	defaultPageLimit    apolloconfig.Entry[uint32]
+	maxPageLimit        apolloconfig.Entry[uint32]
+	version             string
+	cache               *lru.Cache[string, [][]byte]
+	estTimeCalculator   estimatetime.Calculator
+	messagePushProducer messagepush.KafkaProducer
 	pb.UnimplementedBridgeServiceServer
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint, l2Clients []*utils.Client, l2Auths []*bind.TransactOpts,
+func NewBridgeService(cfg Config, height uint8, networks []uint, l2Clients []*utils.Client, l2Auths []*bind.TransactOpts,
 	storage interface{}, redisStorage redisstorage.RedisStorage, mainCoinsCache localcache.MainCoinsCache, estTimeCalc estimatetime.Calculator) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
-	var chainIDs = make(map[uint]uint32)
 	var nodeClients = make(map[uint]*utils.Client, len(networks))
 	var authMap = make(map[uint]*bind.TransactOpts, len(networks))
 	for i, network := range networks {
 		networkIDs[network] = uint8(i)
-		chainIDs[network] = uint32(chainIds[i])
 		if i > 0 {
 			nodeClients[network] = l2Clients[i-1]
 			authMap[network] = l2Auths[i-1]
@@ -71,14 +74,18 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, chainIds []uint
 		estTimeCalculator: estTimeCalc,
 		height:            height,
 		networkIDs:        networkIDs,
-		chainIDs:          chainIDs,
 		nodeClients:       nodeClients,
 		auths:             authMap,
-		defaultPageLimit:  cfg.DefaultPageLimit,
-		maxPageLimit:      cfg.MaxPageLimit,
+		defaultPageLimit:  apolloconfig.NewIntEntry("BridgeServer.DefaultPageLimit", cfg.DefaultPageLimit),
+		maxPageLimit:      apolloconfig.NewIntEntry("BridgeServer.MaxPageLimit", cfg.MaxPageLimit),
 		version:           cfg.BridgeVersion,
 		cache:             cache,
 	}
+}
+
+func (s *bridgeService) WithMessagePushProducer(producer messagepush.KafkaProducer) *bridgeService {
+	s.messagePushProducer = producer
+	return s
 }
 
 func (s *bridgeService) getNetworkID(networkID uint) (uint8, error) {
@@ -163,7 +170,8 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 	if dbTx == nil { // if the call comes from the rest API
 		deposit, err := s.storage.GetDeposit(ctx, depositCnt, networkID, nil)
 		if err != nil {
-			return nil, nil, err
+			log.Errorf("failed to get deposit from db for GetClaimProof, depositCnt: %v, networkID: %v, error: %v", depositCnt, networkID, err)
+			return nil, nil, gerror.ErrInternalErrorForRpcCall
 		}
 
 		if !deposit.ReadyForClaim {
@@ -178,7 +186,8 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 
 	globalExitRoot, err := s.storage.GetLatestExitRoot(ctx, tID != 0, dbTx)
 	if err != nil {
-		return nil, nil, err
+		log.Errorf("get latest exit root failed fot network: %v, error: %v", networkID, err)
+		return nil, nil, gerror.ErrInternalErrorForRpcCall
 	}
 
 	merkleProof, err := s.getProof(depositCnt, globalExitRoot.ExitRoots[tID], dbTx)
@@ -219,14 +228,15 @@ func (s *bridgeService) CheckAPI(ctx context.Context, req *pb.CheckAPIRequest) (
 func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesRequest) (*pb.GetBridgesResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 	totalCount, err := s.storage.GetDepositCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		return nil, err
+		log.Errorf("get deposit count from db failed for address: %v, err: %v", req.DestAddr, err)
+		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	deposits, err := s.storage.GetDeposits(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil)
 	if err != nil {
@@ -269,18 +279,20 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest) (*pb.GetClaimsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 	totalCount, err := s.storage.GetClaimCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		return nil, err
+		log.Errorf("get claim count from db for address: %v, err: %v", req.DestAddr, err)
+		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	claims, err := s.storage.GetClaims(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil) //nolint:gomnd
 	if err != nil {
-		return nil, err
+		log.Errorf("get claim infos from db for address: %v, err: %v", req.DestAddr, err)
+		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
 	var pbClaims []*pb.Claim
@@ -330,6 +342,7 @@ func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequ
 		return &pb.CommonProofResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 	var proof []string
@@ -352,7 +365,8 @@ func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequ
 func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest) (*pb.GetBridgeResponse, error) {
 	deposit, err := s.storage.GetDeposit(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
-		return nil, err
+		log.Errorf("get deposit info failed for depositCnt: %v, net: %v, error: %v", req.DepositCnt, req.NetId, err)
+		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
 	claimTxHash, err := s.GetDepositStatus(ctx, uint(req.DepositCnt), deposit.DestinationNetwork)
@@ -384,7 +398,8 @@ func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest)
 func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWrappedRequest) (*pb.GetTokenWrappedResponse, error) {
 	tokenWrapped, err := s.storage.GetTokenWrapped(ctx, uint(req.OrigNet), common.HexToAddress(req.OrigTokenAddr), nil)
 	if err != nil {
-		return nil, err
+		log.Errorf("get token wrap info failed, origNet: %v, origTokenAddr: %v, error: %v", req.OrigNet, req.OrigTokenAddr, err)
+		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	return &pb.GetTokenWrappedResponse{
 		Tokenwrapped: &pb.TokenWrapped{
@@ -404,9 +419,11 @@ func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWra
 func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRequest) (*pb.CommonCoinPricesResponse, error) {
 	priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
 	if err != nil {
+		log.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
 		return &pb.CommonCoinPricesResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
 		}, nil
 	}
 	return &pb.CommonCoinPricesResponse{
@@ -420,9 +437,11 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRequest) (*pb.CommonCoinsResponse, error) {
 	coins, err := s.mainCoinsCache.GetMainCoinsByNetwork(ctx, req.NetworkId)
 	if err != nil {
+		log.Errorf("get main coins from cache failed for net: %v, error: %v", req.NetworkId, err)
 		return &pb.CommonCoinsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
 		}, nil
 	}
 	return &pb.CommonCoinsResponse{
@@ -436,17 +455,19 @@ func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRe
 func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), nil)
+	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
+		log.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
 		}, nil
 	}
 
@@ -455,22 +476,41 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		deposits = deposits[:limit]
 	}
 
+	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
+	l2CommitBlockNum, _ := s.redisStorage.GetCommitMaxBlockNum(ctx)
+	l2AvgCommitDuration := pushtask.GetAvgCommitDuration(ctx, s.redisStorage)
+	l2AvgVerifyDuration := pushtask.GetAvgVerifyDuration(ctx, s.redisStorage)
+	currTime := time.Now()
+
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
-		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
-		transaction.Status = 0
+		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
+		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
+		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
 		if deposit.ReadyForClaim {
-			transaction.Status = 1
+			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM)
 			// For L1->L2, if backend is trying to auto-claim, set the status to 0 to block the user from manual-claim
 			// When the auto-claim failed, set status to 1 to let the user claim manually through front-end
 			if deposit.NetworkID == 0 {
 				mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 				if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-					transaction.Status = 0
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
+			}
+		} else {
+			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
+			// should also display the status as "L2 executing" (pending auto claim)
+			if deposit.NetworkID == 0 {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations.Get() {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
+				}
+			} else {
+				if l2CommitBlockNum >= deposit.BlockNumber {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION)
+				}
+				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
@@ -481,22 +521,40 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	}, nil
 }
 
+func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommitDuration uint64, l2AvgVerifyDuration uint64, currTime time.Time,
+	tx *pb.Transaction, depositCreateTime time.Time) {
+	var duration int
+	if tx.Status == uint32(pb.TransactionStatus_TX_CREATED) {
+		duration = pushtask.GetLeftCommitTime(depositCreateTime, l2AvgCommitDuration, currTime)
+	} else {
+		duration = pushtask.GetLeftVerifyTime(ctx, s.redisStorage, tx.BlockNumber, depositCreateTime, l2AvgCommitDuration, l2AvgVerifyDuration, currTime)
+	}
+	if duration <= 0 {
+		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
+		tx.EstimateTime = uint32(defaultMinDuration)
+		return
+	}
+	tx.EstimateTime = uint32(duration)
+}
+
 // GetAllTransactions returns all the transactions of an account, similar to GetBridges
 // Bridge rest API endpoint
 func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetDeposits(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), nil)
+	deposits, err := s.storage.GetDepositsWithLeafType(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
+		log.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
 		}, nil
 	}
 
@@ -505,22 +563,29 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		deposits = deposits[0:limit]
 	}
 
+	l1BlockNum, _ := s.redisStorage.GetL1BlockNum(ctx)
+	l2CommitBlockNum, _ := s.redisStorage.GetCommitMaxBlockNum(ctx)
+	l2AvgCommitDuration := pushtask.GetAvgCommitDuration(ctx, s.redisStorage)
+	l2AvgVerifyDuration := pushtask.GetAvgVerifyDuration(ctx, s.redisStorage)
+	currTime := time.Now()
+
 	var pbTransactions []*pb.Transaction
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
-		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
-		transaction.Status = 0 // Not ready for claim
+		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
+		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
+		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED) // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
 			claim, err := s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
-			transaction.Status = 1 // Ready but not claimed
+			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM) // Ready but not claimed
 			if err != nil {
 				if !errors.Is(err, gerror.ErrStorageNotFound) {
 					return &pb.CommonTransactionsResponse{
 						Code: defaultErrorCode,
 						Data: nil,
+						Msg:  errors.Wrap(err, "load claim error").Error(),
 					}, nil
 				}
 				// For L1->L2, if backend is trying to auto-claim, set the status to 0 to block the user from manual-claim
@@ -528,13 +593,26 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 				if deposit.NetworkID == 0 {
 					mTx, err := s.storage.GetClaimTxById(ctx, deposit.DepositCount, nil)
 					if err == nil && mTx.Status != ctmtypes.MonitoredTxStatusFailed {
-						transaction.Status = 0
+						transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 					}
 				}
 			} else {
-				transaction.Status = 2 // Claimed
+				transaction.Status = uint32(pb.TransactionStatus_TX_CLAIMED) // Claimed
 				transaction.ClaimTxHash = claim.TxHash.String()
 				transaction.ClaimTime = uint64(claim.Time.UnixMilli())
+			}
+		} else {
+			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
+			// should also display the status as "L2 executing" (pending auto claim)
+			if deposit.NetworkID == 0 {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations.Get() {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
+				}
+			} else {
+				if l2CommitBlockNum >= deposit.BlockNumber {
+					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_VERIFICATION)
+				}
+				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
 		}
 		pbTransactions = append(pbTransactions, transaction)
@@ -550,10 +628,10 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.GetNotReadyTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 
 	deposits, err := s.storage.GetNotReadyTransactions(ctx, uint(limit+1), uint(req.Offset), nil)
@@ -561,6 +639,7 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
@@ -573,9 +652,9 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.Status = 0
-		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
-		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
+		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
+		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
+		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
@@ -589,10 +668,10 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.GetMonitoredTxsByStatusRequest) (*pb.CommonMonitoredTxsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 
 	mTxs, err := s.storage.GetClaimTxsByStatusWithLimit(ctx, []ctmtypes.MonitoredTxStatus{ctmtypes.MonitoredTxStatus(req.Status)}, uint(limit+1), uint(req.Offset), nil)
@@ -600,6 +679,7 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 		return &pb.CommonMonitoredTxsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
+			Msg:  err.Error(),
 		}, nil
 	}
 
@@ -724,10 +804,10 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb.GetReadyPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit
+		limit = s.defaultPageLimit.Get()
 	}
-	if limit > s.maxPageLimit {
-		limit = s.maxPageLimit
+	if limit > s.maxPageLimit.Get() {
+		limit = s.maxPageLimit.Get()
 	}
 
 	deposits, err := s.storage.GetReadyPendingTransactions(ctx, uint(req.NetworkId), uint(limit+1), uint(req.Offset), nil)
@@ -748,13 +828,27 @@ func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
 		transaction.Status = 1
-		transaction.FromChainId = s.chainIDs[deposit.NetworkID]
-		transaction.ToChainId = s.chainIDs[deposit.DestinationNetwork]
+		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
+		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
 	return &pb.CommonTransactionsResponse{
 		Code: defaultSuccessCode,
 		Data: &pb.TransactionDetail{HasNext: hasNext, Transactions: pbTransactions},
+	}, nil
+}
+
+func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFakePushMessagesRequest) (*pb.GetFakePushMessagesResponse, error) {
+	if s.messagePushProducer == nil {
+		return &pb.GetFakePushMessagesResponse{
+			Code: defaultErrorCode,
+			Msg:  "producer is nil",
+		}, nil
+	}
+
+	return &pb.GetFakePushMessagesResponse{
+		Code: defaultSuccessCode,
+		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
 	}, nil
 }
