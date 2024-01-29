@@ -486,8 +486,6 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
-		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
 		if deposit.ReadyForClaim {
 			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM)
@@ -573,8 +571,6 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
-		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED) // Not ready for claim
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
@@ -653,8 +649,6 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
-		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
-		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
@@ -827,9 +821,7 @@ func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb
 	for _, deposit := range deposits {
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = s.estTimeCalculator.Get(deposit.NetworkID)
-		transaction.Status = 1
-		transaction.FromChainId = utils.GetChainIdByNetworkId(deposit.NetworkID)
-		transaction.ToChainId = utils.GetChainIdByNetworkId(deposit.DestinationNetwork)
+		transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM)
 		pbTransactions = append(pbTransactions, transaction)
 	}
 
