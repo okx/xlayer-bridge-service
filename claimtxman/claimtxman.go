@@ -530,19 +530,6 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			continue
 		}
 
-		// Check the claim table to see whether the transaction has already been claimed by some other methods
-		_, err := tm.storage.GetClaim(ctx, mTx.DepositID, tm.l2NetworkID, dbTx)
-		if err == nil {
-			mTxLog.Infof("Tx has already been claimed")
-			mTx.Status = ctmtypes.MonitoredTxStatusConfirmed
-			// Update monitored txs status to confirmed
-			err = tm.storage.UpdateClaimTx(ctx, mTx, dbTx)
-			if err != nil {
-				mTxLog.Errorf("failed to update tx status to confirmed: %v", err)
-			}
-			continue
-		}
-
 		// check if any of the txs in the history was mined
 		mined := false
 		var receipt *types.Receipt
