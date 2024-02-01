@@ -2,8 +2,10 @@
     "runExecutorServer": true,
     "runExecutorClient": false,
     "runExecutorClientMultithread": false,
+
     "runHashDBServer": true,
     "runHashDBTest": false,
+
     "runAggregatorServer": false,
     "runAggregatorClient": false,
     "runAggregatorClientMock": true,
@@ -43,8 +45,10 @@
     "executorROMLineTraces": false,
     "executorClientPort": 50071,
     "executorClientHost": "127.0.0.1",
+
     "hashDBServerPort": 50061,
     "hashDBURL": "local",
+
     "aggregatorServerPort": 50081,
     "aggregatorClientPort": 50081,
     "aggregatorClientHost": "x1-aggregator",

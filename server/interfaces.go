@@ -28,4 +28,5 @@ type BridgeServiceStorage interface {
 	GetReadyPendingTransactions(ctx context.Context, networkID uint, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
 	GetClaimTxById(ctx context.Context, id uint, dbTx pgx.Tx) (*ctmtypes.MonitoredTx, error)
 	GetClaimTxsByStatusWithLimit(ctx context.Context, statuses []ctmtypes.MonitoredTxStatus, limit uint, offset uint, dbTx pgx.Tx) ([]ctmtypes.MonitoredTx, error)
+	GetRollupExitLeavesByRoot(ctx context.Context, root common.Hash, dbTx pgx.Tx) ([]etherman.RollupExitLeaf, error)
 }

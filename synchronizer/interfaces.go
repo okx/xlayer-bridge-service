@@ -17,6 +17,7 @@ type ethermanInterface interface {
 	GetRollupInfoByBlockRange(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]etherman.Block, map[common.Hash][]etherman.Order, error)
 	EthBlockByNumber(ctx context.Context, blockNumber uint64) (*types.Block, error)
 	GetNetworkID(ctx context.Context) (uint, error)
+	GetRollupID() uint
 }
 
 type storageInterface interface {
@@ -35,14 +36,18 @@ type storageInterface interface {
 	AddTrustedGlobalExitRoot(ctx context.Context, trustedExitRoot *etherman.GlobalExitRoot, dbTx pgx.Tx) (bool, error)
 	GetLatestL1SyncedExitRoot(ctx context.Context, dbTx pgx.Tx) (*etherman.GlobalExitRoot, error)
 	GetDeposit(ctx context.Context, depositCounterUser uint, networkID uint, dbTx pgx.Tx) (*etherman.Deposit, error)
+	CheckIfRootExists(ctx context.Context, root []byte, network uint8, dbTx pgx.Tx) (bool, error)
+	IsLxLyActivated(ctx context.Context, dbTx pgx.Tx) (bool, error)
 }
 
 type bridgectrlInterface interface {
-	AddDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error
-	ReorgMT(depositCount, networkID uint, dbTx pgx.Tx) error
+	AddDeposit(ctx context.Context, deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error
+	ReorgMT(ctx context.Context, depositCount, networkID uint, dbTx pgx.Tx) error
+	GetNetworkID(networkID uint) (uint8, error)
+	AddRollupExitLeaf(ctx context.Context, rollupLeaf etherman.RollupExitLeaf, dbTx pgx.Tx) error
 }
 
 type zkEVMClientInterface interface {
-	BatchNumber(ctx context.Context) (uint64, error)
-	BatchByNumber(ctx context.Context, number *big.Int) (*rpcTypes.Batch, error)
+	GetLatestGlobalExitRoot(ctx context.Context) (common.Hash, error)
+	ExitRootsByGER(ctx context.Context, globalExitRoot common.Hash) (*rpcTypes.ExitRoots, error)
 }
