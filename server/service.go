@@ -34,7 +34,7 @@ const (
 )
 
 var (
-	minReadyTimeLimitForWaitClaim = apolloconfig.NewIntEntry[uint64]("api.minReadyTimeLimitForWaitClaim", 24*60*1000) //nolint:gomnd
+	minReadyTimeLimitForWaitClaimSeconds = apolloconfig.NewIntEntry[int64]("api.minReadyTimeLimitForWaitClaim", 24*60*1000) //nolint:gomnd
 )
 
 type bridgeService struct {
@@ -808,7 +808,7 @@ func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb
 		limit = s.maxPageLimit.Get()
 	}
 
-	minReadyTime := time.Now().Add(time.Duration(-minReadyTimeLimitForWaitClaim.Get()) * time.Second)
+	minReadyTime := time.Now().Add(time.Duration(-minReadyTimeLimitForWaitClaimSeconds.Get()) * time.Second)
 
 	deposits, err := s.storage.GetReadyPendingTransactions(ctx, uint(req.NetworkId), uint(utils.LeafTypeAsset), uint(limit+1), uint(req.Offset), minReadyTime, nil)
 	if err != nil {
