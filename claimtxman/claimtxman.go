@@ -764,21 +764,6 @@ func (tm *ClaimTxManager) ReviewMonitoredTx(ctx context.Context, mTx *ctmtypes.M
 		mTx.Gas = gas
 	}
 
-	//if reviewNonce {
-	//	// check nonce
-	//	nonce, err := tm.getNextNonce(mTx.From)
-	//	if err != nil {
-	//		err := fmt.Errorf("failed to get nonce: %w", err)
-	//		mTxLog.Errorf(err.Error())
-	//		return err
-	//	}
-	//	mTxLog.Infof("monitored tx nonce from %v to %v", mTx.Nonce, nonce)
-	//	if nonce != mTx.Nonce {
-	//		mTxLog.Infof("monitored tx nonce updated from %v to %v", mTx.Nonce, nonce)
-	//		mTx.Nonce = nonce
-	//	}
-	//}
-
 	return nil
 }
 
