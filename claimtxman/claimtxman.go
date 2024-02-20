@@ -642,12 +642,10 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			mTxLog.Infof("Using gasPrice: %s. The gasPrice suggested by the network is %s", mTx.GasPrice.String(), gasPrice.String())
 
 			// Calculate nonce before signing
-			if mTx.Nonce <= 0 {
-				err = tm.setTxNonce(&mTx)
-				if err != nil {
-					mTxLog.Errorf("failed to set tx nonce: %v", err)
-					continue
-				}
+			err = tm.setTxNonce(&mTx)
+			if err != nil {
+				mTxLog.Errorf("failed to set tx nonce: %v", err)
+				continue
 			}
 
 			// rebuild transaction
