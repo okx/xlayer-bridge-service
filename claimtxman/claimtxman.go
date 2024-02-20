@@ -10,6 +10,7 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
@@ -33,6 +34,10 @@ const (
 	mtHeight        = 32
 	cacheSize       = 1000
 	LeafTypeMessage = uint8(1)
+)
+
+var (
+	multiAccountsClaimSwitch = apolloconfig.NewBoolEntry[bool]("claim.multiAccountsClaimSwitch", false) //nolint:gomnd
 )
 
 // ClaimTxManager is the claim transaction manager for L2.
@@ -527,6 +532,12 @@ func (tm *ClaimTxManager) monitorTxs(ctx context.Context) error {
 			if err != nil {
 				mTxLog.Errorf("failed to update tx status to confirmed: %v", err)
 			}
+			continue
+		}
+
+		// if multi-accounts claim switch is open, just skip sending tx, just waite the claim event
+		if multiAccountsClaimSwitch.Get() {
+			mTxLog.Debugf("multi accounts claim is open, so skip send tx!")
 			continue
 		}
 
