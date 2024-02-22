@@ -36,7 +36,7 @@ type Config struct {
 	MessagePushProducer messagepush.Config    `apollo:"MessagePushProducer"`
 	NetworkConfig       `apollo:"NetworkConfig"`
 	NacosConfig         nacos.Config          `apollo:"NacosConfig"`
-	BusinessConfig      businessconfig.Config `apollo:"NacosConfig"`
+	BusinessConfig      businessconfig.Config `apollo:"BusinessConfig"`
 }
 
 // Load loads the configuration
