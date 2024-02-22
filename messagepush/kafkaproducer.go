@@ -141,10 +141,10 @@ func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...
 	}
 	// chain id convert to ok inner chain id
 	if tx.FromChainId != 0 {
-		tx.FromChainId = uint32(utils.GetInnerChainIdByChainId(uint64(tx.FromChainId)))
+		tx.FromChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(tx.FromChainId)))
 	}
 	if tx.ToChainId != 0 {
-		tx.ToChainId = uint32(utils.GetInnerChainIdByChainId(uint64(tx.ToChainId)))
+		tx.ToChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(tx.ToChainId)))
 	}
 	var b []byte
 	var err error

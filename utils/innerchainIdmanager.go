@@ -1,38 +1,38 @@
 package utils
 
-var (
-	x1TestNetMapper = createChainIdMapper(19500, 195)
-	//x1MainNetMapper = createChainIdMapper(196, 196)
+import (
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/businessconfig"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 )
 
-type ChainIdMapper struct {
-	InnerChainId uint64
-	ChainId      uint64
-}
+var standardIdKeyMapper, innerIdKeyMapper map[uint64]uint64
 
-func createChainIdMapper(innerChainId uint64, chanId uint64) *ChainIdMapper {
-	return &ChainIdMapper{
-		InnerChainId: innerChainId,
-		ChainId:      chanId,
+func InnitChainIdMapper(cfg businessconfig.Config) {
+	standardIdKeyMapper = make(map[uint64]uint64, len(cfg.StandardChainIds))
+	innerIdKeyMapper = make(map[uint64]uint64, len(cfg.StandardChainIds))
+	if cfg.StandardChainIds == nil {
+		log.Infof("inner chain id config is empty, skip init!")
+		return
+	}
+	for i, chainId := range cfg.StandardChainIds {
+		innerChainId := cfg.InnerChainIds[i]
+		standardIdKeyMapper[chainId] = innerChainId
+		innerIdKeyMapper[innerChainId] = chainId
 	}
 }
 
-func GetChainIdByInnerId(innerChainId uint64) uint64 {
-	if x1TestNetMapper.InnerChainId == innerChainId {
-		return x1TestNetMapper.ChainId
+func GetStandardChainIdByInnerId(innerChainId uint64) uint64 {
+	chainId, found := innerIdKeyMapper[innerChainId]
+	if !found {
+		return innerChainId
 	}
-	//if x1MainNetMapper.InnerChainId == innerChainId {
-	//	return x1MainNetMapper.ChainId
-	//}
-	return innerChainId
-}
-
-func GetInnerChainIdByChainId(chainId uint64) uint64 {
-	if x1TestNetMapper.ChainId == chainId {
-		return x1TestNetMapper.InnerChainId
-	}
-	//if x1MainNetMapper.ChainId == chainId {
-	//	return x1MainNetMapper.InnerChainId
-	//}
 	return chainId
+}
+
+func GetInnerChainIdByStandardId(chainId uint64) uint64 {
+	innerChainId, found := standardIdKeyMapper[chainId]
+	if !found {
+		return chainId
+	}
+	return innerChainId
 }

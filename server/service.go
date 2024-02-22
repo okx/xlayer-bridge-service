@@ -423,7 +423,7 @@ func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWra
 func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRequest) (*pb.CommonCoinPricesResponse, error) {
 	// convert inner chainId to standard chain id
 	for _, symbol := range req.SymbolInfos {
-		symbol.ChainId = utils.GetChainIdByInnerId(symbol.ChainId)
+		symbol.ChainId = utils.GetStandardChainIdByInnerId(symbol.ChainId)
 	}
 	priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
 	if err != nil {
@@ -436,7 +436,7 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 	}
 	// convert standard chainId to ok inner chainId
 	for _, priceInfo := range priceList {
-		priceInfo.ChainId = utils.GetInnerChainIdByChainId(priceInfo.ChainId)
+		priceInfo.ChainId = utils.GetInnerChainIdByStandardId(priceInfo.ChainId)
 	}
 	return &pb.CommonCoinPricesResponse{
 		Code: defaultSuccessCode,
@@ -458,7 +458,7 @@ func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRe
 	}
 	// use ok inner chain id
 	for _, coinInfo := range coins {
-		coinInfo.ChainId = utils.GetInnerChainIdByChainId(coinInfo.ChainId)
+		coinInfo.ChainId = utils.GetInnerChainIdByStandardId(coinInfo.ChainId)
 	}
 	return &pb.CommonCoinsResponse{
 		Code: defaultSuccessCode,
@@ -529,10 +529,10 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		}
 		// chain id convert to ok inner chain id
 		if transaction.FromChainId != 0 {
-			transaction.FromChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.FromChainId)))
+			transaction.FromChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(transaction.FromChainId)))
 		}
 		if transaction.ToChainId != 0 {
-			transaction.ToChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.ToChainId)))
+			transaction.ToChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(transaction.ToChainId)))
 		}
 		pbTransactions = append(pbTransactions, transaction)
 	}
@@ -636,10 +636,10 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		}
 		// chain id convert to ok inner chain id
 		if transaction.FromChainId != 0 {
-			transaction.FromChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.FromChainId)))
+			transaction.FromChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(transaction.FromChainId)))
 		}
 		if transaction.ToChainId != 0 {
-			transaction.ToChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.ToChainId)))
+			transaction.ToChainId = uint32(utils.GetInnerChainIdByStandardId(uint64(transaction.ToChainId)))
 		}
 		pbTransactions = append(pbTransactions, transaction)
 	}
