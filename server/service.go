@@ -527,6 +527,13 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
 		}
+		// chain id convert to ok inner chain id
+		if transaction.FromChainId != 0 {
+			transaction.FromChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.FromChainId)))
+		}
+		if transaction.ToChainId != 0 {
+			transaction.ToChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.ToChainId)))
+		}
 		pbTransactions = append(pbTransactions, transaction)
 	}
 	return &pb.CommonTransactionsResponse{
@@ -626,6 +633,13 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 				}
 				s.setDurationForL2Deposit(ctx, l2AvgCommitDuration, l2AvgVerifyDuration, currTime, transaction, deposit.Time)
 			}
+		}
+		// chain id convert to ok inner chain id
+		if transaction.FromChainId != 0 {
+			transaction.FromChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.FromChainId)))
+		}
+		if transaction.ToChainId != 0 {
+			transaction.ToChainId = uint32(utils.GetInnerChainIdByChainId(uint64(transaction.ToChainId)))
 		}
 		pbTransactions = append(pbTransactions, transaction)
 	}
