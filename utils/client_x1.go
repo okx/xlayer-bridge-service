@@ -29,7 +29,7 @@ func (c *Client) SendClaimX1(ctx context.Context, deposit *etherman.Deposit, smt
 		if tx != nil {
 			txHash = tx.Hash().String()
 		}
-		log.Error("Error: ", err, ". Tx Hash: ", txHash)
+		log.LoggerFromCtx(ctx).Error("Error: ", err, ". Tx Hash: ", txHash)
 		return nil, err
 	}
 

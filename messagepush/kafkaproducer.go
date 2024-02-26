@@ -1,6 +1,7 @@
 package messagepush
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -37,13 +38,13 @@ func WithPushKey(key string) produceOptFunc {
 }
 
 type KafkaProducer interface {
-	Produce(msg interface{}, optFns ...produceOptFunc) error
-	PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error
+	Produce(ctx context.Context, msg interface{}, optFns ...produceOptFunc) error
+	PushTransactionUpdate(ctx context.Context, tx *pb.Transaction, optFns ...produceOptFunc) error
 	Close() error
 
 	// GetFakeMessages returns the messages from the fake producer
 	// Not available for real kafka producer
-	GetFakeMessages(topic string) []string
+	GetFakeMessages(ctx context.Context, topic string) []string
 }
 
 type kafkaProducerImpl struct {
@@ -98,9 +99,10 @@ func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 // Produce send a message to the Kafka topic
 // msg should be either a string or an object
 // If msg is an object, it will be encoded to JSON before being sent
-func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) error {
+func (p *kafkaProducerImpl) Produce(ctx context.Context, msg interface{}, optFns ...produceOptFunc) error {
+	logger := log.LoggerFromCtx(ctx)
 	if p == nil || p.producer == nil {
-		log.Debugf("Kafka producer is nil")
+		logger.Debugf("Kafka producer is nil")
 		return nil
 	}
 	opts := &produceOptions{
@@ -111,7 +113,7 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 		f(opts)
 	}
 
-	msgString, err := convertMsgToString(msg)
+	msgString, err := convertMsgToString(ctx, msg)
 	if err != nil {
 		return err
 	}
@@ -131,11 +133,11 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 		return errors.Wrap(err, "kafka SendMessage error")
 	}
 
-	log.Debugf("Produced to Kafka: topic[%v] msg[%v] partition[%v] offset[%v]", opts.topic, msgString, partition, offset)
+	logger.Debugf("Produced to Kafka: topic[%v] msg[%v] partition[%v] offset[%v]", opts.topic, msgString, partition, offset)
 	return nil
 }
 
-func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error {
+func (p *kafkaProducerImpl) PushTransactionUpdate(ctx context.Context, tx *pb.Transaction, optFns ...produceOptFunc) error {
 	if tx == nil {
 		return nil
 	}
@@ -159,14 +161,14 @@ func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...
 		Time:          time.Now().UnixMilli(),
 	}
 
-	return p.Produce(msg, optFns...)
+	return p.Produce(ctx, msg, optFns...)
 }
 
 func (p *kafkaProducerImpl) Close() error {
 	return p.producer.Close()
 }
 
-func (p *kafkaProducerImpl) GetFakeMessages(string) []string {
-	log.Warnf("GetFakeMessages should only be called from fakeProducer")
+func (p *kafkaProducerImpl) GetFakeMessages(ctx context.Context, topic string) []string {
+	log.LoggerFromCtx(ctx).Warnf("GetFakeMessages should only be called from fakeProducer")
 	return nil
 }

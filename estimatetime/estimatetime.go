@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 )
@@ -78,23 +79,25 @@ func (c *calculatorImpl) init() {
 }
 
 func (c *calculatorImpl) refreshAll() {
-	ctx := context.Background()
+	logger := utils.LoggerWithRandomTraceID(nil)
+	ctx := log.CtxWithLogger(context.Background(), logger)
 	for i := 0; i < 2; i++ {
 		err := c.refresh(ctx, uint(i))
 		if err != nil {
-			log.Errorf("Refresh estimate time for networkId %v error: %v", i, err)
+			logger.Errorf("Refresh estimate time for networkId %v error: %v", i, err)
 		}
 	}
-	log.Infof("Refresh deposit estimate time, new estimations: %v", c.estimateTime)
+	logger.Infof("Refresh deposit estimate time, new estimations: %v", c.estimateTime)
 }
 
 func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
+	logger := log.LoggerFromCtx(ctx)
 	if networkID > 1 {
 		return fmt.Errorf("invalid networkID %v", networkID)
 	}
 	deposits, err := c.storage.GetLatestReadyDeposits(ctx, networkID, c.sampleLimit.Get(), nil)
 	if err != nil {
-		log.Errorf("GetLatestReadyDeposits err:%v", err)
+		logger.Errorf("GetLatestReadyDeposits err:%v", err)
 		return err
 	}
 
@@ -119,7 +122,7 @@ func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
 		sum += m
 	}
 	newTime := uint32(math.Ceil(sum / float64(len(fMinutes))))
-	log.Debugf("Re-calculate estimate time, networkID[%v], fMinutes[%v], newTime[%v]", networkID, fMinutes, newTime)
+	logger.Debugf("Re-calculate estimate time, networkID[%v], fMinutes[%v], newTime[%v]", networkID, fMinutes, newTime)
 	defaultTime := c.defaultEstTimeConfig.Get()[networkID]
 	if newTime > defaultTime {
 		newTime = defaultTime

@@ -1,6 +1,7 @@
 package messagepush
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -30,7 +31,8 @@ func newFakeProducer(cfg Config) KafkaProducer {
 	}
 }
 
-func (p *fakeProducer) Produce(msg interface{}, optFns ...produceOptFunc) error {
+func (p *fakeProducer) Produce(ctx context.Context, msg interface{}, optFns ...produceOptFunc) error {
+	logger := log.LoggerFromCtx(ctx)
 	opts := &produceOptions{
 		topic:   p.defaultTopic,
 		pushKey: p.defaultPushKey,
@@ -39,7 +41,7 @@ func (p *fakeProducer) Produce(msg interface{}, optFns ...produceOptFunc) error 
 		f(opts)
 	}
 
-	msgString, err := convertMsgToString(msg)
+	msgString, err := convertMsgToString(ctx, msg)
 	if err != nil {
 		return err
 	}
@@ -49,11 +51,11 @@ func (p *fakeProducer) Produce(msg interface{}, optFns ...produceOptFunc) error 
 	if len(p.messages[opts.topic]) > fakeMessageLimit {
 		p.messages[opts.topic] = p.messages[opts.topic][1:]
 	}
-	log.Debugf("Produced to fake producer: topic[%v] msg[%v]", opts.topic, msgString)
+	logger.Debugf("Produced to fake producer: topic[%v] msg[%v]", opts.topic, msgString)
 	return nil
 }
 
-func (p *fakeProducer) PushTransactionUpdate(tx *pb.Transaction, optFns ...produceOptFunc) error {
+func (p *fakeProducer) PushTransactionUpdate(ctx context.Context, tx *pb.Transaction, optFns ...produceOptFunc) error {
 	if tx == nil {
 		return nil
 	}
@@ -77,7 +79,7 @@ func (p *fakeProducer) PushTransactionUpdate(tx *pb.Transaction, optFns ...produ
 		Time:          time.Now().UnixMilli(),
 	}
 
-	return p.Produce(msg, optFns...)
+	return p.Produce(ctx, msg, optFns...)
 }
 
 func (p *fakeProducer) Close() error {
@@ -85,7 +87,7 @@ func (p *fakeProducer) Close() error {
 }
 
 // GetFakeMessages returns latest 100 messages from the topic name
-func (p *fakeProducer) GetFakeMessages(topic string) []string {
+func (p *fakeProducer) GetFakeMessages(ctx context.Context, topic string) []string {
 	allMsg := p.messages[topic][0:]
 	p.messages[topic] = []string{}
 	return allMsg

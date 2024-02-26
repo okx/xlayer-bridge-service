@@ -171,13 +171,13 @@ func (s *bridgeService) getRollupExitProof(rollupIndex uint, root common.Hash, d
 }
 
 // GetClaimProof returns the merkle proof to claim the given deposit.
-func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, [][bridgectrl.KeyLen]byte, error) {
-	ctx := context.Background()
+func (s *bridgeService) GetClaimProof(ctx context.Context, depositCnt, networkID uint, dbTx pgx.Tx) (*etherman.GlobalExitRoot, [][bridgectrl.KeyLen]byte, [][bridgectrl.KeyLen]byte, error) {
+	logger := log.LoggerFromCtx(ctx)
 
 	if dbTx == nil { // if the call comes from the rest API
 		deposit, err := s.storage.GetDeposit(ctx, depositCnt, networkID, nil)
 		if err != nil {
-			log.Errorf("failed to get deposit from db for GetClaimProof, depositCnt: %v, networkID: %v, error: %v", depositCnt, networkID, err)
+			logger.Errorf("failed to get deposit from db for GetClaimProof, depositCnt: %v, networkID: %v, error: %v", depositCnt, networkID, err)
 			return nil, nil, nil, gerror.ErrInternalErrorForRpcCall
 		}
 
@@ -193,7 +193,7 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 
 	globalExitRoot, err := s.storage.GetLatestExitRoot(ctx, tID != 0, dbTx)
 	if err != nil {
-		log.Errorf("get latest exit root failed fot network: %v, error: %v", networkID, err)
+		logger.Errorf("get latest exit root failed fot network: %v, error: %v", networkID, err)
 		return nil, nil, nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -205,19 +205,19 @@ func (s *bridgeService) GetClaimProof(depositCnt, networkID uint, dbTx pgx.Tx) (
 	if networkID == 0 { // Mainnet
 		merkleProof, err = s.getProof(depositCnt, globalExitRoot.ExitRoots[tID], dbTx)
 		if err != nil {
-			log.Error("error getting merkleProof. Error: ", err)
+			logger.Error("error getting merkleProof. Error: ", err)
 			return nil, nil, nil, fmt.Errorf("getting the proof failed, error: %v, network: %d", err, networkID)
 		}
 		rollupMerkleProof = emptyProof()
 	} else { // Rollup
 		rollupMerkleProof, rollupLeaf, err = s.getRollupExitProof(s.rollupID-1, globalExitRoot.ExitRoots[tID], dbTx)
 		if err != nil {
-			log.Error("error getting rollupProof. Error: ", err)
+			logger.Error("error getting rollupProof. Error: ", err)
 			return nil, nil, nil, fmt.Errorf("getting the rollup proof failed, error: %v, network: %d", err, networkID)
 		}
 		merkleProof, err = s.getProof(depositCnt, rollupLeaf, dbTx)
 		if err != nil {
-			log.Error("error getting merkleProof. Error: ", err)
+			logger.Error("error getting merkleProof. Error: ", err)
 			return nil, nil, nil, fmt.Errorf("getting the proof failed, error: %v, network: %d", err, networkID)
 		}
 	}
@@ -261,6 +261,7 @@ func (s *bridgeService) CheckAPI(ctx context.Context, req *pb.CheckAPIRequest) (
 // GetBridges returns bridges for the destination address both in L1 and L2.
 // Bridge rest API endpoint
 func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesRequest) (*pb.GetBridgesResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit.Get()
@@ -270,7 +271,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 	}
 	totalCount, err := s.storage.GetDepositCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		log.Errorf("get deposit count from db failed for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get deposit count from db failed for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	deposits, err := s.storage.GetDeposits(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil)
@@ -316,6 +317,7 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 // GetClaims returns claims for the specific smart contract address both in L1 and L2.
 // Bridge rest API endpoint
 func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest) (*pb.GetClaimsResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	limit := req.Limit
 	if limit == 0 {
 		limit = s.defaultPageLimit.Get()
@@ -325,12 +327,12 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 	}
 	totalCount, err := s.storage.GetClaimCount(ctx, req.DestAddr, nil)
 	if err != nil {
-		log.Errorf("get claim count from db for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get claim count from db for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	claims, err := s.storage.GetClaims(ctx, req.DestAddr, uint(limit), uint(req.Offset), nil) //nolint:gomnd
 	if err != nil {
-		log.Errorf("get claim infos from db for address: %v, err: %v", req.DestAddr, err)
+		logger.Errorf("get claim infos from db for address: %v, err: %v", req.DestAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -359,7 +361,7 @@ func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest)
 // GetProof returns the merkle proof for the given deposit.
 // Bridge rest API endpoint
 func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (*pb.GetProofResponse, error) {
-	globalExitRoot, merkleProof, rollupMerkleProof, err := s.GetClaimProof(uint(req.DepositCnt), uint(req.NetId), nil)
+	globalExitRoot, merkleProof, rollupMerkleProof, err := s.GetClaimProof(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +392,7 @@ func (s *bridgeService) GetProof(ctx context.Context, req *pb.GetProofRequest) (
 func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest) (*pb.GetBridgeResponse, error) {
 	deposit, err := s.storage.GetDeposit(ctx, uint(req.DepositCnt), uint(req.NetId), nil)
 	if err != nil {
-		log.Errorf("get deposit info failed for depositCnt: %v, net: %v, error: %v", req.DepositCnt, req.NetId, err)
+		log.LoggerFromCtx(ctx).Errorf("get deposit info failed for depositCnt: %v, net: %v, error: %v", req.DepositCnt, req.NetId, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 
@@ -423,7 +425,7 @@ func (s *bridgeService) GetBridge(ctx context.Context, req *pb.GetBridgeRequest)
 func (s *bridgeService) GetTokenWrapped(ctx context.Context, req *pb.GetTokenWrappedRequest) (*pb.GetTokenWrappedResponse, error) {
 	tokenWrapped, err := s.storage.GetTokenWrapped(ctx, uint(req.OrigNet), common.HexToAddress(req.OrigTokenAddr), nil)
 	if err != nil {
-		log.Errorf("get token wrap info failed, origNet: %v, origTokenAddr: %v, error: %v", req.OrigNet, req.OrigTokenAddr, err)
+		log.LoggerFromCtx(ctx).Errorf("get token wrap info failed, origNet: %v, origTokenAddr: %v, error: %v", req.OrigNet, req.OrigTokenAddr, err)
 		return nil, gerror.ErrInternalErrorForRpcCall
 	}
 	return &pb.GetTokenWrappedResponse{

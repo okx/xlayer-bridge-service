@@ -4,12 +4,6 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 )
 
-type contextKey string
-
-const (
-	CtxTraceID contextKey = "traceID"
-)
-
 const (
 	TraceID    = "traceID"
 	traceIDLen = 16

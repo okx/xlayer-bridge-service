@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/IBM/sarama"
 	"github.com/pkg/errors"
@@ -62,15 +63,19 @@ func NewKafkaConsumer(cfg Config, redisStorage redisstorage.RedisStorage) (Kafka
 }
 
 func (c *kafkaConsumerImpl) Start(ctx context.Context) {
-	log.Debug("starting kafka consumer")
+	logger := log.LoggerFromCtx(ctx).WithFields("component", "kafkaconsumer")
+	logger.Debug("starting kafka consumer")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	for {
-		log.Debugf("start consume")
+		logger := utils.LoggerWithRandomTraceID(logger)
+		ctx = log.CtxWithLogger(ctx, logger)
+
+		logger.Debugf("start consume")
 		err := c.client.Consume(ctx, c.topics, c.handler)
 		if err != nil {
-			log.Errorf("kafka consumer error: %v", err)
+			logger.Errorf("kafka consumer error: %v", err)
 			//if errors.Is(err, sarama.ErrClosedConsumerGroup) {
 			//	err = nil
 			//}
@@ -79,7 +84,7 @@ func (c *kafkaConsumerImpl) Start(ctx context.Context) {
 			return
 		}
 		if err = ctx.Err(); err != nil {
-			log.Errorf("kafka consumer ctx error: %v", err)
+			logger.Errorf("kafka consumer ctx error: %v", err)
 			//err = errors.Wrap(err, "kafka consumer ctx error")
 			//panic(err)
 			return

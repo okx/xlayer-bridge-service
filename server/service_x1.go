@@ -49,9 +49,9 @@ func (s *bridgeService) WithMessagePushProducer(producer messagepush.KafkaProduc
 }
 
 func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequest) (*pb.CommonProofResponse, error) {
-	globalExitRoot, merkleProof, rollupMerkleProof, err := s.GetClaimProof(uint(req.Index), uint(req.FromChain), nil)
+	globalExitRoot, merkleProof, rollupMerkleProof, err := s.GetClaimProof(ctx, uint(req.Index), uint(req.FromChain), nil)
 	if err != nil || len(merkleProof) != len(rollupMerkleProof) {
-		log.Errorf("GetSmtProof err[%v] merkleProofLen[%v] rollupMerkleProofLen[%v]", err, len(merkleProof), len(rollupMerkleProof))
+		log.LoggerFromCtx(ctx).Errorf("GetSmtProof err[%v] merkleProofLen[%v] rollupMerkleProofLen[%v]", err, len(merkleProof), len(rollupMerkleProof))
 		return &pb.CommonProofResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -83,7 +83,7 @@ func (s *bridgeService) GetSmtProof(ctx context.Context, req *pb.GetSmtProofRequ
 func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRequest) (*pb.CommonCoinPricesResponse, error) {
 	priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
 	if err != nil {
-		log.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
+		log.LoggerFromCtx(ctx).Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
 		return &pb.CommonCoinPricesResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -101,7 +101,7 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRequest) (*pb.CommonCoinsResponse, error) {
 	coins, err := s.mainCoinsCache.GetMainCoinsByNetwork(ctx, req.NetworkId)
 	if err != nil {
-		log.Errorf("get main coins from cache failed for net: %v, error: %v", req.NetworkId, err)
+		log.LoggerFromCtx(ctx).Errorf("get main coins from cache failed for net: %v, error: %v", req.NetworkId, err)
 		return &pb.CommonCoinsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -127,7 +127,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 
 	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
-		log.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
+		log.LoggerFromCtx(ctx).Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -193,7 +193,7 @@ func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommit
 		duration = pushtask.GetLeftVerifyTime(ctx, s.redisStorage, tx.BlockNumber, depositCreateTime, l2AvgCommitDuration, l2AvgVerifyDuration, currTime)
 	}
 	if duration <= 0 {
-		log.Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
+		log.LoggerFromCtx(ctx).Debugf("count EstimateTime for L2 -> L1 over range, so use min default duration: %v", defaultMinDuration)
 		tx.EstimateTime = uint32(defaultMinDuration)
 		return
 	}
@@ -213,7 +213,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 
 	deposits, err := s.storage.GetDepositsWithLeafType(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), uint(utils.LeafTypeAsset), nil)
 	if err != nil {
-		log.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
+		log.LoggerFromCtx(ctx).Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
 			Code: defaultErrorCode,
 			Data: nil,
@@ -386,6 +386,7 @@ func (s *bridgeService) GetEstimateTime(ctx context.Context, req *pb.GetEstimate
 
 // ManualClaim manually sends a claim transaction for a specific deposit
 func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequest) (*pb.CommonManualClaimResponse, error) {
+	logger := log.LoggerFromCtx(ctx)
 	// Only allow L1->L2
 	if req.FromChain != 0 {
 		return &pb.CommonManualClaimResponse{
@@ -397,7 +398,7 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 	// Query the deposit info from storage
 	deposit, err := s.storage.GetDepositByHash(ctx, req.DestAddr, uint(req.FromChain), req.DepositTxHash, nil)
 	if err != nil {
-		log.Errorf("Failed to get deposit: %v", err)
+		logger.Errorf("Failed to get deposit: %v", err)
 		return &pb.CommonManualClaimResponse{
 			Code: defaultErrorCode,
 			Msg:  "failed to get deposit info",
@@ -429,15 +430,15 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 	destNet := deposit.DestinationNetwork
 	client, ok := s.nodeClients[destNet]
 	if !ok || client == nil {
-		log.Errorf("node client for networkID %v not found", destNet)
+		logger.Errorf("node client for networkID %v not found", destNet)
 		return &pb.CommonManualClaimResponse{
 			Code: defaultErrorCode,
 		}, nil
 	}
 	// Get the claim proof
-	ger, proves, rollupProves, err := s.GetClaimProof(deposit.DepositCount, deposit.NetworkID, nil)
+	ger, proves, rollupProves, err := s.GetClaimProof(ctx, deposit.DepositCount, deposit.NetworkID, nil)
 	if err != nil {
-		log.Errorf("failed to get claim proof for deposit %v networkID %v: %v", deposit.DepositCount, deposit.NetworkID, err)
+		logger.Errorf("failed to get claim proof for deposit %v networkID %v: %v", deposit.DepositCount, deposit.NetworkID, err)
 	}
 	var (
 		mtProves       [mtHeight][bridgectrl.KeyLen]byte
@@ -450,7 +451,7 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 	// Send claim transaction to the node
 	tx, err := client.SendClaimX1(ctx, deposit, mtProves, mtRollupProves, ger, s.rollupID, s.auths[destNet])
 	if err != nil {
-		log.Errorf("failed to send claim transaction: %v", err)
+		logger.Errorf("failed to send claim transaction: %v", err)
 		return &pb.CommonManualClaimResponse{
 			Code: defaultErrorCode,
 			Msg:  "failed to send claim transaction",
@@ -522,6 +523,6 @@ func (s *bridgeService) GetFakePushMessages(ctx context.Context, req *pb.GetFake
 
 	return &pb.GetFakePushMessagesResponse{
 		Code: defaultSuccessCode,
-		Data: s.messagePushProducer.GetFakeMessages(req.Topic),
+		Data: s.messagePushProducer.GetFakeMessages(ctx, req.Topic),
 	}, nil
 }

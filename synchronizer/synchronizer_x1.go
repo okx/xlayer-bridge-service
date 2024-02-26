@@ -12,15 +12,16 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
+func (s *ClientSynchronizer) afterProcessDeposit(ctx context.Context, deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
+	logger := log.LoggerFromCtx(ctx)
 	// Add the deposit to Redis for L1
 	if deposit.NetworkID == 0 {
 		err := s.redisStorage.AddBlockDeposit(context.Background(), deposit)
 		if err != nil {
-			log.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
-			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+			logger.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+			rollbackErr := s.storage.Rollback(ctx, dbTx)
 			if rollbackErr != nil {
-				log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+				logger.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
 					s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
 				return rollbackErr
 			}
@@ -31,19 +32,19 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 	// Notify FE about a new deposit
 	go func() {
 		if s.messagePushProducer == nil {
-			log.Errorf("kafka push producer is nil, so can't push tx status change msg!")
+			logger.Errorf("kafka push producer is nil, so can't push tx status change msg!")
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
-		err := s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+		err := s.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 			FromChain:    uint32(deposit.NetworkID),
 			ToChain:      uint32(deposit.DestinationNetwork),
 			BridgeToken:  deposit.OriginalAddress.Hex(),
 			TokenAmount:  deposit.Amount.String(),
-			EstimateTime: s.getEstimateTimeForDepositCreated(deposit.NetworkID),
+			EstimateTime: s.getEstimateTimeForDepositCreated(ctx, deposit.NetworkID),
 			Time:         uint64(deposit.Time.UnixMilli()),
 			TxHash:       deposit.TxHash.String(),
 			Id:           depositID,
@@ -55,24 +56,25 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 			ToChainId:    utils.GetChainIdByNetworkId(deposit.DestinationNetwork),
 		})
 		if err != nil {
-			log.Errorf("PushTransactionUpdate error: %v", err)
+			logger.Errorf("PushTransactionUpdate error: %v", err)
 		}
 	}()
 	return nil
 }
 
-func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(networkId uint) uint32 {
+func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(ctx context.Context, networkId uint) uint32 {
 	if networkId == 0 {
 		return estimatetime.GetDefaultCalculator().Get(networkId)
 	}
-	return uint32(pushtask.GetAvgCommitDuration(s.ctx, s.redisStorage))
+	return uint32(pushtask.GetAvgCommitDuration(ctx, s.redisStorage))
 }
 
-func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
+func (s *ClientSynchronizer) afterProcessClaim(ctx context.Context, claim *etherman.Claim) error {
+	logger := log.LoggerFromCtx(ctx)
 	// Notify FE that the tx has been claimed
 	go func() {
 		if s.messagePushProducer == nil {
-			log.Errorf("kafka push producer is nil, so can't push tx status change msg!")
+			logger.Errorf("kafka push producer is nil, so can't push tx status change msg!")
 			return
 		}
 
@@ -81,16 +83,16 @@ func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
 		originNetwork := 1 - s.networkID
 
 		// Retrieve deposit transaction info
-		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
+		deposit, err := s.storage.GetDeposit(ctx, claim.Index, originNetwork, nil)
 		if err != nil {
-			log.Errorf("push message: GetDeposit error: %v", err)
+			logger.Errorf("push message: GetDeposit error: %v", err)
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
+			logger.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}
-		err = s.messagePushProducer.PushTransactionUpdate(&pb.Transaction{
+		err = s.messagePushProducer.PushTransactionUpdate(ctx, &pb.Transaction{
 			FromChain:   uint32(deposit.NetworkID),
 			ToChain:     uint32(deposit.DestinationNetwork),
 			TxHash:      deposit.TxHash.String(),
@@ -101,7 +103,7 @@ func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
 			DestAddr:    deposit.DestinationAddress.Hex(),
 		})
 		if err != nil {
-			log.Errorf("PushTransactionUpdate error: %v", err)
+			logger.Errorf("PushTransactionUpdate error: %v", err)
 		}
 	}()
 	return nil

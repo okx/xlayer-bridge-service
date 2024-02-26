@@ -1,13 +1,14 @@
 package messagepush
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/pkg/errors"
 )
 
-func convertMsgToString(msg interface{}) (string, error) {
+func convertMsgToString(ctx context.Context, msg interface{}) (string, error) {
 	var msgString string
 	switch v := msg.(type) {
 	case string:
@@ -17,7 +18,7 @@ func convertMsgToString(msg interface{}) (string, error) {
 		// If message is an object, encode to json
 		b, err := json.Marshal(msg)
 		if err != nil {
-			log.Errorf("msg cannot be encoded to json: msg[%v] err[%v]", msg, err)
+			log.LoggerFromCtx(ctx).Errorf("msg cannot be encoded to json: msg[%v] err[%v]", msg, err)
 			return "", errors.Wrap(err, "kafka produce: JSON marshal error")
 		}
 		msgString = string(b)
