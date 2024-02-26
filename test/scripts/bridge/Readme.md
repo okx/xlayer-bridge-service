@@ -6,7 +6,7 @@ The tutorial for current version of the environment requires Foundryup, check ou
 
 ## Bridge tools
 ```
-cd x1-bridge-service
+cd xlayer-bridge-service
 go mod tidy
 
 # setup all components 

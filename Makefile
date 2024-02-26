@@ -1,28 +1,28 @@
 include version.mk
 
 DOCKER_COMPOSE := docker-compose -f docker-compose.yml
-DOCKER_COMPOSE_STATE_DB := x1-state-db
-DOCKER_COMPOSE_EVENT_DB := x1-event-db
-DOCKER_COMPOSE_POOL_DB := x1-pool-db
-DOCKER_COMPOSE_RPC_DB := x1-rpc-db
-DOCKER_COMPOSE_BRIDGE_DB := x1-bridge-db
-DOCKER_COMPOSE_DAC_DB := x1-data-availability-db
-DOCKER_COMPOSE_REDIS := x1-bridge-redis
-DOCKER_COMPOSE_ZKEVM_NODE := x1-node
+DOCKER_COMPOSE_STATE_DB := xlayer-state-db
+DOCKER_COMPOSE_EVENT_DB := xlayer-event-db
+DOCKER_COMPOSE_POOL_DB := xlayer-pool-db
+DOCKER_COMPOSE_RPC_DB := xlayer-rpc-db
+DOCKER_COMPOSE_BRIDGE_DB := xlayer-bridge-db
+DOCKER_COMPOSE_DAC_DB := xlayer-data-availability-db
+DOCKER_COMPOSE_REDIS := xlayer-bridge-redis
+DOCKER_COMPOSE_ZKEVM_NODE := xlayer-node
 
-DOCKER_COMPOSE_SEQ := x1-sequencer
-DOCKER_COMPOSE_SEQ_SENDER := x1-sequence-sender
-DOCKER_COMPOSE_L2_GASP := x1-l2gaspricer
-DOCKER_COMPOSE_AGG := x1-aggregator
-DOCKER_COMPOSE_RPC := x1-json-rpc
-DOCKER_COMPOSE_SYNC := x1-sync
-DOCKER_COMPOSE_ETH_TX_MANAGER := x1-eth-tx-manager
+DOCKER_COMPOSE_SEQ := xlayer-sequencer
+DOCKER_COMPOSE_SEQ_SENDER := xlayer-sequence-sender
+DOCKER_COMPOSE_L2_GASP := xlayer-l2gaspricer
+DOCKER_COMPOSE_AGG := xlayer-aggregator
+DOCKER_COMPOSE_RPC := xlayer-json-rpc
+DOCKER_COMPOSE_SYNC := xlayer-sync
+DOCKER_COMPOSE_ETH_TX_MANAGER := xlayer-eth-tx-manager
 
-DOCKER_COMPOSE_L1_NETWORK := x1-mock-l1-network
-DOCKER_COMPOSE_ZKPROVER := x1-prover
-DOCKER_COMPOSE_BRIDGE := x1-bridge-service
+DOCKER_COMPOSE_L1_NETWORK := xlayer-mock-l1-network
+DOCKER_COMPOSE_ZKPROVER := xlayer-prover
+DOCKER_COMPOSE_BRIDGE := xlayer-bridge-service
 DOCKER_COMPOSE_DA_NODE := x1-data-availability
-DOCKER_COMPOSE_COIN_KAFKA_NODE := x1-bridge-coin-kafka
+DOCKER_COMPOSE_COIN_KAFKA_NODE := xlayer-bridge-coin-kafka
 DOCKER_COMPOSE_ZOOKEEPER := kafka-zookeeper
 
 RUN_STATE_DB := $(DOCKER_COMPOSE) up -d $(DOCKER_COMPOSE_STATE_DB)
@@ -69,7 +69,7 @@ LDFLAGS += -X 'github.com/0xPolygonHermez/zkevm-bridge-service.BuildDate=$(DATE)
 GO_BASE := $(shell pwd)
 GO_BIN := $(GO_BASE)/dist
 GO_ENV_VARS := GO_BIN=$(GO_BIN)
-GO_BINARY := x1-bridge
+GO_BINARY := xlayer-bridge
 GO_CMD := $(GO_BASE)/cmd
 
 LINT := $$(go env GOPATH)/bin/golangci-lint run --timeout=5m -E whitespace -E gosec -E gci -E misspell -E gomnd -E gofmt -E goimports --exclude-use-default=false --max-same-issues 0
@@ -99,7 +99,7 @@ install-linter: ## Installs the linter
 
 .PHONY: build-docker
 build-docker: ## Builds a docker image with the zkevm bridge binary
-	docker build -t x1-bridge-service -f ./Dockerfile .
+	docker build -t xlayer-bridge-service -f ./Dockerfile .
 
 .PHONY: run-db-node
 run-db-node: ## Runs the node database
