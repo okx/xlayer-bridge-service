@@ -55,11 +55,6 @@ func EthermanDepositToPbTransaction(deposit *etherman.Deposit) *pb.Transaction {
 	}
 }
 
-// GenerateTraceID generates a random trace ID.
-func GenerateTraceID() string {
-	return generateRandomString(traceIDLen)
-}
-
 func Min[T constraints.Ordered](x, y T) T {
 	if x < y {
 		return x
