@@ -333,7 +333,7 @@ func (tm *ClaimTxManager) processDepositStatusX1(ctx context.Context, ger *ether
 				return err
 			}
 			logger.Debugf("claimTx for deposit %d build successfully %d", deposit.DepositCount)
-			if err = tm.addClaimTx(ctx, deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
+			if err = tm.addClaimTxX1(ctx, deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 				logger.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
