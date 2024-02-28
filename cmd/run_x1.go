@@ -197,6 +197,9 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, l2NodeClients, l2Auths, apiStorage).
 		WithRedisStorage(redisStorage).WithMainCoinsCache(mainCoinsCache).WithMessagePushProducer(messagePushProducer)
 
+	// Initialize chainId manager
+	utils.InitChainIdManager(networkIDs, chainIDs)
+
 	// ---------- Run API ----------
 	if opt.runAPI {
 		// Init sentinel
