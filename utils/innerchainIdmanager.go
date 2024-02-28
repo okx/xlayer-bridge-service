@@ -7,7 +7,7 @@ import (
 
 var standardIdKeyMapper, innerIdKeyMapper map[uint64]uint64
 
-func InnitChainIdMapper(cfg businessconfig.Config) {
+func InnitOkInnerChainIdMapper(cfg businessconfig.Config) {
 	standardIdKeyMapper = make(map[uint64]uint64, len(cfg.StandardChainIds))
 	innerIdKeyMapper = make(map[uint64]uint64, len(cfg.StandardChainIds))
 	if cfg.StandardChainIds == nil {
