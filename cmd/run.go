@@ -207,7 +207,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		WithMessagePushProducer(messagePushProducer)
 
 	// Initialize inner chain id conf
-	utils.InnitChainIdMapper(c.BusinessConfig)
+	utils.InnitOkInnerChainIdMapper(c.BusinessConfig)
 
 	// ---------- Run API ----------
 	if opt.runAPI {
