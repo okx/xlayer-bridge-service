@@ -14,6 +14,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/pool"
+	"github.com/0xPolygonHermez/zkevm-node/state/runtime"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -219,7 +220,7 @@ func (tm *ClaimTxManager) processDepositStatusL1(newGer *etherman.GlobalExitRoot
 			tm.rollbackStore(dbTx)
 			return err
 		}
-		if err = tm.addClaimTx(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
+		if err = tm.addClaimTxX1(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 			log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 			tm.rollbackStore(dbTx)
 			return err
@@ -317,7 +318,7 @@ func (tm *ClaimTxManager) processDepositStatusX1(ger *etherman.GlobalExitRoot, d
 				return err
 			}
 			log.Debugf("claimTx for deposit %d build successfully %d", deposit.DepositCount)
-			if err = tm.addClaimTx(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
+			if err = tm.addClaimTxX1(deposit.DepositCount, tm.auth.From, tx.To(), nil, tx.Data(), dbTx); err != nil {
 				log.Errorf("error adding claim tx for deposit %d. Error: %v", deposit.DepositCount, err)
 				return err
 			}
@@ -337,6 +338,45 @@ func (tm *ClaimTxManager) processDepositStatusX1(ger *etherman.GlobalExitRoot, d
 			go tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM))
 		}
 	}
+	return nil
+}
+
+func (tm *ClaimTxManager) addClaimTxX1(depositCount uint, from common.Address, to *common.Address, value *big.Int, data []byte, dbTx pgx.Tx) error {
+	// get gas
+	tx := ethereum.CallMsg{
+		From:  from,
+		To:    to,
+		Value: value,
+		Data:  data,
+	}
+	log.Debugf("addClaimTx deposit: %d", depositCount)
+	gas, err := tm.l2Node.EstimateGas(tm.ctx, tx)
+	for i := 1; err != nil && err.Error() != runtime.ErrExecutionReverted.Error() && i < tm.cfg.RetryNumber; i++ {
+		log.Warnf("error while doing gas estimation. Retrying... Error: %v, Data: %s", err, common.Bytes2Hex(data))
+		time.Sleep(tm.cfg.RetryInterval.Duration)
+		gas, err = tm.l2Node.EstimateGas(tm.ctx, tx)
+	}
+	if err != nil {
+		log.Errorf("failed to estimate gas. Ignoring tx... Error: %v, data: %s", err, common.Bytes2Hex(data))
+		return nil
+	}
+
+	// create monitored tx
+	mTx := ctmtypes.MonitoredTx{
+		DepositID: depositCount, From: from, To: to,
+		Value: value, Data: data,
+		Gas: gas, Status: ctmtypes.MonitoredTxStatusCreated,
+	}
+
+	// add to storage
+	err = tm.storage.AddClaimTx(tm.ctx, mTx, dbTx)
+	if err != nil {
+		err := fmt.Errorf("failed to add tx to get monitored: %v", err)
+		log.Errorf("error adding claim tx to db. Error: %s", err.Error())
+		return err
+	}
+	log.Debugf("addClaimTx successfully depositCount: %d", depositCount)
+
 	return nil
 }
 
@@ -365,9 +405,6 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 
 	isResetNonce := false // it will reset the nonce in one cycle
 	for _, mTx := range mTxs {
-		if isResetNonce {
-			break
-		}
 		mTx := mTx // force variable shadowing to avoid pointer conflicts
 		mTxLog := mLog.WithFields("monitoredTx", mTx.DepositID)
 		mTxLog.Infof("processing tx with nonce %d", mTx.Nonce)
@@ -416,10 +453,6 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 						_, _, err = tm.l2Node.TransactionByHash(ctx, txHash)
 					}
 					if errors.Is(err, ethereum.NotFound) {
-						_ = tm.ResetL2NodeNonce(&mTx)
-						if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
-							_ = tm.l2Node.SendTransaction(ctx, signedTx)
-						}
 						mTxLog.Error("maximum retries and the tx is still missing in the pool. TxHash: ", txHash.String())
 						hasFailedReceipts = true
 						continue
@@ -428,7 +461,7 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 						continue
 					}
 				}
-				log.Infof("tx: %s not mined yet", txHash.String())
+				mTxLog.Infof("tx: %s not mined yet", txHash.String())
 
 				allHistoryTxMined = false
 				continue
@@ -475,7 +508,7 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 				// Retrieve L1 transaction info
 				deposit, err := tm.storage.GetDeposit(ctx, mTx.DepositID, 0, nil)
 				if err != nil {
-					log.Errorf("push message: GetDeposit error: %v", err)
+					mTxLog.Errorf("push message: GetDeposit error: %v", err)
 					return
 				}
 				tm.pushTransactionUpdate(deposit, uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM))
@@ -492,7 +525,7 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 			// review the tx information
 			if hasFailedReceipts {
 				mTxLog.Infof("monitored tx needs to be updated")
-				err := tm.ReviewMonitoredTx(ctx, &mTx, true)
+				err := tm.ReviewMonitoredTxX1(ctx, &mTx)
 				if err != nil {
 					mTxLog.Errorf("failed to review monitored tx: %v", err)
 					continue
@@ -511,7 +544,14 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 
 			//Multiply gasPrice by 10 to increase the efficiency of the tx in the sequence
 			mTx.GasPrice = big.NewInt(0).Mul(gasPrice, big.NewInt(10)) //nolint:gomnd
-			log.Infof("Using gasPrice: %s. The gasPrice suggested by the network is %s", mTx.GasPrice.String(), gasPrice.String())
+			mTxLog.Infof("Using gasPrice: %s. The gasPrice suggested by the network is %s", mTx.GasPrice.String(), gasPrice.String())
+
+			// Calculate nonce before signing
+			err = tm.setTxNonce(&mTx)
+			if err != nil {
+				mTxLog.Errorf("failed to set tx nonce: %v", err)
+				continue
+			}
 
 			// rebuild transaction
 			tx := mTx.Tx()
@@ -524,7 +564,7 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 				mTxLog.Errorf("failed to sign tx %v created from monitored tx: %v", tx.Hash().String(), err)
 				continue
 			}
-			mTxLog.Debugf("signed tx %v created using gasPrice: %s", signedTx.Hash().String(), signedTx.GasPrice().String())
+			mTxLog.Debugf("signed tx %v created using gasPrice: %s, nonce: %v", signedTx.Hash().String(), signedTx.GasPrice().String(), signedTx.Nonce())
 
 			// add tx to monitored tx history
 			err = mTx.AddHistory(signedTx)
@@ -541,7 +581,6 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 				err := tm.l2Node.SendTransaction(ctx, signedTx)
 				if err != nil {
 					mTxLog.Errorf("failed to send tx %s to network: %v", signedTx.Hash().String(), err)
-					var reviewNonce bool
 					if err.Error() == pool.ErrNonceTooLow.Error() {
 						mTxLog.Infof("nonce error detected, Nonce used: %d", signedTx.Nonce())
 						if !isResetNonce {
@@ -549,20 +588,10 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 							tm.nonceCache.Remove(mTx.From.Hex())
 							mTxLog.Infof("nonce cache cleared for address %v", mTx.From.Hex())
 						}
-						reviewNonce = true
-					} else if err.Error() == pool.ErrNonceTooHigh.Error() {
-						if !isResetNonce {
-							isResetNonce = true
-							_ = tm.ResetL2NodeNonce(&mTx)
-							mTxLog.Infof("nonce ResetL2NodeNonce %v", mTx.From.Hex())
-							if signedTx, err := tm.auth.Signer(mTx.From, mTx.Tx()); err == nil {
-								_ = tm.l2Node.SendTransaction(ctx, signedTx)
-							}
-						}
 					}
 					mTx.RemoveHistory(signedTx)
 					// we should rebuild the monitored tx to fix the nonce
-					err := tm.ReviewMonitoredTx(ctx, &mTx, reviewNonce)
+					err := tm.ReviewMonitoredTxX1(ctx, &mTx)
 					if err != nil {
 						mTxLog.Errorf("failed to review monitored tx: %v", err)
 					}
@@ -599,15 +628,47 @@ func (tm *ClaimTxManager) monitorTxsX1(ctx context.Context) error {
 	return nil
 }
 
-func (tm *ClaimTxManager) ResetL2NodeNonce(mTx *ctmtypes.MonitoredTx) error {
-	mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
-	mTxLog.Debug("ResetL2NodeNonce")
-	nonce, err := tm.l2Node.NonceAt(tm.ctx, mTx.From, nil)
+// setTxNonce get the next nonce from the nonce cache and set it to the tx
+func (tm *ClaimTxManager) setTxNonce(mTx *ctmtypes.MonitoredTx) error {
+	nonce, err := tm.getNextNonce(mTx.From)
 	if err != nil {
+		return errors.Wrap(err, "getNextNonce err")
+	}
+	mTx.Nonce = nonce
+	return nil
+}
+
+// ReviewMonitoredTxX1 checks if tx needs to be updated
+// accordingly to the current information stored and the current
+// state of the blockchain
+func (tm *ClaimTxManager) ReviewMonitoredTxX1(ctx context.Context, mTx *ctmtypes.MonitoredTx) error {
+	mTxLog := log.WithFields("monitoredTx", mTx.DepositID)
+	mTxLog.Debug("reviewing")
+	// get gas
+	tx := ethereum.CallMsg{
+		From:  mTx.From,
+		To:    mTx.To,
+		Value: mTx.Value,
+		Data:  mTx.Data,
+	}
+	gas, err := tm.l2Node.EstimateGas(ctx, tx)
+	for i := 1; err != nil && err.Error() != runtime.ErrExecutionReverted.Error() && i < tm.cfg.RetryNumber; i++ {
+		mTxLog.Warnf("error during gas estimation. Retrying... Error: %v, Data: %s", err, common.Bytes2Hex(tx.Data))
+		time.Sleep(tm.cfg.RetryInterval.Duration)
+		gas, err = tm.l2Node.EstimateGas(tm.ctx, tx)
+	}
+	if err != nil {
+		err := fmt.Errorf("failed to estimate gas. Error: %v, Data: %s", err, common.Bytes2Hex(tx.Data))
+		mTxLog.Errorf("error: %s", err.Error())
 		return err
 	}
-	mTxLog.Debugf("ResetL2NodeNonce mtxNonce:%d, new nonce:%d", mTx.Nonce, nonce)
-	mTx.Nonce = nonce
+
+	// check gas
+	if gas > mTx.Gas {
+		mTxLog.Infof("monitored tx gas updated from %v to %v", mTx.Gas, gas)
+		mTx.Gas = gas
+	}
+
 	return nil
 }
 
