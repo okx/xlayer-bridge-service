@@ -85,23 +85,45 @@ func (s *bridgeService) GetCoinPrice(ctx context.Context, req *pb.GetCoinPriceRe
 	for _, symbol := range req.SymbolInfos {
 		symbol.ChainId = utils.GetStandardChainIdByInnerId(symbol.ChainId)
 	}
-	priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
-	if err != nil {
-		log.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
-		return &pb.CommonCoinPricesResponse{
-			Code: defaultErrorCode,
-			Data: nil,
-			Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
-		}, nil
-	}
-	// convert standard chainId to ok inner chainId
-	for _, priceInfo := range priceList {
-		priceInfo.ChainId = utils.GetInnerChainIdByStandardId(priceInfo.ChainId)
+	//TODO: bard delete test code
+	fakeData := []*pb.SymbolPrice{
+		{
+			Symbol:  "ETH",
+			Price:   4000,
+			Time:    1710832466,
+			Address: "0xac67941686116f9b85dea553a6fbe4ad45d3f543",
+			ChainId: 196,
+		},
+		{
+			Symbol:  "OKB",
+			Price:   80,
+			Time:    1710832466,
+			Address: "",
+			ChainId: 196,
+		},
 	}
 	return &pb.CommonCoinPricesResponse{
 		Code: defaultSuccessCode,
-		Data: priceList,
+		Data: fakeData,
 	}, nil
+	//TODO: bard use these real codes
+	//priceList, err := s.redisStorage.GetCoinPrice(ctx, req.SymbolInfos)
+	//if err != nil {
+	//	log.Errorf("get coin price from redis failed for symbol: %v, error: %v", req.SymbolInfos, err)
+	//	return &pb.CommonCoinPricesResponse{
+	//		Code: defaultErrorCode,
+	//		Data: nil,
+	//		Msg:  gerror.ErrInternalErrorForRpcCall.Error(),
+	//	}, nil
+	//}
+	//// convert standard chainId to ok inner chainId
+	//for _, priceInfo := range priceList {
+	//	priceInfo.ChainId = utils.GetInnerChainIdByStandardId(priceInfo.ChainId)
+	//}
+	//return &pb.CommonCoinPricesResponse{
+	//	Code: defaultSuccessCode,
+	//	Data: priceList,
+	//}, nil
 }
 
 // GetMainCoins returns the info of the main coins in a network
