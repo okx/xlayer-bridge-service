@@ -74,7 +74,7 @@ func InitOrReset(cfg Config) error {
 	}
 
 	// run migrations
-	if err := RunMigrationsDown(cfg); err != nil {
+	if err := ResetDB(cfg); err != nil {
 		return err
 	}
 	return RunMigrationsUp(cfg)
