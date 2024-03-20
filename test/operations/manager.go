@@ -43,9 +43,9 @@ const (
 	l2NetworkURL = "http://localhost:8123"
 
 	// PolTokenAddress token address
-	PolTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3" //nolint:gosec
-	l1BridgeAddr    = "0xCca6ECD73932e49633B9307e1aa0fC174525F424"
-	l2BridgeAddr    = "0xCca6ECD73932e49633B9307e1aa0fC174525F424"
+	PolTokenAddress = "0xcFE6D77a653b988203BfAc9C6a69eA9D583bdC2b" //nolint:gosec
+	l1BridgeAddr    = "0x1dDA31e2F009E7479dE78445C1540f55627a85f4"
+	l2BridgeAddr    = "0x1dDA31e2F009E7479dE78445C1540f55627a85f4"
 
 	l1AccHexAddress = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
 
