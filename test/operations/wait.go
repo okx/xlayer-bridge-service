@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultInterval = 1 * time.Second
-	defaultDeadline = 300 * time.Second
+	defaultDeadline = 60 * time.Second
 )
 
 func poll(interval, deadline time.Duration, condition ops.ConditionFunc) error {
