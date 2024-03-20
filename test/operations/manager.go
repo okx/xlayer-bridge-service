@@ -447,9 +447,11 @@ func runCmd(c *exec.Cmd) error {
 
 // StartBridge restarts the bridge service.
 func (m *Manager) StartBridge() error {
+	log.Infof("stop bridge")
 	if err := StopBridge(); err != nil {
 		return err
 	}
+	log.Infof("run bridge")
 	cmd := exec.Command(makeCmd, "run-bridge")
 	err := runCmd(cmd)
 	if err != nil {
