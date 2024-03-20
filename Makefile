@@ -1,17 +1,17 @@
 include version.mk
 
 DOCKER_COMPOSE := docker-compose -f docker-compose.yml
-DOCKER_COMPOSE_STATE_DB := zkevm-state-db
-DOCKER_COMPOSE_POOL_DB := zkevm-pool-db
-DOCKER_COMPOSE_RPC_DB := zkevm-rpc-db
-DOCKER_COMPOSE_BRIDGE_DB := zkevm-bridge-db
-DOCKER_COMPOSE_ZKEVM_NODE := zkevm-node
-DOCKER_COMPOSE_ZKEVM_NODE_V1TOV2 := zkevm-node-v1tov2
-DOCKER_COMPOSE_ZKEVM_AGGREGATOR_V1TOV2 := zkevm-aggregator-v1tov2
-DOCKER_COMPOSE_L1_NETWORK := zkevm-mock-l1-network
-DOCKER_COMPOSE_L1_NETWORK_V1TOV2 := zkevm-v1tov2-l1-network
-DOCKER_COMPOSE_ZKPROVER := zkevm-prover
-DOCKER_COMPOSE_ZKPROVER_V1TOV2 := zkevm-prover-v1tov2
+DOCKER_COMPOSE_STATE_DB := x1-state-db
+DOCKER_COMPOSE_POOL_DB := x1-pool-db
+DOCKER_COMPOSE_RPC_DB := x1-rpc-db
+DOCKER_COMPOSE_BRIDGE_DB := x1-bridge-db
+DOCKER_COMPOSE_ZKEVM_NODE := x1-node
+DOCKER_COMPOSE_ZKEVM_NODE_V1TOV2 := x1-node-v1tov2
+DOCKER_COMPOSE_ZKEVM_AGGREGATOR_V1TOV2 := x1-aggregator-v1tov2
+DOCKER_COMPOSE_L1_NETWORK := x1-mock-l1-network
+DOCKER_COMPOSE_L1_NETWORK_V1TOV2 := x1-v1tov2-l1-network
+DOCKER_COMPOSE_ZKPROVER := x1-prover
+DOCKER_COMPOSE_ZKPROVER_V1TOV2 := x1-prover-v1tov2
 DOCKER_COMPOSE_BRIDGE := x1-bridge-service
 DOCKER_COMPOSE_BRIDGE_V1TOV2 := x1-bridge-service-v1tov2
 
