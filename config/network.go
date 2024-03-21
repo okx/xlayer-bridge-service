@@ -49,11 +49,11 @@ var (
 		},
 		"local": {
 			GenBlockNumber:                    1,
-			PolygonBridgeAddress:              common.HexToAddress("0xCca6ECD73932e49633B9307e1aa0fC174525F424"),
-			PolygonZkEVMGlobalExitRootAddress: common.HexToAddress("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"),
-			PolygonRollupManagerAddress:       common.HexToAddress("0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"),
-			PolygonZkEvmAddress:               common.HexToAddress("0x8dAF17A20c9DBA35f005b6324F493785D239719d"),
-			L2PolygonBridgeAddresses:          []common.Address{common.HexToAddress("0xCca6ECD73932e49633B9307e1aa0fC174525F424")},
+			PolygonBridgeAddress:              common.HexToAddress("0x1dDA31e2F009E7479dE78445C1540f55627a85f4"),
+			PolygonZkEVMGlobalExitRootAddress: common.HexToAddress("0x6Ae5b0863dBF3477335c0102DBF432aFf04ceb22"),
+			PolygonRollupManagerAddress:       common.HexToAddress("0xF5336Cb12989c0673071dF0c8a930900D7DF8D3e"),
+			PolygonZkEvmAddress:               common.HexToAddress("0x975725832B4909Aab87D3604A0b501569dbBE7A9"),
+			L2PolygonBridgeAddresses:          []common.Address{common.HexToAddress("0x1dDA31e2F009E7479dE78445C1540f55627a85f4")},
 		},
 	}
 )

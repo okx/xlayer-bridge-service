@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	l2BridgeAddr      = "0xCca6ECD73932e49633B9307e1aa0fC174525F424"
-	zkevmAddr         = "0x8dAF17A20c9DBA35f005b6324F493785D239719d"
-	rollupManagerAddr = "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+	l2BridgeAddr      = "0x1dDA31e2F009E7479dE78445C1540f55627a85f4"
+	zkevmAddr         = "0x975725832B4909Aab87D3604A0b501569dbBE7A9"
+	rollupManagerAddr = "0xF5336Cb12989c0673071dF0c8a930900D7DF8D3e"
 
 	accHexAddress    = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 	accHexPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
