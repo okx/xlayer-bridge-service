@@ -227,7 +227,7 @@ services:
       - "/app/x1-node run --network custom --custom-network-file /app/genesis.json --cfg /app/config.toml --components \"aggregator\""
 
   x1-mock-l1-network:
-    container_name: x1-local-l1-network
+    container_name: x1-mock-l1-network
     image: okexchain/x1-geth:e2e_v0.2.0_20240318
     ports:
       - 8545:8545
