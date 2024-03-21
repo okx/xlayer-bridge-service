@@ -30,7 +30,7 @@ FreeGas = false
 AuthorizedClaimMessageAddresses = ["0x90F79bf6EB2c4f870365E785982E1f101E93b906"]
 
 [Etherman]
-L1URL = "http://x1-mock-l1-network:5432"
+L1URL = "http://x1-mock-l1-network:8545"
 L2URLs = ["http://x1-node:8123"]
 L1ChainId = 5
 L2ChainIds = [1001]
