@@ -56,7 +56,7 @@ GlobalQueue = 1024
 	MaxConns = 200
 
 [Etherman]
-URL = "http://zkevm-mock-l1-network:8545"
+URL = "http://x1-mock-l1-network:8545"
 ForkIDChunkSize = 20000
 MultiGasProvider = false
 	[Etherman.Etherscan]
