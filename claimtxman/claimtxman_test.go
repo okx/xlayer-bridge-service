@@ -185,7 +185,7 @@ func TestUpdateDepositStatus(t *testing.T) {
 	require.Equal(t, uint(0), deposits[0].NetworkID)
 
 	require.NoError(t, pg.UpdateL2DepositsStatus(ctx, l2Root, 1, 1, nil))
-	deposits, err = pg.GetDeposits(ctx, destAdr, 10, 0, nil)
+	deposits, err = pg.GetDepositsForUnitTest(ctx, destAdr, 10, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
 	require.True(t, deposits[1].ReadyForClaim)
@@ -200,7 +200,7 @@ func TestUpdateL2DepositStatusMultipleRollups(t *testing.T) {
 	pg, err := pgstorage.NewPostgresStorage(dbCfg)
 	require.NoError(t, err)
 
-	utils.InitRollupNetworkId(1)
+	utils.InitRollupNetworkId(2)
 
 	destAdr := "0x4d5Cf5032B2a844602278b01199ED191A86c93ff"
 
@@ -264,7 +264,7 @@ func TestUpdateL2DepositStatusMultipleRollups(t *testing.T) {
 
 	// This root is for network 1, this won't upgrade anything
 	require.NoError(t, pg.UpdateL2DepositsStatus(ctx, l2Root1, 1, 2, nil))
-	deposits, err := pg.GetDeposits(ctx, destAdr, 10, 0, nil)
+	deposits, err := pg.GetDepositsForUnitTest(ctx, destAdr, 10, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
 	require.False(t, deposits[1].ReadyForClaim)
@@ -272,21 +272,21 @@ func TestUpdateL2DepositStatusMultipleRollups(t *testing.T) {
 
 	// This root is for network 2, this won't upgrade anything
 	require.NoError(t, pg.UpdateL2DepositsStatus(ctx, l2Root2, 1, 1, nil))
-	deposits, err = pg.GetDeposits(ctx, destAdr, 10, 0, nil)
+	deposits, err = pg.GetDepositsForUnitTest(ctx, destAdr, 10, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
 	require.False(t, deposits[1].ReadyForClaim)
 	require.False(t, deposits[0].ReadyForClaim)
 
 	require.NoError(t, pg.UpdateL2DepositsStatus(ctx, l2Root1, 1, 1, nil))
-	deposits, err = pg.GetDeposits(ctx, destAdr, 10, 0, nil)
+	deposits, err = pg.GetDepositsForUnitTest(ctx, destAdr, 10, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
 	require.True(t, deposits[1].ReadyForClaim)
 	require.False(t, deposits[0].ReadyForClaim)
 
 	require.NoError(t, pg.UpdateL2DepositsStatus(ctx, l2Root2, 1, 2, nil))
-	deposits, err = pg.GetDeposits(ctx, destAdr, 10, 0, nil)
+	deposits, err = pg.GetDepositsForUnitTest(ctx, destAdr, 10, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
 	require.True(t, deposits[1].ReadyForClaim)
