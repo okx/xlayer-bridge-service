@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	bridgeEndpointPath = "/priapi/v1/ob/bridge"
+	bridgeEndpointPath = "/priapi/v1/ub/bridge"
 )
 
 func RegisterNacos(cfg nacos.Config) {
