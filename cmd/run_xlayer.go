@@ -113,6 +113,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		}
 		log.Infof("l2 network id: %d", networkID)
 		networkIDs = append(networkIDs, networkID)
+		utils.InitRollupNetworkId(networkID)
 	}
 
 	l2NodeClients := make([]*utils.Client, len(c.Etherman.L2URLs))

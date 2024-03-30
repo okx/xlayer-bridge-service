@@ -75,14 +75,14 @@ func (p *PostgresStorage) GetDepositByHash(ctx context.Context, destAddr string,
 }
 
 func (p *PostgresStorage) getNetworkQueryStr() string {
-	return fmt.Sprintf("%d, %d", utils.Main_network_id, utils.Rollup_network_id)
+	return fmt.Sprintf("(d.network_id = %d OR dest_net = %d)", utils.GetRollupNetworkId(), utils.GetRollupNetworkId())
 }
 
 // GetPendingTransactions gets all the deposit transactions of a user that have not been claimed
 func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr string, limit uint, offset uint, leafType uint, networkIds []uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	const getDepositsSQL = `SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 		FROM sync.deposit as d INNER JOIN sync.block as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE dest_addr = $1 AND leaf_type = $4 AND d.network_id in ($5) AND NOT EXISTS
+		WHERE dest_addr = $1 AND leaf_type = $4 AND $5 AND NOT EXISTS
 			(SELECT 1 FROM sync.claim as c WHERE c.index = d.deposit_cnt AND c.network_id = d.dest_net)
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`
 
@@ -93,7 +93,7 @@ func (p *PostgresStorage) GetPendingTransactions(ctx context.Context, destAddr s
 func (p *PostgresStorage) GetNotReadyTransactions(ctx context.Context, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	const getDepositsSQL = `SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 		FROM sync.deposit as d INNER JOIN sync.block as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE ready_for_claim = false AND d.network_id in ($3) 
+		WHERE ready_for_claim = false AND $3
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $1 OFFSET $2`
 
 	return p.getDepositList(ctx, getDepositsSQL, dbTx, limit, offset, p.getNetworkQueryStr())
@@ -102,7 +102,7 @@ func (p *PostgresStorage) GetNotReadyTransactions(ctx context.Context, limit uin
 func (p *PostgresStorage) GetReadyPendingTransactions(ctx context.Context, networkID uint, leafType uint, limit uint, offset uint, minReadyTime time.Time, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	const getDepositsSQL = `SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
 		FROM sync.deposit as d INNER JOIN sync.block as b ON d.network_id = b.network_id AND d.block_id = b.id
-		WHERE d.network_id = $1 AND ready_for_claim = true AND leaf_type = $4 AND ready_time >= $5 AND d.network_id in ($6)  AND NOT EXISTS
+		WHERE d.network_id = $1 AND ready_for_claim = true AND leaf_type = $4 AND ready_time >= $5 AND $6  AND NOT EXISTS
 			(SELECT 1 FROM sync.claim as c WHERE c.index = d.deposit_cnt AND c.network_id = d.dest_net)
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`
 

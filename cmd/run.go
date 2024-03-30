@@ -73,6 +73,7 @@ func start(ctx *cli.Context) error {
 		}
 		log.Infof("l2 network id: %d", networkID)
 		networkIDs = append(networkIDs, networkID)
+		utils.InitRollupNetworkId(networkID)
 	}
 
 	storage, err := db.NewStorage(c.SyncDB)
