@@ -9,6 +9,7 @@ import (
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ func TestMonitoredTxStorage(t *testing.T) {
 	tx, err := pg.BeginDBTransaction(ctx)
 	require.NoError(t, err)
 
+	utils.InitRollupNetworkId(1)
 	deposit := &etherman.Deposit{
 		NetworkID:          0,
 		OriginalNetwork:    0,
@@ -110,6 +112,7 @@ func TestUpdateDepositStatus(t *testing.T) {
 	blockID, err := pg.AddBlock(ctx, block, nil)
 	require.NoError(t, err)
 
+	utils.InitRollupNetworkId(1)
 	deposit := &etherman.Deposit{
 		NetworkID:          0,
 		OriginalNetwork:    0,
@@ -196,6 +199,8 @@ func TestUpdateL2DepositStatusMultipleRollups(t *testing.T) {
 	require.NoError(t, err)
 	pg, err := pgstorage.NewPostgresStorage(dbCfg)
 	require.NoError(t, err)
+
+	utils.InitRollupNetworkId(1)
 
 	destAdr := "0x4d5Cf5032B2a844602278b01199ED191A86c93ff"
 
