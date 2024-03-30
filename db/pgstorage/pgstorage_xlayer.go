@@ -366,7 +366,7 @@ func (p *PostgresStorage) UpdateL1DepositsStatusXLayer(ctx context.Context, exit
 	return deposits, nil
 }
 
-// GetDeposits gets the deposit list which be smaller than depositCount.
+// GetDepositsForUnitTest gets the deposit list which be smaller than depositCount.
 func (p *PostgresStorage) GetDepositsForUnitTest(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error) {
 	const getDepositsSQL = `
 		SELECT d.id, leaf_type, orig_net, orig_addr, amount, dest_net, dest_addr, deposit_cnt, block_id, b.block_num, d.network_id, tx_hash, metadata, ready_for_claim, b.received_at
