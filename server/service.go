@@ -38,6 +38,7 @@ type bridgeService struct {
 	nodeClients         map[uint]*utils.Client
 	auths               map[uint]*bind.TransactOpts
 	messagePushProducer messagepush.KafkaProducer
+	skipBlockIdForClaim apolloconfig.Entry[uint64]
 }
 
 // NewBridgeService creates new bridge service.
@@ -57,16 +58,17 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, l2Clients []*ut
 		panic(err)
 	}
 	return &bridgeService{
-		rollupID:         rollupID,
-		storage:          storage.(bridgeServiceStorage),
-		height:           height,
-		networkIDs:       networkIDs,
-		nodeClients:      nodeClients,
-		auths:            authMap,
-		defaultPageLimit: apolloconfig.NewIntEntry("BridgeServer.DefaultPageLimit", cfg.DefaultPageLimit),
-		maxPageLimit:     apolloconfig.NewIntEntry("BridgeServer.MaxPageLimit", cfg.MaxPageLimit),
-		version:          cfg.BridgeVersion,
-		cache:            cache,
+		rollupID:            rollupID,
+		storage:             storage.(bridgeServiceStorage),
+		height:              height,
+		networkIDs:          networkIDs,
+		nodeClients:         nodeClients,
+		auths:               authMap,
+		defaultPageLimit:    apolloconfig.NewIntEntry("BridgeServer.DefaultPageLimit", cfg.DefaultPageLimit),
+		maxPageLimit:        apolloconfig.NewIntEntry("BridgeServer.MaxPageLimit", cfg.MaxPageLimit),
+		version:             cfg.BridgeVersion,
+		cache:               cache,
+		skipBlockIdForClaim: apolloconfig.NewIntEntry("SkipClaimBlockId", cfg.SkipClaimBlockId),
 	}
 }
 
