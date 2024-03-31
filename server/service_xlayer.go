@@ -259,7 +259,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		transaction.GlobalIndex = s.getGlobalIndex(deposit).String()
 		if deposit.ReadyForClaim {
 			// Check whether it has been claimed or not
-			claim, err := s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
+			claim, err := s.storage.GetClaimSkipSnapshotData(ctx, deposit.DepositCount, deposit.DestinationNetwork, s.skipBlockIdForClaim.Get(), nil)
 			transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_USER_CLAIM) // Ready but not claimed
 			if err != nil {
 				if !errors.Is(err, gerror.ErrStorageNotFound) {
@@ -439,7 +439,7 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 	}
 
 	// Check whether the deposit has already been claimed
-	_, err = s.storage.GetClaim(ctx, deposit.DepositCount, deposit.DestinationNetwork, nil)
+	_, err = s.storage.GetClaimSkipSnapshotData(ctx, deposit.DepositCount, deposit.DestinationNetwork, s.skipBlockIdForClaim.Get(), nil)
 	if err == nil {
 		return &pb.CommonManualClaimResponse{
 			Code: defaultErrorCode,

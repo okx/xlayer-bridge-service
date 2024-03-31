@@ -33,4 +33,5 @@ type bridgeServiceStorage interface {
 	GetClaimTxById(ctx context.Context, id uint, dbTx pgx.Tx) (*ctmtypes.MonitoredTx, error)
 	GetClaimTxsByStatusWithLimit(ctx context.Context, statuses []ctmtypes.MonitoredTxStatus, limit uint, offset uint, dbTx pgx.Tx) ([]ctmtypes.MonitoredTx, error)
 	GetDepositsForUnitTest(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
+	GetClaimSkipSnapshotData(ctx context.Context, index uint, networkID uint, skipBlockIdForClaim uint64, dbTx pgx.Tx) (*etherman.Claim, error)
 }

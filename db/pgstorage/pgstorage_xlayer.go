@@ -375,3 +375,21 @@ func (p *PostgresStorage) GetDepositsForUnitTest(ctx context.Context, destAddr s
 		ORDER BY d.block_id DESC, d.deposit_cnt DESC LIMIT $2 OFFSET $3`
 	return p.getDepositList(ctx, getDepositsSQL, dbTx, common.FromHex(destAddr), limit, offset)
 }
+
+// GetClaimSkipSnapshotData gets a specific claim from the storage.
+func (p *PostgresStorage) GetClaimSkipSnapshotData(ctx context.Context, depositCount, networkID uint, skipBlockIdForClaim uint64, dbTx pgx.Tx) (*etherman.Claim, error) {
+	var (
+		claim  etherman.Claim
+		amount string
+	)
+	const getClaimSQL = `
+		SELECT index, orig_net, orig_addr, amount, dest_addr, block_id, c.network_id, tx_hash, b.received_at, rollup_index, mainnet_flag
+		FROM sync.claim as c INNER JOIN sync.block as b ON c.network_id = b.network_id AND c.block_id = b.id
+		WHERE index = $1 AND c.network_id = $2 AND block_id > $3`
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getClaimSQL, depositCount, networkID, skipBlockIdForClaim).Scan(&claim.Index, &claim.OriginalNetwork, &claim.OriginalAddress, &amount, &claim.DestinationAddress, &claim.BlockID, &claim.NetworkID, &claim.TxHash, &claim.Time, &claim.RollupIndex, &claim.MainnetFlag)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, gerror.ErrStorageNotFound
+	}
+	claim.Amount, _ = new(big.Int).SetString(amount, 10) //nolint:gomnd
+	return &claim, err
+}
