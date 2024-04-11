@@ -21,6 +21,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljobs"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/urfave/cli/v2"
@@ -38,14 +39,19 @@ func runPushTask(ctx *cli.Context) error {
 	return startServer(ctx, withPushTasks())
 }
 
+func runXxlJobs(ctx *cli.Context) error {
+	return startServer(ctx, withXxlJobs())
+}
+
 func runAll(ctx *cli.Context) error {
-	return startServer(ctx, withAPI(), withTasks(), withPushTasks())
+	return startServer(ctx, withAPI(), withTasks(), withPushTasks(), withXxlJobs())
 }
 
 type runOption struct {
 	runAPI       bool
 	runTasks     bool
 	runPushTasks bool
+	runXxlJobs   bool
 }
 
 type runOptionFunc func(opt *runOption)
@@ -65,6 +71,12 @@ func withTasks() runOptionFunc {
 func withPushTasks() runOptionFunc {
 	return func(opt *runOption) {
 		opt.runPushTasks = true
+	}
+}
+
+func withXxlJobs() runOptionFunc {
+	return func(opt *runOption) {
+		opt.runXxlJobs = true
 	}
 }
 
@@ -302,6 +314,13 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 				log.Errorf("close kafka consumer error: %v", err)
 			}
 		}()
+	}
+
+	// ---------- Run xxl-jobs executor ----------
+	if opt.runXxlJobs {
+		xxljobs.InitExecutor(c.XxlJobExecutor)
+		defer xxljobs.Stop()
+		// TODO: Register tasks
 	}
 
 	// Wait for an in interrupt.
