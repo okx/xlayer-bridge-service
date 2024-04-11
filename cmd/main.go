@@ -72,13 +72,6 @@ func main() {
 			Action:  runPushTask,
 			Flags:   flags,
 		},
-		{
-			Name:    "runXxlJobs",
-			Aliases: []string{},
-			Usage:   "Run the x1 bridge xxl-jobs",
-			Action:  runXxlJobs,
-			Flags:   flags,
-		},
 	}
 
 	err := app.Run(os.Args)

@@ -40,6 +40,8 @@ func InitExecutor(cfg Config) {
 	go executor.Run()
 }
 
+type simpleTaskFunc func(ctx context.Context)
+
 func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 	logger := getLogger()
 	if executor == nil {
@@ -47,6 +49,13 @@ func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 		return
 	}
 	executor.RegTask(taskKey, fn)
+}
+
+func RegisterSimpleTask(taskKey string, fn simpleTaskFunc) {
+	RegisterTask(taskKey, func(ctx context.Context, params *xxl.RunReq) string {
+		fn(ctx)
+		return "task successful"
+	})
 }
 
 // Stop should be called when the service exits
@@ -66,6 +75,11 @@ func executorMiddleware(fn xxl.TaskFunc) xxl.TaskFunc {
 		logger.Debugf("received task: %v", string(b))
 
 		res := fn(ctx, param)
+		// Catch panic to print the information, then continue to throw the panic so that the xxl admin can report the failure
+		if err := recover(); err != nil {
+			logger.Infof("task failed, res[%v] err[%v] processTime[%v]", res, err, time.Since(startTime).String())
+			panic(err)
+		}
 		logger.Infof("task done, res[%v] processTime[%v]", res, time.Since(startTime).String())
 		return res
 	}

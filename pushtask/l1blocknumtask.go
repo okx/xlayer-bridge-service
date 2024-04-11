@@ -44,50 +44,19 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 	}, nil
 }
 
-func (t *L1BlockNumTask) Start(ctx context.Context) {
-	log.Debugf("Starting L1BlockNumTask, interval:%v", l1BlockNumTaskInterval)
-	ticker := time.NewTicker(l1BlockNumTaskInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			t.doTask(ctx)
-		}
-	}
-}
-
-func (t *L1BlockNumTask) doTask(ctx context.Context) {
-	ok, err := t.redisStorage.TryLock(ctx, l1BlockNumTaskLockKey)
-	if err != nil {
-		log.Errorf("TryLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
-		return
-	}
-
-	if !ok {
-		return
-	}
-
-	// If successfully acquired the lock, need to eventually release it
-	defer func() {
-		err = t.redisStorage.ReleaseLock(ctx, l1BlockNumTaskLockKey)
-		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", l1BlockNumTaskLockKey, err)
-		}
-	}()
-
+func (t *L1BlockNumTask) Run(ctx context.Context) {
 	// Get the latest block num from the chain RPC
 	blockNum, err := t.client.BlockNumber(ctx)
 	if err != nil {
 		log.Errorf("eth_blockNumber error: %v", err)
-		return
+		panic(err)
 	}
 
 	// Get the previous block num from Redis cache and check
 	oldBlockNum, err := t.redisStorage.GetL1BlockNum(ctx)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Errorf("Get L1 block num from Redis error: %v", err)
-		return
+		panic(err)
 	}
 
 	// If the block num is not changed, no need to do anything
@@ -119,7 +88,7 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 		deposits, err := t.redisStorage.GetBlockDepositList(ctx, 0, block)
 		if err != nil {
 			log.Errorf("L1BlockNumTask query Redis error: %v", err)
-			return
+			panic(err)
 		}
 		totalDeposits += len(deposits)
 

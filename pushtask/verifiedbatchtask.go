@@ -35,50 +35,22 @@ func NewVerifiedBatchHandler(rpcUrl string, redisStorage redisstorage.RedisStora
 	}, nil
 }
 
-func (ins *VerifiedBatchHandler) Start(ctx context.Context) {
-	log.Debugf("Starting processSyncVerifyBatchTask, interval:%v", verifiedBatchCacheRefreshInterval)
-	ticker := time.NewTicker(verifiedBatchCacheRefreshInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			ins.processSyncVerifyBatchTask(ctx)
-		}
-	}
-}
-
-func (ins *VerifiedBatchHandler) processSyncVerifyBatchTask(ctx context.Context) {
-	lock, err := ins.redisStorage.TryLock(ctx, syncL1VerifiedBatchLockKey)
-	if err != nil {
-		log.Errorf("sync latest verify batch lock error, so kip, error: %v", err)
-		return
-	}
-	if !lock {
-		log.Infof("sync latest verify batch lock failed, another is running, so kip, error: %v", err)
-		return
-	}
-	defer func() {
-		err = ins.redisStorage.ReleaseLock(ctx, syncL1VerifiedBatchLockKey)
-		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", syncL1VerifiedBatchLockKey, err)
-		}
-	}()
+func (ins *VerifiedBatchHandler) Run(ctx context.Context) {
 	log.Infof("start to sync latest verify batch")
 	now := time.Now().Unix()
 	latestBatchNum, err := QueryLatestVerifyBatch(ins.rpcUrl)
 	if err != nil {
 		log.Warnf("query latest verify batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
 	isBatchLegal, err := ins.checkLatestBatchLegal(ctx, latestBatchNum)
 	if err != nil {
 		log.Warnf("check latest verify batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
 	if !isBatchLegal {
 		log.Infof("latest verify batch num is un-legal, so skip sync latest commit batch!")
-		return
+		panic("latest verified batch number is not valid")
 	}
 	err = ins.freshRedisCacheForVerifyDuration(ctx, latestBatchNum, now)
 	log.Infof("success process all thing for sync latest verify batch num %v", latestBatchNum)
