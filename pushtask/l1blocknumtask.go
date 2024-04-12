@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"github.com/xxl-job/xxl-job-executor-go"
 )
 
 type L1BlockNumTask struct {
@@ -38,7 +40,7 @@ func NewL1BlockNumTask(rpcURL string, storage interface{}, redisStorage redissto
 	}, nil
 }
 
-func (t *L1BlockNumTask) Run(ctx context.Context) {
+func (t *L1BlockNumTask) Run(ctx context.Context, params *xxl.RunReq) string {
 	// Get the latest block num from the chain RPC
 	blockNum, err := t.client.BlockNumber(ctx)
 	if err != nil {
@@ -55,7 +57,7 @@ func (t *L1BlockNumTask) Run(ctx context.Context) {
 
 	// If the block num is not changed, no need to do anything
 	if blockNum <= oldBlockNum {
-		return
+		return "latest L1 block number is unchanged, skip task"
 	}
 
 	defer func(blockNum uint64) {
@@ -70,7 +72,7 @@ func (t *L1BlockNumTask) Run(ctx context.Context) {
 	oldBlockNum -= utils.Min(utils.L1TargetBlockConfirmations.Get(), oldBlockNum)
 	blockNum -= utils.Min(utils.L1TargetBlockConfirmations.Get(), blockNum)
 	if blockNum <= oldBlockNum {
-		return
+		return "latest L1 block number is unchanged, skip task"
 	}
 
 	var (
@@ -112,5 +114,5 @@ func (t *L1BlockNumTask) Run(ctx context.Context) {
 		}
 	}
 
-	log.Infof("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
+	return fmt.Sprintf("L1BlockNumTask push for %v deposits, block num from %v to %v", totalDeposits, oldBlockNum, blockNum)
 }

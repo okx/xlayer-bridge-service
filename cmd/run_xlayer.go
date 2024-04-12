@@ -247,9 +247,9 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			return err
 		}
 
-		xxljobs.RegisterSimpleTask("xlayer-bridge-l1BlockNumTask", l1BlockNumTask.Run)
-		xxljobs.RegisterSimpleTask("xlayer-bridge-syncCommitBatchTask", syncCommitBatchTask.Run)
-		xxljobs.RegisterSimpleTask("xlayer-bridge-syncVerifyBatchTask", syncVerifyBatchTask.Run)
+		xxljobs.RegisterTask("xlayer-bridge-l1BlockNumTask", l1BlockNumTask.Run)
+		xxljobs.RegisterTask("xlayer-bridge-syncCommitBatchTask", syncCommitBatchTask.Run)
+		xxljobs.RegisterTask("xlayer-bridge-syncVerifyBatchTask", syncVerifyBatchTask.Run)
 	}
 
 	// ---------- Run synchronizer tasks ----------

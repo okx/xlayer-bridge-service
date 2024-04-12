@@ -40,8 +40,6 @@ func InitExecutor(cfg Config) {
 	go executor.Run()
 }
 
-type simpleTaskFunc func(ctx context.Context)
-
 func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 	logger := getLogger()
 	if executor == nil {
@@ -49,13 +47,6 @@ func RegisterTask(taskKey string, fn xxl.TaskFunc) {
 		return
 	}
 	executor.RegTask(taskKey, fn)
-}
-
-func RegisterSimpleTask(taskKey string, fn simpleTaskFunc) {
-	RegisterTask(taskKey, func(ctx context.Context, params *xxl.RunReq) string {
-		fn(ctx)
-		return "task successful"
-	})
 }
 
 // Stop should be called when the service exits

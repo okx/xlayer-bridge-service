@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -14,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"github.com/xxl-job/xxl-job-executor-go"
 )
 
 const (
@@ -52,7 +54,7 @@ func NewCommittedBatchHandler(rpcUrl string, storage interface{}, redisStorage r
 	}, nil
 }
 
-func (ins *CommittedBatchHandler) Run(ctx context.Context) {
+func (ins *CommittedBatchHandler) Run(ctx context.Context, params *xxl.RunReq) string {
 	log.Infof("start to sync latest commit batch")
 	latestBatchNum, err := QueryLatestCommitBatch(ins.rpcUrl)
 	if err != nil {
@@ -66,8 +68,7 @@ func (ins *CommittedBatchHandler) Run(ctx context.Context) {
 		panic(err)
 	}
 	if !isBatchLegal {
-		log.Infof("latest commit batch num is un-legal, so skip sync latest commit batch!")
-		return
+		return "latest committed batch number is unchanged, skip syncing"
 	}
 	oldMaxBlockNum, maxBlockNum, err := ins.freshRedisByLatestBatch(ctx, latestBatchNum, now)
 	if err != nil {
@@ -79,7 +80,7 @@ func (ins *CommittedBatchHandler) Run(ctx context.Context) {
 		log.Warnf("push msg for latest commit batch num error, so skip sync latest commit batch!")
 		panic(err)
 	}
-	log.Infof("success process all thing for sync latest commit batch num %v", latestBatchNum)
+	return fmt.Sprintf("successfully processed the latest committed batch num %v", latestBatchNum)
 }
 
 func (ins *CommittedBatchHandler) freshRedisByLatestBatch(ctx context.Context, latestBatchNum uint64, currTimestamp int64) (uint64, uint64, error) {

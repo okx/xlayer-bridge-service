@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
@@ -9,6 +10,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"github.com/xxl-job/xxl-job-executor-go"
 )
 
 var (
@@ -30,7 +32,7 @@ func NewVerifiedBatchHandler(rpcUrl string, redisStorage redisstorage.RedisStora
 	}, nil
 }
 
-func (ins *VerifiedBatchHandler) Run(ctx context.Context) {
+func (ins *VerifiedBatchHandler) Run(ctx context.Context, params *xxl.RunReq) string {
 	log.Infof("start to sync latest verify batch")
 	now := time.Now().Unix()
 	latestBatchNum, err := QueryLatestVerifyBatch(ins.rpcUrl)
@@ -44,11 +46,10 @@ func (ins *VerifiedBatchHandler) Run(ctx context.Context) {
 		panic(err)
 	}
 	if !isBatchLegal {
-		log.Infof("latest verify batch num is un-legal, so skip sync latest commit batch!")
-		return
+		return "latest verified batch number is unchanged, skip syncing"
 	}
 	err = ins.freshRedisCacheForVerifyDuration(ctx, latestBatchNum, now)
-	log.Infof("success process all thing for sync latest verify batch num %v", latestBatchNum)
+	return fmt.Sprintf("successfully processed the latest verified batch num %v", latestBatchNum)
 }
 
 func (ins *VerifiedBatchHandler) freshRedisCacheForVerifyDuration(ctx context.Context, latestBatchNum uint64, currentTimestamp int64) error {
