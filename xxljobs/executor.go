@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/xxl-job/xxl-job-executor-go"
 )
 
