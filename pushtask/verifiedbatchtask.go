@@ -45,7 +45,7 @@ func (ins *VerifiedBatchHandler) Run(ctx context.Context) {
 	}
 	if !isBatchLegal {
 		log.Infof("latest verify batch num is un-legal, so skip sync latest commit batch!")
-		panic("latest verified batch number is not valid")
+		return
 	}
 	err = ins.freshRedisCacheForVerifyDuration(ctx, latestBatchNum, now)
 	log.Infof("success process all thing for sync latest verify batch num %v", latestBatchNum)

@@ -67,7 +67,7 @@ func (ins *CommittedBatchHandler) Run(ctx context.Context) {
 	}
 	if !isBatchLegal {
 		log.Infof("latest commit batch num is un-legal, so skip sync latest commit batch!")
-		panic("latest committed batch number is not valid")
+		return
 	}
 	oldMaxBlockNum, maxBlockNum, err := ins.freshRedisByLatestBatch(ctx, latestBatchNum, now)
 	if err != nil {
