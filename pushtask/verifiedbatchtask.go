@@ -11,11 +11,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const (
-	syncL1VerifiedBatchLockKey        = "sync_l1_verified_batch_lock"
-	verifiedBatchCacheRefreshInterval = 10 * time.Second
-)
-
 var (
 	minVerifyDuration     = apolloconfig.NewIntEntry[uint64]("pushtask.minVerifyDuration", 2)      //nolint:gomnd
 	defaultVerifyDuration = apolloconfig.NewIntEntry[uint64]("pushtask.defaultVerifyDuration", 10) //nolint:gomnd

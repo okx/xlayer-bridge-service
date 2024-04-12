@@ -2,7 +2,6 @@ package pushtask
 
 import (
 	"context"
-	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
@@ -13,11 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
-)
-
-const (
-	l1BlockNumTaskInterval = 5 * time.Second
-	l1BlockNumTaskLockKey  = "bridge_l1_block_num_lock"
 )
 
 type L1BlockNumTask struct {

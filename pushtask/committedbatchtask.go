@@ -17,10 +17,8 @@ import (
 )
 
 const (
-	committedBatchCacheRefreshInterval = 10 * time.Second
-	l2NetWorkId                        = 1
-	l1PendingDepositQueryLimit         = 100
-	syncL1CommittedBatchLockKey        = "sync_l1_committed_batch_lock"
+	l2NetWorkId                = 1
+	l1PendingDepositQueryLimit = 100
 )
 
 var (
