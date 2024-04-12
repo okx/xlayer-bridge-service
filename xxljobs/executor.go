@@ -68,10 +68,10 @@ func executorMiddleware(fn xxl.TaskFunc) xxl.TaskFunc {
 		res := fn(ctx, param)
 		// Catch panic to print the information, then continue to throw the panic so that the xxl admin can report the failure
 		if err := recover(); err != nil {
-			logger.Infof("task failed, res[%v] err[%v] processTime[%v]", res, err, time.Since(startTime).String())
+			logger.Errorf("task[%v] failed, res[%v] err[%v] processTime[%v]", param.ExecutorHandler, res, err, time.Since(startTime).String())
 			panic(err)
 		}
-		logger.Infof("task done, res[%v] processTime[%v]", res, time.Since(startTime).String())
+		logger.Infof("task[%v] done, res[%v] processTime[%v]", param.ExecutorHandler, res, time.Since(startTime).String())
 		return res
 	}
 }
