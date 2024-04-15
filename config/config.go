@@ -18,6 +18,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljobs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -37,6 +38,7 @@ type Config struct {
 	NetworkConfig       `apollo:"NetworkConfig"`
 	NacosConfig         nacos.Config
 	BusinessConfig      businessconfig.Config `apollo:"BusinessConfig"`
+	XxlJobExecutor      xxljobs.Config        `apollo:"XxlJobExecutor"`
 }
 
 // Load loads the configuration

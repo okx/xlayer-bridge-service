@@ -2,6 +2,7 @@ package pushtask
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -14,13 +15,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"github.com/xxl-job/xxl-job-executor-go"
 )
 
 const (
-	committedBatchCacheRefreshInterval = 10 * time.Second
-	l2NetWorkId                        = 1
-	l1PendingDepositQueryLimit         = 100
-	syncL1CommittedBatchLockKey        = "sync_l1_committed_batch_lock"
+	l2NetWorkId                = 1
+	l1PendingDepositQueryLimit = 100
 )
 
 var (
@@ -54,62 +54,33 @@ func NewCommittedBatchHandler(rpcUrl string, storage interface{}, redisStorage r
 	}, nil
 }
 
-func (ins *CommittedBatchHandler) Start(ctx context.Context) {
-	log.Debugf("Starting processSyncCommitBatchTask, interval:%v", committedBatchCacheRefreshInterval)
-	ticker := time.NewTicker(committedBatchCacheRefreshInterval)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			ins.processSyncCommitBatchTask(ctx)
-		}
-	}
-}
-
-func (ins *CommittedBatchHandler) processSyncCommitBatchTask(ctx context.Context) {
-	lock, err := ins.redisStorage.TryLock(ctx, syncL1CommittedBatchLockKey)
-	if err != nil {
-		log.Errorf("sync latest commit batch lock error, so kip, error: %v", err)
-		return
-	}
-	if !lock {
-		log.Infof("sync latest commit batch lock failed, another is running, so kip, error: %v", err)
-		return
-	}
-	defer func() {
-		err = ins.redisStorage.ReleaseLock(ctx, syncL1CommittedBatchLockKey)
-		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", syncL1CommittedBatchLockKey, err)
-		}
-	}()
+func (ins *CommittedBatchHandler) Run(ctx context.Context, params *xxl.RunReq) string {
 	log.Infof("start to sync latest commit batch")
 	latestBatchNum, err := QueryLatestCommitBatch(ins.rpcUrl)
 	if err != nil {
 		log.Warnf("query latest commit batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
 	now := time.Now().Unix()
 	isBatchLegal, err := ins.checkLatestBatchLegal(ctx, latestBatchNum)
 	if err != nil {
 		log.Warnf("check latest commit batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
 	if !isBatchLegal {
-		log.Infof("latest commit batch num is un-legal, so skip sync latest commit batch!")
-		return
+		return "latest committed batch number is unchanged, skip syncing"
 	}
 	oldMaxBlockNum, maxBlockNum, err := ins.freshRedisByLatestBatch(ctx, latestBatchNum, now)
 	if err != nil {
 		log.Warnf("fresh redis for latest commit batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
 	err = ins.pushStatusChangedMsg(ctx, latestBatchNum, oldMaxBlockNum, maxBlockNum)
 	if err != nil {
 		log.Warnf("push msg for latest commit batch num error, so skip sync latest commit batch!")
-		return
+		panic(err)
 	}
-	log.Infof("success process all thing for sync latest commit batch num %v", latestBatchNum)
+	return fmt.Sprintf("successfully processed the latest committed batch num %v", latestBatchNum)
 }
 
 func (ins *CommittedBatchHandler) freshRedisByLatestBatch(ctx context.Context, latestBatchNum uint64, currTimestamp int64) (uint64, uint64, error) {

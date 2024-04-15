@@ -21,6 +21,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/xxljobs"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/urfave/cli/v2"
@@ -224,13 +225,16 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 
 	// ---------- Run push tasks ----------
 	if opt.runPushTasks {
+		xxljobs.InitExecutor(c.XxlJobExecutor)
+		defer xxljobs.Stop()
+
 		// Initialize the push task for L1 block num change
 		l1BlockNumTask, err := pushtask.NewL1BlockNumTask(c.Etherman.L1URL, apiStorage, redisStorage, messagePushProducer, rollupID)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		go l1BlockNumTask.Start(ctx.Context)
+		xxljobs.RegisterTask("xlayer-bridge-l1BlockNumTask", l1BlockNumTask.Run)
 
 		// Initialize the push task for sync l2 commit batch
 		syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L2URLs[0], apiStorage, redisStorage, messagePushProducer, rollupID)
@@ -238,7 +242,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
-		go syncCommitBatchTask.Start(ctx.Context)
+		xxljobs.RegisterTask("xlayer-bridge-syncCommitBatchTask", syncCommitBatchTask.Run)
 
 		// Initialize the push task for sync verify batch
 		syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L2URLs[0], redisStorage)
@@ -246,7 +250,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
-		go syncVerifyBatchTask.Start(ctx.Context)
+		xxljobs.RegisterTask("xlayer-bridge-syncVerifyBatchTask", syncVerifyBatchTask.Run)
 	}
 
 	// ---------- Run synchronizer tasks ----------
