@@ -49,6 +49,9 @@ func (ins *VerifiedBatchHandler) Run(ctx context.Context, params *xxl.RunReq) st
 		return "latest verified batch number is unchanged, skip syncing"
 	}
 	err = ins.freshRedisCacheForVerifyDuration(ctx, latestBatchNum, now)
+	if err != nil {
+		panic(err)
+	}
 	return fmt.Sprintf("successfully processed the latest verified batch num %v", latestBatchNum)
 }
 

@@ -234,21 +234,22 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			log.Error(err)
 			return err
 		}
+		xxljobs.RegisterTask("xlayer-bridge-l1BlockNumTask", l1BlockNumTask.Run)
+
 		// Initialize the push task for sync l2 commit batch
 		syncCommitBatchTask, err := pushtask.NewCommittedBatchHandler(c.Etherman.L2URLs[0], apiStorage, redisStorage, messagePushProducer, rollupID)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
+		xxljobs.RegisterTask("xlayer-bridge-syncCommitBatchTask", syncCommitBatchTask.Run)
+
 		// Initialize the push task for sync verify batch
 		syncVerifyBatchTask, err := pushtask.NewVerifiedBatchHandler(c.Etherman.L2URLs[0], redisStorage)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-
-		xxljobs.RegisterTask("xlayer-bridge-l1BlockNumTask", l1BlockNumTask.Run)
-		xxljobs.RegisterTask("xlayer-bridge-syncCommitBatchTask", syncCommitBatchTask.Run)
 		xxljobs.RegisterTask("xlayer-bridge-syncVerifyBatchTask", syncVerifyBatchTask.Run)
 	}
 

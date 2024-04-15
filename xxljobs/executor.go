@@ -37,7 +37,12 @@ func InitExecutor(cfg Config) {
 	executor = xxl.NewExecutor(opts...)
 	executor.Init()
 	executor.Use(executorMiddleware)
-	go executor.Run()
+	go func() {
+		err := executor.Run()
+		if err != nil {
+			logger.Errorf("xxl-jobs executor run error: %v", err)
+		}
+	}()
 }
 
 func RegisterTask(taskKey string, fn xxl.TaskFunc) {
