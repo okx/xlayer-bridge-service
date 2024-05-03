@@ -9,6 +9,8 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // customHTTPErrorHandler checks the error code and message from the error and write them to the response body
@@ -25,22 +27,18 @@ func customHTTPErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshale
 		err = httpStatus.Err
 	}
 
-	// Convert the error to our custom error
-	var s *CustomStatusError
-	if !errors.As(err, &s) {
-		log.Debugf("customHTTPErrorHandler error is NOT CustomStatusError, use default handler")
-		// If error cannot be converted to our custom error, use gRPC's default handler
-		runtime.DefaultHTTPErrorHandler(ctx, mux, marshaler, w, r, err)
-		return
-	}
+	// All errors returned from gRPC endpoints would be converted into status error
+	s := status.Convert(err)
+	// Convert gRPC status back to our custom error to print out the error info
+	sErr := NewStatusError(pb.ErrorCode(s.Code()), s.Message())
 
-	log.Debugf("customHTTPErrorHandler error is CustomStatusError, err[%v]", s)
+	log.Debugf("customHTTPErrorHandler error is CustomStatusError, err[%v]", sErr)
 	// Build the response body using the common response structure
 	resp := &pb.CommonResponse{
-		Code:         uint32(s.Code()),
-		Msg:          s.Msg(),
+		Code:         uint32(sErr.Code()),
+		Msg:          sErr.Msg(),
 		ErrorCode:    s.Code().String(),
-		ErrorMessage: s.Msg(),
+		ErrorMessage: sErr.Msg(),
 	}
 	body, mErr := marshaler.Marshal(resp)
 	if mErr != nil {
@@ -63,7 +61,7 @@ type CustomStatusError struct {
 	msg  string
 }
 
-func NewStatusError(code pb.ErrorCode, msg string) error {
+func NewStatusError(code pb.ErrorCode, msg string) *CustomStatusError {
 	if code == pb.ErrorCode_ERROR_OK {
 		// If there's no error, the returned error should be nil to prevent unexpected behavior
 		// msg will be lost in this case, so please don't include it
@@ -85,6 +83,14 @@ func (e *CustomStatusError) Msg() string {
 		return ""
 	}
 	return e.msg
+}
+
+// GRPCStatus needs to be implemented to convert our error to gRPC status error during the default error handler
+func (e *CustomStatusError) GRPCStatus() *status.Status {
+	if e == nil {
+		return nil
+	}
+	return status.New(codes.Code(e.code), e.msg)
 }
 
 // Implements error interface
