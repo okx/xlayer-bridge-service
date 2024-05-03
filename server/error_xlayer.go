@@ -37,7 +37,7 @@ func customHTTPErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshale
 	resp := &pb.CommonResponse{
 		Code:         uint32(sErr.Code()),
 		Msg:          sErr.Msg(),
-		ErrorCode:    s.Code().String(),
+		ErrorCode:    sErr.Code().String(),
 		ErrorMessage: sErr.Msg(),
 	}
 	body, mErr := marshaler.Marshal(resp)
@@ -48,9 +48,9 @@ func customHTTPErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshale
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	// Always use 200
 	w.WriteHeader(httpCode)
-	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(body); err != nil {
 		log.Errorf("writing response body error: %v", err)
 	}
