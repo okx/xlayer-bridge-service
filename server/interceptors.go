@@ -5,8 +5,10 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/metrics"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -50,12 +52,17 @@ func NewRequestMetricsInterceptor() grpc.UnaryServerInterceptor {
 // getRespErrorInfo returns the error code and msg from the resp
 func getRespErrorInfo(resp any, err error) (code int64, msg string) {
 	if err != nil {
-		return defaultErrorCode, err.Error()
+		// Extract error info from the error
+		var s *CustomStatusError
+		if errors.As(err, &s) {
+			return int64(s.Code()), s.Msg()
+		}
+		return int64(pb.ErrorCode_ERROR_DEFAULT), err.Error()
 	}
 
 	if resp == nil {
 		// This should not happen
-		return defaultSuccessCode, ""
+		return int64(pb.ErrorCode_ERROR_OK), ""
 	}
 
 	// Check `Msg" field in the resp body

@@ -17,10 +17,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -95,7 +93,10 @@ func runGRPCServer(ctx context.Context, bridgeServer pb.BridgeServiceServer, por
 	blockErrFallbackFn := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, blockErr *base.BlockError) (interface{}, error) {
 		// ResourceExhausted status will be mapped to code 429 in the HTTP transcoder
 		// In the future, return more different codes based on different type of BlockError?
-		return nil, status.Error(codes.ResourceExhausted, blockErr.Error())
+		return nil, &runtime.HTTPStatusError{
+			HTTPStatus: http.StatusTooManyRequests,
+			Err:        NewStatusError(pb.ErrorCode_ERROR_BLOCKED, blockErr.Error()),
+		}
 	}
 
 	server := grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
@@ -165,7 +166,7 @@ func runRestServer(ctx context.Context, grpcPort, httpPort string) error {
 			DiscardUnknown: true,
 		},
 	})
-	mux := runtime.NewServeMux(muxJSONOpt, muxHealthOpt)
+	mux := runtime.NewServeMux(muxJSONOpt, muxHealthOpt, runtime.WithErrorHandler(customHTTPErrorHandler))
 
 	httpMux := http.NewServeMux()
 	httpMux.Handle(bridgeEndpointPath+"/", http.StripPrefix(bridgeEndpointPath, mux))

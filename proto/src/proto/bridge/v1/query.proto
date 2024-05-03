@@ -258,6 +258,15 @@ enum TransactionStatus {
     TX_PENDING_VERIFICATION = 4; // Only for L2->L1
 }
 
+enum ErrorCode {
+    ERROR_OK = 0;
+    // Start from 1000 so that it will not conflict with gRPC error code range
+    ERROR_DEFAULT = 1000; // Default error for all other cases
+    ERROR_BLOCKED = 1001; // Request is blocked for some reason (e.g. rate limited)
+    ERROR_BUSINESS = 1002; // General business error
+    ERROR_DEPENDENCY = 1003;
+}
+
 // Symbol info message
 message SymbolInfo {
     uint64 chainId = 1;
@@ -468,4 +477,12 @@ message GetFakePushMessagesResponse {
     string error_message = 4;
     string detailMsg = 5;
     repeated string data = 6;
+}
+
+message CommonResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
 }
