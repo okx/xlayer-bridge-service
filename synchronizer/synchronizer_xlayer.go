@@ -15,6 +15,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -27,11 +28,7 @@ var (
 )
 
 func (s *ClientSynchronizer) beforeProcessDeposit(deposit *etherman.Deposit) {
-	// If the deposit is USDC LxLy message, extract the user address from the metadata
-	if deposit.LeafType == uint8(utils.LeafTypeMessage) && utils.IsUSDCContractAddress(deposit.OriginalAddress) {
-		deposit.DestContractAddress = deposit.DestinationAddress
-		deposit.DestinationAddress, _ = utils.DecodeUSDCBridgeMetadata(deposit.Metadata)
-	}
+	messagebridge.ReplaceDepositDestAddresses(deposit)
 }
 
 func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
@@ -53,7 +50,7 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 	// Original address is needed for message allow list check, but it may be changed when we replace USDC info
 	origAddress := deposit.OriginalAddress
 	// Replace the USDC info here so that the metrics can report the correct token info
-	utils.ReplaceUSDCDepositInfo(deposit, true)
+	messagebridge.ReplaceDepositInfo(deposit, true)
 
 	// Notify FE about a new deposit
 	go func() {
@@ -62,7 +59,7 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			if !utils.IsUSDCContractAddress(origAddress) {
+			if !messagebridge.IsAllowedContractAddress(origAddress) {
 				log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 				return
 			}
@@ -190,7 +187,7 @@ func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			if !utils.IsUSDCContractAddress(deposit.OriginalAddress) {
+			if !messagebridge.IsAllowedContractAddress(deposit.OriginalAddress) {
 				log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 				return
 			}

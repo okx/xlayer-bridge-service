@@ -20,6 +20,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
@@ -134,7 +135,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), utils.GetUSDCContractAddressList(), nil)
+	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
 	if err != nil {
 		log.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
@@ -158,7 +159,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	transactionMap := make(map[string][]*pb.Transaction)
 	for _, deposit := range deposits {
 		// replace contract address to real token address
-		utils.ReplaceUSDCDepositInfo(deposit, false)
+		messagebridge.ReplaceDepositInfo(deposit, false)
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = estimatetime.GetDefaultCalculator().Get(deposit.NetworkID)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
@@ -233,7 +234,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetDepositsXLayer(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), utils.GetUSDCContractAddressList(), nil)
+	deposits, err := s.storage.GetDepositsXLayer(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
 	if err != nil {
 		log.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
@@ -257,7 +258,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 	transactionMap := make(map[string][]*pb.Transaction)
 	for _, deposit := range deposits {
 		// replace contract address to real token address
-		utils.ReplaceUSDCDepositInfo(deposit, false)
+		messagebridge.ReplaceDepositInfo(deposit, false)
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = estimatetime.GetDefaultCalculator().Get(deposit.NetworkID)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED) // Not ready for claim

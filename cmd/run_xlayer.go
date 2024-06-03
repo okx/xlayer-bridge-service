@@ -24,6 +24,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/urfave/cli/v2"
@@ -90,7 +91,8 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		return err
 	}
 
-	utils.InitUSDCLxLyMapping(c.BusinessConfig.USDCContractAddresses, c.BusinessConfig.USDCTokenAddresses)
+	messagebridge.InitUSDCLxLyProcessor(c.BusinessConfig.USDCContractAddresses, c.BusinessConfig.USDCTokenAddresses)
+	messagebridge.InitWstETHProcessor(c.BusinessConfig.WstETHContractAddresses, c.BusinessConfig.WstETHTokenAddresses)
 
 	l1ChainId := c.Etherman.L1ChainId
 	l2ChainIds := c.Etherman.L2ChainIds
