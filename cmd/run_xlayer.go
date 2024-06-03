@@ -212,6 +212,8 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	// Initialize inner chain id conf
 	utils.InnitOkInnerChainIdMapper(c.BusinessConfig)
 
+	server.RegisterNacos(c.NacosConfig)
+
 	// ---------- Run API ----------
 	if opt.runAPI {
 		// Init sentinel
@@ -223,7 +225,6 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		if err != nil {
 			log.Infof("init sentinel error[%v]; ignored and proceed with no sentinel config", err)
 		}
-		server.RegisterNacos(c.NacosConfig)
 		iprestriction.InitClient(c.IPRestriction)
 		tokenlogoinfo.InitClient(c.TokenLogoServiceConfig)
 
