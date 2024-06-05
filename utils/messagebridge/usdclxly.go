@@ -23,7 +23,7 @@ func InitUSDCLxLyProcessor(usdcContractAddresses, usdcTokenAddresses []common.Ad
 	}
 
 	if len(contractToTokenMapping) > 0 {
-		processorList = append(processorList, &Processor{
+		processorMap[USDC] = &Processor{
 			contractToTokenMapping: contractToTokenMapping,
 			DecodeMetadataFn: func(metadata []byte) (common.Address, *big.Int) {
 				// Metadata structure:
@@ -32,6 +32,6 @@ func InitUSDCLxLyProcessor(usdcContractAddresses, usdcTokenAddresses []common.Ad
 				// Maybe there's a more elegant way?
 				return common.BytesToAddress(metadata[:32]), new(big.Int).SetBytes(metadata[32:]) //nolint:gomnd
 			},
-		})
+		}
 	}
 }

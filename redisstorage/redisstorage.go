@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,9 @@ const (
 	// large transaction cache key
 	largeTxInfosKey = "bridge_large_tx_infos_"
 
+	// wstETH token not withdrawn
+	wstETHL2TokenNotWithdrawnKey = "wsteth_l2_token_not_withdrawn_"
+
 	// Set a default expiration for locks to prevent a process from keeping the lock for too long
 	lockExpire = 1 * time.Minute
 
@@ -50,9 +54,10 @@ const (
 
 // redisStorageImpl implements RedisStorage interface
 type redisStorageImpl struct {
-	client             RedisClient
-	enableCoinPriceCfg apolloconfig.Entry[bool]
-	keyPrefix          apolloconfig.Entry[string]
+	client              RedisClient
+	enableCoinPriceCfg  apolloconfig.Entry[bool]
+	keyPrefix           apolloconfig.Entry[string]
+	lockRetryIntervalMs apolloconfig.Entry[int]
 }
 
 func NewRedisStorage(cfg Config) (RedisStorage, error) {
@@ -80,8 +85,9 @@ func NewRedisStorage(cfg Config) (RedisStorage, error) {
 	}
 	log.Debugf("redis health check done, result: %v", res)
 	return &redisStorageImpl{client: client,
-		enableCoinPriceCfg: apolloconfig.NewBoolEntry("CoinPrice.Enabled", cfg.EnablePrice),
-		keyPrefix:          apolloconfig.NewStringEntry("Redis.KeyPrefix", cfg.KeyPrefix),
+		enableCoinPriceCfg:  apolloconfig.NewBoolEntry("CoinPrice.Enabled", cfg.EnablePrice),
+		keyPrefix:           apolloconfig.NewStringEntry("Redis.KeyPrefix", cfg.KeyPrefix),
+		lockRetryIntervalMs: apolloconfig.NewIntEntry("Redis.LockRetryIntervalMs", 500), //nolint:gomnd
 	}, nil
 }
 
@@ -278,7 +284,37 @@ func (s *redisStorageImpl) TryLock(ctx context.Context, lockKey string) (bool, e
 		return false, errors.New("redis client is nil")
 	}
 	success, err := s.client.SetNX(ctx, s.addKeyPrefix(lockKey), true, lockExpire).Result()
-	return success, errors.Wrap(err, "TryLock error")
+	return success, errors.Wrap(err, "SetNX error")
+}
+
+func (s *redisStorageImpl) TryLockWithRetry(ctx context.Context, lockKey string) (bool, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second) //nolint:gomnd
+	defer cancel()
+
+	ch := make(chan any)
+	isDone := false
+	go func() {
+		for !isDone {
+			ok, err := s.TryLock(timeoutCtx, lockKey)
+			if err != nil || !ok {
+				log.Errorf("redis lock key:%v success:%v err:%v", lockKey, ok, err)
+				time.Sleep(time.Duration(s.lockRetryIntervalMs.Get()) * time.Millisecond)
+				continue
+			}
+
+			// If success, notify the outer goroutine
+			ch <- struct{}{}
+			return
+		}
+	}()
+
+	select {
+	case <-timeoutCtx.Done():
+		isDone = true
+		return false, errors.New("lock timeout")
+	case <-ch:
+		return true, nil
+	}
 }
 
 func (s *redisStorageImpl) ReleaseLock(ctx context.Context, lockKey string) error {
@@ -553,4 +589,28 @@ func (s *redisStorageImpl) expireKeyFoundation(ctx context.Context, key string, 
 		return false, errors.New("redis client is nil")
 	}
 	return s.client.Expire(ctx, key, expiration).Result()
+}
+
+func (s *redisStorageImpl) getWstL2TokenNotWithdrawnKey(rollupID uint) string {
+	return s.addKeyPrefix(fmt.Sprintf("%v%v", wstETHL2TokenNotWithdrawnKey, rollupID))
+}
+
+func (s *redisStorageImpl) SetWSTETHL2TokenNotWithdrawn(ctx context.Context, value *big.Int, rollupID uint) error {
+	return s.setFoundation(ctx, s.getWstL2TokenNotWithdrawnKey(rollupID), value.String(), 0)
+}
+
+func (s *redisStorageImpl) GetWSTETHL2TokenNotWithdrawn(ctx context.Context, rollupID uint) (*big.Int, error) {
+	key := s.getWstL2TokenNotWithdrawnKey(rollupID)
+	if s == nil || s.client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+	res, err := s.client.Get(ctx, s.addKeyPrefix(key)).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return nil, errors.Wrap(err, "redis Get error")
+	}
+	value := big.NewInt(0)
+	if res != "" {
+		value.SetString(res, 10) //nolint:gomnd
+	}
+	return value, nil
 }

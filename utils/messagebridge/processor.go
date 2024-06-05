@@ -8,9 +8,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type ProcessorType int
+
+const (
+	USDC ProcessorType = iota
+	WstETH
+)
+
 var (
-	emptyAddress  = common.Address{}
-	processorList []*Processor
+	emptyAddress = common.Address{}
+	processorMap = make(map[ProcessorType]*Processor)
 )
 
 // Processor hosts the processing functions for an LxLy bridge using the message bridge feature
@@ -63,7 +70,7 @@ func (u *Processor) ReplaceDepositInfo(deposit *etherman.Deposit, overwriteOrigN
 
 // getProcessor returns the correct message bridge processor for the address
 func getProcessor(address common.Address) *Processor {
-	for _, processor := range processorList {
+	for _, processor := range processorMap {
 		if processor.CheckContractAddress(address) {
 			return processor
 		}
@@ -71,17 +78,21 @@ func getProcessor(address common.Address) *Processor {
 	return nil
 }
 
+func GetProcessorByType(t ProcessorType) *Processor {
+	return processorMap[t]
+}
+
 func GetContractAddressList() []common.Address {
 	result := make([]common.Address, 0)
 	// Get all contract addresses from the lists
-	for _, processor := range processorList {
+	for _, processor := range processorMap {
 		result = append(result, processor.GetContractAddressList()...)
 	}
 	return result
 }
 
 func IsAllowedContractAddress(address common.Address) bool {
-	for _, processor := range processorList {
+	for _, processor := range processorMap {
 		if processor.CheckContractAddress(address) {
 			return true
 		}

@@ -570,3 +570,18 @@ func (s *bridgeService) GetLargeTransactionInfos(ctx context.Context, req *pb.La
 	}
 	return &pb.LargeTxsResponse{Code: uint32(pb.ErrorCode_ERROR_OK), Data: txInfos}, nil
 }
+
+func (s *bridgeService) GetWstEthL2TokenNotWithdrawn(ctx context.Context, req *pb.GetWstEthL2TokenNotWithdrawnRequest) (*pb.GetWstEthL2TokenNotWithdrawnResponse, error) {
+	value, err := s.redisStorage.GetWSTETHL2TokenNotWithdrawn(ctx, s.rollupID)
+	if err != nil {
+		log.Errorf("failed to get wstETH l2TokenNotWithdrawn, err: %v", err)
+		return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
+			Msg:  "failed to get from cache",
+		}, nil
+	}
+	return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+		Code: uint32(pb.ErrorCode_ERROR_OK),
+		Data: value.String(),
+	}, nil
+}

@@ -15,8 +15,9 @@ func TestUSDCLxLyMapping(t *testing.T) {
 	tokenAddr2 := common.HexToAddress("0x00d69D72a429d4985b34A8E1A6C9e47997F0aFA3")
 
 	InitUSDCLxLyProcessor([]common.Address{contractAddr1, contractAddr2}, []common.Address{tokenAddr1, tokenAddr2})
-	require.Len(t, processorList, 1)
-	processor := processorList[0]
+	require.Len(t, processorMap, 1)
+	processor := GetProcessorByType(USDC)
+	require.NotNil(t, processor)
 
 	list := processor.GetContractAddressList()
 	require.Len(t, list, 2)

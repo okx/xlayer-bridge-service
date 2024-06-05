@@ -23,7 +23,7 @@ func InitWstETHProcessor(wstETHContractAddresses, wstETHTokenAddresses []common.
 	}
 
 	if len(contractToTokenMapping) > 0 {
-		processorList = append(processorList, &Processor{
+		processorMap[WstETH] = &Processor{
 			contractToTokenMapping: contractToTokenMapping,
 			DecodeMetadataFn: func(metadata []byte) (common.Address, *big.Int) {
 				// Metadata structure:
@@ -32,6 +32,6 @@ func InitWstETHProcessor(wstETHContractAddresses, wstETHTokenAddresses []common.
 				// Maybe there's a more elegant way?
 				return common.BytesToAddress(metadata[:32]), new(big.Int).SetBytes(metadata[32:]) //nolint:gomnd
 			},
-		})
+		}
 	}
 }
