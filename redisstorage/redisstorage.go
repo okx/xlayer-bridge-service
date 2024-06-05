@@ -43,7 +43,7 @@ const (
 	largeTxInfosKey = "bridge_large_tx_infos_"
 
 	// wstETH token not withdrawn
-	wstETHL2TokenNotWithdrawnKey = "wsteth_l2_token_not_withdrawn_"
+	wstETHL2TokenNotWithdrawnKey = "wsteth_l2_token_not_withdrawn_" //nolint:gosec
 
 	// Set a default expiration for locks to prevent a process from keeping the lock for too long
 	lockExpire = 1 * time.Minute
