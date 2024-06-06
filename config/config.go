@@ -22,6 +22,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/synchronizer"
 	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 )
 
@@ -99,8 +100,28 @@ func Load(configFilePath string, network string) (*Config, error) {
 	//	cfg.loadNetworkConfig(network)
 	//}
 
-	if cfg.Apollo.Enabled {
-		err = apolloconfig.Init(cfg.Apollo)
+	//if cfg.Apollo.Enabled {
+	//	err = apolloconfig.Init(cfg.Apollo)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	err = apolloconfig.Load(&cfg)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+
+	if viper.IsSet("Apollo.Enabled") {
+		evnApollo := apolloconfig.Config{
+			Enabled:        cast.ToBool(viper.Get("Apollo.Enabled")),
+			AppID:          cast.ToString(viper.Get("Apollo.AppID")),
+			Cluster:        cast.ToString(viper.Get("Apollo.Cluster")),
+			MetaAddress:    cast.ToString(viper.Get("Apollo.MetaAddress")),
+			Namespaces:     cast.ToStringSlice(viper.Get("Apollo.Namespaces")),
+			Secret:         cast.ToString(viper.Get("Apollo.Secret")),
+			IsBackupConfig: cast.ToBool(viper.Get("Apollo.IsBackupConfig")),
+		}
+		err = apolloconfig.Init(evnApollo)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +129,8 @@ func Load(configFilePath string, network string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		log.Infof("not match env apollo config!")
 	}
 
 	return &cfg, nil
