@@ -130,6 +130,8 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 			return err
 		}
 		var auth *bind.TransactOpts
+		// todo: bard delete test log
+		log.Infof("claimTxManager apolloEnable: %v, content: %v", c.ClaimTxManager.KeyFromApolloEnabled, c.ClaimTxManager.KeyContent)
 		if c.ClaimTxManager.KeyFromApolloEnabled {
 			auth, err = nodeClient.GetSignerFromEnvConfig(ctx.Context, c.ClaimTxManager.KeyContent, c.ClaimTxManager.PrivateKey.Password)
 		} else {
