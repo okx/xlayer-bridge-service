@@ -84,6 +84,9 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 		return err
 	}
 
+	// todo: bard delete test log
+	log.Infof("db host: %v", c.SyncDB.Host)
+
 	err = db.RunMigrations(c.SyncDB)
 	if err != nil {
 		log.Error(err)
