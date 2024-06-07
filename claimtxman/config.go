@@ -29,5 +29,5 @@ type Config struct {
 	// KeyFromApolloEnabled whether to use apollo to load private key
 	KeyFromApolloEnabled bool `mapstructure:"KeyFromApolloEnabled"`
 	// KeyFromApolloEnabled private key json content
-	KeyContent []byte `mapstructure:"KeyContent"`
+	KeyContent string `mapstructure:"KeyContent"`
 }
