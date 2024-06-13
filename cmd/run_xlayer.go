@@ -18,6 +18,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/metrics"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/sentinel"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/iprestriction"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
@@ -83,9 +84,6 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	if err != nil {
 		return err
 	}
-
-	// todo: bard delete test log
-	log.Infof("db host: %v", c.SyncDB.Host)
 
 	err = db.RunMigrations(c.SyncDB)
 	if err != nil {
@@ -228,15 +226,14 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 	// ---------- Run API ----------
 	if opt.runAPI {
 		// Init sentinel
-		// todo: bard
-		//if c.Apollo.Enabled {
-		//	err = sentinel.InitApolloDataSource(c.Apollo)
-		//} else {
-		//	err = sentinel.InitFileDataSource(c.BridgeServer.SentinelConfigFilePath)
-		//}
-		//if err != nil {
-		//	log.Infof("init sentinel error[%v]; ignored and proceed with no sentinel config", err)
-		//}
+		if c.Apollo.Enabled {
+			err = sentinel.InitApolloDataSource(c.Apollo)
+		} else {
+			err = sentinel.InitFileDataSource(c.BridgeServer.SentinelConfigFilePath)
+		}
+		if err != nil {
+			log.Infof("init sentinel error[%v]; ignored and proceed with no sentinel config", err)
+		}
 		iprestriction.InitClient(c.IPRestriction)
 		tokenlogoinfo.InitClient(c.TokenLogoServiceConfig)
 
