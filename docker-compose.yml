@@ -115,7 +115,6 @@ services:
       - ./test/test.keystore.claimtx:/pk/keystore.claimtxmanager
       - ./config/config.local.toml:/app/config.toml
       - ./sentinel/config.json:/app/sentinel_config.json
-      - ./coinmiddleware/root-ca-cert:/app/root-ca-cert
     command:
       - "/bin/sh"
       - "-c"
@@ -135,7 +134,6 @@ services:
     volumes:
       - ./test/test.keystore.claimtx:/pk/keystore.claimtxmanager
       - ./config/config.local.toml:/app/config.toml
-      - ./coinmiddleware/root-ca-cert:/app/root-ca-cert
     command:
       - "/bin/sh"
       - "-c"
@@ -155,7 +153,6 @@ services:
     volumes:
       - ./test/test.keystore.claimtx:/pk/keystore.claimtxmanager
       - ./config/config.local.toml:/app/config.toml
-      - ./coinmiddleware/root-ca-cert:/app/root-ca-cert
     command:
       - "/bin/sh"
       - "-c"
@@ -312,7 +309,6 @@ services:
       - ./test/test.keystore.claimtx:/pk/keystore.claimtxmanager
       - ./config/config.local.toml:/app/config.toml
       - ./sentinel/config.json:/app/sentinel_config.json
-      - ./coinmiddleware/root-ca-cert:/app/root-ca-cert
     command:
       - "/bin/sh"
       - "-c"
@@ -340,7 +336,6 @@ services:
       - ./test/test.keystore.claimtx:/pk/keystore.claimtxmanager
       - ./config/config.local.toml:/app/config.toml
       - ./sentinel/config.json:/app/sentinel_config.json
-      - ./coinmiddleware/root-ca-cert:/app/root-ca-cert
     command:
       - "/bin/sh"
       - "-c"

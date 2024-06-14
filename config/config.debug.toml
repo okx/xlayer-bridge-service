@@ -74,7 +74,6 @@ ConsumerGroupID = "xlayer-bridge-service"
 InitialOffset = -1
 Username = ""
 Password = ""
-RootCAPath = "/app/root-ca-cert"
 
 [MessagePushProducer]
 Enabled = false
