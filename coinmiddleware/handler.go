@@ -43,7 +43,8 @@ func (h *MessageHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 				return nil
 			}
 			log.Infof("message received topic[%v] partition[%v] offset[%v]", message.Topic, message.Partition, message.Offset)
-
+			// todo: bard delete test log
+			log.Infof("receive kafka msg: %v", string(message.Value))
 			// Retry for 5 times, if still fails, ignore this message
 			for i := 0; i < maxRetries; i++ {
 				err := h.handleMessage(message)
