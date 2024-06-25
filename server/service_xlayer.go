@@ -386,8 +386,8 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 	for _, mTx := range mTxs {
 		transaction := &pb.MonitoredTx{
 			Id:        uint64(mTx.DepositID),
-			From:      "0x" + mTx.From.String(),
-			To:        "0x" + mTx.To.String(),
+			From:      mTx.From.String(),
+			To:        mTx.To.String(),
 			Nonce:     mTx.Nonce,
 			Value:     mTx.Value.String(),
 			Data:      "0x" + hex.EncodeToString(mTx.Data),
