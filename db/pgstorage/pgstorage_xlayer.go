@@ -249,7 +249,7 @@ func (p *PostgresStorage) GetClaimTxsByStatusWithLimit(ctx context.Context, stat
 
 // GetClaimTxById gets the monitored transactions by id (depositCount)
 func (p *PostgresStorage) GetClaimTxById(ctx context.Context, id uint, dbTx pgx.Tx) (*ctmtypes.MonitoredTx, error) {
-	getClaimSql := "SELECT deposit_id, from_addr, to_addr, nonce, value, data, gas, status, history, created_at, updated_at FROM sync.monitored_txs WHERE id = $1"
+	getClaimSql := "SELECT deposit_id, from_addr, to_addr, nonce, value, data, gas, status, history, created_at, updated_at FROM sync.monitored_txs WHERE deposit_id = $1"
 	var (
 		value   string
 		history [][]byte
