@@ -269,15 +269,25 @@ func (s *ClientSynchronizer) recordLatestBlockNum() {
 
 // processWstETHDeposit increases the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
 func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit) error {
+	amount := deposit.Amount
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor != nil {
+		_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	}
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
-		value.Add(value, deposit.Amount)
+		value.Add(value, amount)
 	})
 }
 
 // processWstETHClaim decrease the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
 func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit) error {
+	amount := deposit.Amount
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor != nil {
+		_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	}
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
-		value.Sub(value, deposit.Amount)
+		value.Sub(value, amount)
 	})
 }
 
