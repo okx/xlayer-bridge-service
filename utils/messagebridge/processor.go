@@ -38,6 +38,15 @@ func (u *Processor) GetContractAddressList() []common.Address {
 	return result
 }
 
+// GetTokenAddressList returns the list of original token addresses
+func (u *Processor) GetTokenAddressList() []common.Address {
+	result := make([]common.Address, 0)
+	for _, addr := range u.contractToTokenMapping {
+		result = append(result, addr)
+	}
+	return result
+}
+
 // CheckContractAddress returns true if the input address is in the contract address list of this bridge
 func (u *Processor) CheckContractAddress(address common.Address) bool {
 	if _, ok := u.contractToTokenMapping[address]; ok {

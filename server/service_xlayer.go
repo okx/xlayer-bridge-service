@@ -572,12 +572,20 @@ func (s *bridgeService) GetLargeTransactionInfos(ctx context.Context, req *pb.La
 }
 
 func (s *bridgeService) GetWstEthL2TokenNotWithdrawn(ctx context.Context, req *pb.GetWstEthL2TokenNotWithdrawnRequest) (*pb.GetWstEthL2TokenNotWithdrawnResponse, error) {
-	value, err := s.redisStorage.GetWSTETHL2TokenNotWithdrawn(ctx, s.rollupID)
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor == nil {
+		return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
+			Msg:  "internal: wstETH processor is not inited",
+		}, nil
+	}
+	tokenAddr := processor.GetTokenAddressList()[0]
+	value, err := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)
 	if err != nil {
 		log.Errorf("failed to get wstETH l2TokenNotWithdrawn, err: %v", err)
 		return &pb.GetWstEthL2TokenNotWithdrawnResponse{
 			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
-			Msg:  "failed to get from cache",
+			Msg:  "failed to get from DB",
 		}, nil
 	}
 	return &pb.GetWstEthL2TokenNotWithdrawnResponse{

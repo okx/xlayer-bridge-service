@@ -2,7 +2,6 @@ package synchronizer
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/big"
 	"time"
@@ -50,7 +49,7 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 		}
 	}
 
-	err := s.processWstETHDeposit(deposit)
+	err := s.processWstETHDeposit(deposit, dbTx)
 	if err != nil {
 		log.Errorf("networkID: %d, failed to process wstETH deposit, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
 		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
@@ -202,7 +201,7 @@ func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim, dbTx pgx.T
 		return err
 	}
 
-	err = s.processWstETHClaim(deposit)
+	err = s.processWstETHClaim(deposit, dbTx)
 	if err != nil {
 		log.Errorf("networkID: %d, processWstETHClaim error, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
 		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
@@ -268,7 +267,7 @@ func (s *ClientSynchronizer) recordLatestBlockNum() {
 }
 
 // processWstETHDeposit increases the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
-func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit) error {
+func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit, dbTx pgx.Tx) error {
 	amount := deposit.Amount
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
 	if processor != nil {
@@ -276,11 +275,11 @@ func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit) err
 	}
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
 		value.Add(value, amount)
-	})
+	}, dbTx)
 }
 
 // processWstETHClaim decrease the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
-func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit) error {
+func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit, dbTx pgx.Tx) error {
 	amount := deposit.Amount
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
 	if processor != nil {
@@ -288,14 +287,10 @@ func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit) error
 	}
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
 		value.Sub(value, amount)
-	})
+	}, dbTx)
 }
 
-func (s *ClientSynchronizer) getWstETHL2TokenWithdrawnLockKey() string {
-	return fmt.Sprintf("%v%v", wstETHRedisLockKey, s.rollupID)
-}
-
-func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valueUpdateFn func(*big.Int)) error {
+func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valueUpdateFn func(*big.Int), dbTx pgx.Tx) error {
 	// Only check L2->L1 bridges
 	if deposit.NetworkID == 0 {
 		return nil
@@ -309,28 +304,15 @@ func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valu
 		return nil
 	}
 
-	// Lock the redis value
-	lockKey := s.getWstETHL2TokenWithdrawnLockKey()
-	ok, err := s.redisStorage.TryLockWithRetry(s.ctx, lockKey)
-	if !ok || err != nil {
-		log.Errorf("wstETH redis lock failed, err: %v", err)
-		return errors.New("lock failed")
-	}
-	defer func() {
-		err = s.redisStorage.ReleaseLock(s.ctx, lockKey)
-		if err != nil {
-			log.Errorf("ReleaseLock key[%v] error: %v", lockKey, err)
-		}
-	}()
-
-	// Get the current value
-	value, err := s.redisStorage.GetWSTETHL2TokenNotWithdrawn(s.ctx, s.rollupID)
+	// Update DB using the token original address
+	tokenAddr := processor.GetTokenAddressList()[0]
+	value, err := s.storage.GetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, true, dbTx)
 	if err != nil {
-		return errors.Wrap(err, "GetWSTETHL2TokenNotWithdraw from redis err")
+		return errors.Wrap(err, "GetBridgeBalance from DB err")
 	}
 	// Update the value
 	valueUpdateFn(value)
 	log.Debugf("setting wstETH L2TokenNotWithdrawn to %v", value.String())
-	err = s.redisStorage.SetWSTETHL2TokenNotWithdrawn(s.ctx, value, s.rollupID)
-	return errors.Wrap(err, "SetWSTETHL2TokenNotWithdrawn to redis err")
+	err = s.storage.SetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, value, dbTx)
+	return errors.Wrap(err, "SetBridgeBalance to DB err")
 }
