@@ -2,7 +2,6 @@ package redisstorage
 
 import (
 	"context"
-	"math/big"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
@@ -25,7 +24,6 @@ type RedisStorage interface {
 
 	// General lock
 	TryLock(ctx context.Context, lockKey string) (success bool, err error)
-	TryLockWithRetry(ctx context.Context, lockKey string) (bool, error)
 	ReleaseLock(ctx context.Context, lockKey string) error
 
 	// commit and verify batch storage
@@ -57,10 +55,6 @@ type RedisStorage interface {
 	GetLargeTransactions(ctx context.Context, keySuffix string) ([]*pb.LargeTxInfo, error)
 	DelLargeTransactions(ctx context.Context, keySuffix string) error
 	ExpireLargeTransactions(ctx context.Context, key string, expiration time.Duration) (bool, error)
-
-	// for wstETH bridge monitoring
-	SetWSTETHL2TokenNotWithdrawn(ctx context.Context, value *big.Int, rollupID uint) error
-	GetWSTETHL2TokenNotWithdrawn(ctx context.Context, rollupID uint) (*big.Int, error)
 }
 
 type RedisClient interface {
