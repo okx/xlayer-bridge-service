@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
@@ -45,4 +46,43 @@ func TestGetDepositsXLayer(t *testing.T) {
 	deposits, err = store.GetPendingTransactions(ctx, addr, 25, 0, []common.Address{common.HexToAddress("0xca3faf8a0e99b136394286569f95f04127cb2087"), common.HexToAddress("0x74b7f16337b8972027f6196a17a631ac6de26d22")}, nil)
 	require.NoError(t, err)
 	require.Len(t, deposits, 2)
+}
+
+func TestBridgeBalance(t *testing.T) {
+	dbCfg := NewConfigFromEnv()
+	ctx := context.Background()
+	err := InitOrReset(dbCfg)
+	require.NoError(t, err)
+
+	store, err := NewPostgresStorage(dbCfg)
+	require.NoError(t, err)
+
+	addr := common.HexToAddress("0xB36c9325294CBd1b6BF5ECB33d9b035F1f0e9B8A")
+	networkID := uint(1)
+
+	dbTx, err := store.Begin(ctx)
+	require.NoError(t, err)
+
+	balance, err := store.GetBridgeBalance(ctx, addr, networkID, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, 0, balance.Cmp(big.NewInt(0)))
+
+	balance.SetInt64(123456)
+	err = store.SetBridgeBalance(ctx, addr, networkID, balance, nil)
+	require.NoError(t, err)
+
+	balance, err = store.GetBridgeBalance(ctx, addr, networkID, true, nil)
+	require.NoError(t, err)
+	require.Equal(t, 0, balance.Cmp(big.NewInt(123456)))
+
+	balance.SetInt64(10000000)
+	err = store.SetBridgeBalance(ctx, addr, networkID, balance, nil)
+	require.NoError(t, err)
+
+	balance, err = store.GetBridgeBalance(ctx, addr, networkID, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, 0, balance.Cmp(big.NewInt(10000000)))
+
+	err = dbTx.Rollback(ctx)
+	require.NoError(t, err)
 }

@@ -370,13 +370,13 @@ func (p *PostgresStorage) GetDepositsForUnitTest(ctx context.Context, destAddr s
 	return p.getDepositList(ctx, getDepositsSQL, dbTx, common.FromHex(destAddr), limit, offset)
 }
 
-func (p *PostgresStorage) GetBridgeBalance(ctx context.Context, originalTokenAddr string, networkID uint, forUpdate bool, dbTx pgx.Tx) (*big.Int, error) {
+func (p *PostgresStorage) GetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, forUpdate bool, dbTx pgx.Tx) (*big.Int, error) {
 	var getBridgeBalanceSQL = "SELECT balance FROM sync.bridge_balance WHERE original_token_addr = $1 AND network_id = $2"
 	if forUpdate {
 		getBridgeBalanceSQL += " FOR UPDATE"
 	}
 	var s string
-	err := p.getExecQuerier(dbTx).QueryRow(ctx, getBridgeBalanceSQL, common.FromHex(originalTokenAddr), networkID).Scan(&s)
+	err := p.getExecQuerier(dbTx).QueryRow(ctx, getBridgeBalanceSQL, originalTokenAddr, networkID).Scan(&s)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return big.NewInt(0), nil
@@ -388,13 +388,13 @@ func (p *PostgresStorage) GetBridgeBalance(ctx context.Context, originalTokenAdd
 	return balance, nil
 }
 
-func (p *PostgresStorage) SetBridgeBalance(ctx context.Context, originalTokenAddr string, networkID uint, balance *big.Int, dbTx pgx.Tx) error {
+func (p *PostgresStorage) SetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, balance *big.Int, dbTx pgx.Tx) error {
 	var setBridgeBalanceSQL = `
 		INSERT INTO sync.bridge_balance (original_token_addr, network_id, balance)
 		VALUES ($1, $2, $3)
 		ON CONFLICT ON CONSTRAINT bridge_balance_uidx
 		DO UPDATE SET balance = EXCLUDED.balance, modify_time = $4`
 
-	_, err := p.getExecQuerier(dbTx).Exec(ctx, setBridgeBalanceSQL, common.FromHex(originalTokenAddr), networkID, balance.String(), time.Now())
+	_, err := p.getExecQuerier(dbTx).Exec(ctx, setBridgeBalanceSQL, originalTokenAddr, networkID, balance.String(), time.Now())
 	return err
 }

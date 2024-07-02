@@ -306,13 +306,13 @@ func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valu
 
 	// Update DB using the token original address
 	tokenAddr := processor.GetTokenAddressList()[0]
-	value, err := s.storage.GetBridgeBalance(s.ctx, tokenAddr.String(), deposit.NetworkID, true, dbTx)
+	value, err := s.storage.GetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, true, dbTx)
 	if err != nil {
 		return errors.Wrap(err, "GetBridgeBalance from DB err")
 	}
 	// Update the value
 	valueUpdateFn(value)
 	log.Debugf("setting wstETH L2TokenNotWithdrawn to %v", value.String())
-	err = s.storage.SetBridgeBalance(s.ctx, tokenAddr.String(), deposit.NetworkID, value, dbTx)
+	err = s.storage.SetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, value, dbTx)
 	return errors.Wrap(err, "SetBridgeBalance to DB err")
 }
