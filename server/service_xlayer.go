@@ -580,7 +580,7 @@ func (s *bridgeService) GetWstEthL2TokenNotWithdrawn(ctx context.Context, req *p
 		}, nil
 	}
 	tokenAddr := processor.GetTokenAddressList()[0]
-	value, err := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)
+	value, err := s.storage.GetBridgeBalance(ctx, tokenAddr.String(), utils.GetRollupNetworkId(), false, nil)
 	if err != nil {
 		log.Errorf("failed to get wstETH l2TokenNotWithdrawn, err: %v", err)
 		return &pb.GetWstEthL2TokenNotWithdrawnResponse{

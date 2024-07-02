@@ -34,6 +34,6 @@ type bridgeServiceStorage interface {
 	GetClaimTxById(ctx context.Context, id uint, dbTx pgx.Tx) (*ctmtypes.MonitoredTx, error)
 	GetClaimTxsByStatusWithLimit(ctx context.Context, statuses []ctmtypes.MonitoredTxStatus, limit uint, offset uint, dbTx pgx.Tx) ([]ctmtypes.MonitoredTx, error)
 	GetDepositsForUnitTest(ctx context.Context, destAddr string, limit uint, offset uint, dbTx pgx.Tx) ([]*etherman.Deposit, error)
-	GetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, forUpdate bool, dbTx pgx.Tx) (*big.Int, error)
-	SetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, balance *big.Int, dbTx pgx.Tx) error
+	GetBridgeBalance(ctx context.Context, originalTokenAddr string, networkID uint, forUpdate bool, dbTx pgx.Tx) (*big.Int, error)
+	SetBridgeBalance(ctx context.Context, originalTokenAddr string, networkID uint, balance *big.Int, dbTx pgx.Tx) error
 }
