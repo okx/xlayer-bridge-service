@@ -270,9 +270,10 @@ func (s *ClientSynchronizer) recordLatestBlockNum() {
 func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit, dbTx pgx.Tx) error {
 	amount := deposit.Amount
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
-	if processor != nil {
-		_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	if processor == nil || !processor.CheckContractAddress(deposit.OriginalAddress) {
+		return nil
 	}
+	_, amount = processor.DecodeMetadataFn(deposit.Metadata)
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
 		value.Add(value, amount)
 	}, dbTx)
@@ -282,19 +283,16 @@ func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit, dbT
 func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit, dbTx pgx.Tx) error {
 	amount := deposit.Amount
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
-	if processor != nil {
-		_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	if processor == nil || !processor.CheckContractAddress(deposit.OriginalAddress) {
+		return nil
 	}
+	_, amount = processor.DecodeMetadataFn(deposit.Metadata)
 	return s.processWstETHCommon(deposit, func(value *big.Int) {
 		value.Sub(value, amount)
 	}, dbTx)
 }
 
 func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valueUpdateFn func(*big.Int), dbTx pgx.Tx) error {
-	// Only check L2->L1 bridges
-	if deposit.NetworkID == 0 {
-		return nil
-	}
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
 	if processor == nil {
 		return nil
@@ -312,7 +310,7 @@ func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valu
 	}
 	// Update the value
 	valueUpdateFn(value)
-	log.Debugf("setting wstETH L2TokenNotWithdrawn to %v", value.String())
+	log.Debugf("setting wstETH bridgeBalance to %v, network_id = %v", value.String(), deposit.NetworkID)
 	err = s.storage.SetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, value, dbTx)
 	return errors.Wrap(err, "SetBridgeBalance to DB err")
 }

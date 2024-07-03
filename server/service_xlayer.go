@@ -571,25 +571,26 @@ func (s *bridgeService) GetLargeTransactionInfos(ctx context.Context, req *pb.La
 	return &pb.LargeTxsResponse{Code: uint32(pb.ErrorCode_ERROR_OK), Data: txInfos}, nil
 }
 
-func (s *bridgeService) GetWstEthL2TokenNotWithdrawn(ctx context.Context, req *pb.GetWstEthL2TokenNotWithdrawnRequest) (*pb.GetWstEthL2TokenNotWithdrawnResponse, error) {
+func (s *bridgeService) GetWstEthTokenNotWithdrawn(ctx context.Context, req *pb.GetWstEthTokenNotWithdrawnRequest) (*pb.GetWstEthTokenNotWithdrawnResponse, error) {
 	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
 	if processor == nil {
-		return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+		return &pb.GetWstEthTokenNotWithdrawnResponse{
 			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
 			Msg:  "internal: wstETH processor is not inited",
 		}, nil
 	}
 	tokenAddr := processor.GetTokenAddressList()[0]
-	value, err := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)
-	if err != nil {
-		log.Errorf("failed to get wstETH l2TokenNotWithdrawn, err: %v", err)
-		return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+	valueL1, errL1 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetMainNetworkId(), false, nil)
+	valueL2, errL2 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)
+	if errL1 != nil || errL2 != nil {
+		log.Errorf("failed to get wstETH TokenNotWithdrawn, errL1: %v, errL2: %v", errL1, errL2)
+		return &pb.GetWstEthTokenNotWithdrawnResponse{
 			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
 			Msg:  "failed to get from DB",
 		}, nil
 	}
-	return &pb.GetWstEthL2TokenNotWithdrawnResponse{
+	return &pb.GetWstEthTokenNotWithdrawnResponse{
 		Code: uint32(pb.ErrorCode_ERROR_OK),
-		Data: value.String(),
+		Data: []string{valueL1.String(), valueL2.String()},
 	}, nil
 }

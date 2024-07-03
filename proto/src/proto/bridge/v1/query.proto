@@ -142,9 +142,9 @@ service BridgeService {
         };
     }
 
-    rpc GetWstEthL2TokenNotWithdrawn(GetWstEthL2TokenNotWithdrawnRequest) returns (GetWstEthL2TokenNotWithdrawnResponse) {
+    rpc GetWstEthTokenNotWithdrawn(GetWstEthTokenNotWithdrawnRequest) returns (GetWstEthTokenNotWithdrawnResponse) {
         option (google.api.http) = {
-            get: "/wsteth/l2-token-not-withdrawn",
+            get: "/wsteth/token-not-withdrawn",
         };
     }
 }
@@ -530,13 +530,13 @@ message LargeTxsResponse {
     repeated LargeTxInfo data = 6;
 }
 
-message GetWstEthL2TokenNotWithdrawnRequest {}
+message GetWstEthTokenNotWithdrawnRequest {}
 
-message GetWstEthL2TokenNotWithdrawnResponse {
+message GetWstEthTokenNotWithdrawnResponse {
     uint32 code = 1;
     string msg = 2;
     string error_code = 3;
     string error_message = 4;
     string detailMsg = 5;
-    string data = 6; // Big integer
+    repeated string data = 6; // Big integer
 }
