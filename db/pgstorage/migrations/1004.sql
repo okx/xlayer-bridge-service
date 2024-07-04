@@ -1,6 +1,6 @@
 -- +migrate Down
 
-ALTER TABLE sync.deposit DROP COLUMN IF EXISTS dest_contract_addr;
+DROP TABLE IF EXISTS sync.bridge_balance;
 
 -- +migrate Up
 
