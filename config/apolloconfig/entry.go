@@ -1,11 +1,9 @@
 package apolloconfig
 
 import (
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 
-	"github.com/apolloconfig/agollo/v4"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/constraints"
 )
@@ -16,7 +14,7 @@ type Entry[T any] interface {
 }
 
 // An interface to get the config from Apollo client (and convert it if needed)
-type getterFunction[T any] func(client *agollo.Client, namespace, key string) (T, error)
+type getterFunction[T any] func(namespace, key string, result *T) error
 
 type entryImpl[T any] struct {
 	namespace    string
@@ -50,24 +48,27 @@ func newEntry[T any](key string, defaultValue T, getterFn getterFunction[T], opt
 }
 
 func NewIntEntry[T constraints.Integer](key string, defaultValue T, opts ...entryOption[T]) Entry[T] {
-	return newEntry(key, defaultValue, getInt[T], opts...)
+	return newEntry(key, defaultValue, getJson[T], opts...)
 }
 
 func NewIntSliceEntry[T constraints.Integer](key string, defaultValue []T, opts ...entryOption[[]T]) Entry[[]T] {
-	return newEntry(key, defaultValue, getIntSlice[T], opts...)
+	return newEntry(key, defaultValue, getJson[[]T], opts...)
 }
 
 func NewBoolEntry(key string, defaultValue bool, opts ...entryOption[bool]) Entry[bool] {
-	return newEntry(key, defaultValue, getBool, opts...)
+	return newEntry(key, defaultValue, getJson[bool], opts...)
 }
 
 func NewStringEntry(key string, defaultValue string, opts ...entryOption[string]) Entry[string] {
-	return newEntry(key, defaultValue, getString, opts...)
+	return newEntry(key, defaultValue, getStringFn, opts...)
 }
 
-// String array is separated by commas, so this will work incorrectly if we have comma in the elements
 func NewStringSliceEntry(key string, defaultValue []string, opts ...entryOption[[]string]) Entry[[]string] {
-	return newEntry(key, defaultValue, getStringSlice, opts...)
+	return newEntry(key, defaultValue, getJson[[]string], opts...)
+}
+
+func NewJsonEntry[T any](key string, defaultValue T, opts ...entryOption[T]) Entry[T] {
+	return newEntry(key, defaultValue, getJson[T], opts...)
 }
 
 func (e *entryImpl[T]) String() string {
@@ -89,17 +90,12 @@ func (e *entryImpl[T]) GetWithErr() (T, error) {
 		return e.defaultValue, errors.New("apollo disabled")
 	}
 
-	// If client is not initialized, return the default value
-	client := GetClient()
-	if client == nil {
-		return e.defaultValue, errors.New("apollo client is nil")
-	}
-
 	if e.getterFn == nil {
 		return e.defaultValue, errors.New("getterFn is nil")
 	}
 
-	v, err := e.getterFn(client, e.namespace, e.key)
+	var v T
+	err := e.getterFn(e.namespace, e.key, &v)
 	if err != nil {
 		return e.defaultValue, errors.Wrap(err, "getterFn error")
 	}
@@ -108,58 +104,31 @@ func (e *entryImpl[T]) GetWithErr() (T, error) {
 
 // ----- Getter functions -----
 
-func getString(client *agollo.Client, namespace, key string) (string, error) {
+var getStringFn = getString
+
+func getString(namespace, key string, result *string) error {
+	client := GetClient()
+	if client == nil {
+		return errors.New("apollo client is nil")
+	}
 	v, err := client.GetConfig(namespace).GetCache().Get(key)
 	if err != nil {
-		return "", err
+		return err
 	}
 	s, ok := v.(string)
 	if !ok {
-		return "", fmt.Errorf("value is not string, type: %T", v)
+		return fmt.Errorf("value is not string, type: %T", v)
 	}
-	return s, nil
+	*result = s
+	return nil
 }
 
-// String array is separated by commas, so this will work incorrectly if we have comma in the elements
-func getStringSlice(client *agollo.Client, namespace, key string) ([]string, error) {
-	s, err := getString(client, namespace, key)
+func getJson[T any](namespace, key string, result *T) error {
+	var s string
+	err := getStringFn(namespace, key, &s)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return strings.Split(s, comma), nil
-}
-
-func getInt[T constraints.Integer](client *agollo.Client, namespace, key string) (T, error) {
-	s, err := getString(client, namespace, key)
-	if err != nil {
-		return 0, err
-	}
-	res, err := strconv.ParseInt(s, parseIntBase, parseIntBitSize)
-	return T(res), err
-}
-
-func getIntSlice[T constraints.Integer](client *agollo.Client, namespace, key string) ([]T, error) {
-	s, err := getString(client, namespace, key)
-	if err != nil {
-		return nil, err
-	}
-
-	sArr := strings.Split(s, comma)
-	result := make([]T, len(sArr))
-	for i := range sArr {
-		v, err := strconv.ParseInt(sArr[i], parseIntBase, parseIntBitSize)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = T(v)
-	}
-	return result, nil
-}
-
-func getBool(client *agollo.Client, namespace, key string) (bool, error) {
-	s, err := getString(client, namespace, key)
-	if err != nil {
-		return false, err
-	}
-	return strconv.ParseBool(s)
+	err = json.Unmarshal([]byte(s), result)
+	return err
 }
