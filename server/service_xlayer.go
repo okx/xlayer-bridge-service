@@ -20,6 +20,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
@@ -134,7 +135,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), utils.GetUSDCContractAddressList(), nil)
+	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
 	if err != nil {
 		log.Errorf("get pending tx failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
@@ -158,7 +159,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 	transactionMap := make(map[string][]*pb.Transaction)
 	for _, deposit := range deposits {
 		// replace contract address to real token address
-		utils.ReplaceUSDCDepositInfo(deposit, false)
+		messagebridge.ReplaceDepositInfo(deposit, false)
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = estimatetime.GetDefaultCalculator().Get(deposit.NetworkID)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED)
@@ -233,7 +234,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 		limit = s.maxPageLimit.Get()
 	}
 
-	deposits, err := s.storage.GetDepositsXLayer(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), utils.GetUSDCContractAddressList(), nil)
+	deposits, err := s.storage.GetDepositsXLayer(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
 	if err != nil {
 		log.Errorf("get deposits from db failed for address: %v, limit: %v, offset: %v, error: %v", req.DestAddr, limit, req.Offset, err)
 		return &pb.CommonTransactionsResponse{
@@ -257,7 +258,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 	transactionMap := make(map[string][]*pb.Transaction)
 	for _, deposit := range deposits {
 		// replace contract address to real token address
-		utils.ReplaceUSDCDepositInfo(deposit, false)
+		messagebridge.ReplaceDepositInfo(deposit, false)
 		transaction := utils.EthermanDepositToPbTransaction(deposit)
 		transaction.EstimateTime = estimatetime.GetDefaultCalculator().Get(deposit.NetworkID)
 		transaction.Status = uint32(pb.TransactionStatus_TX_CREATED) // Not ready for claim
@@ -385,8 +386,8 @@ func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.Get
 	for _, mTx := range mTxs {
 		transaction := &pb.MonitoredTx{
 			Id:        uint64(mTx.DepositID),
-			From:      "0x" + mTx.From.String(),
-			To:        "0x" + mTx.To.String(),
+			From:      mTx.From.String(),
+			To:        mTx.To.String(),
 			Nonce:     mTx.Nonce,
 			Value:     mTx.Value.String(),
 			Data:      "0x" + hex.EncodeToString(mTx.Data),
@@ -568,4 +569,28 @@ func (s *bridgeService) GetLargeTransactionInfos(ctx context.Context, req *pb.La
 		}, nil
 	}
 	return &pb.LargeTxsResponse{Code: uint32(pb.ErrorCode_ERROR_OK), Data: txInfos}, nil
+}
+
+func (s *bridgeService) GetWstEthTokenNotWithdrawn(ctx context.Context, req *pb.GetWstEthTokenNotWithdrawnRequest) (*pb.GetWstEthTokenNotWithdrawnResponse, error) {
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor == nil {
+		return &pb.GetWstEthTokenNotWithdrawnResponse{
+			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
+			Msg:  "internal: wstETH processor is not inited",
+		}, nil
+	}
+	tokenAddr := processor.GetTokenAddressList()[0]
+	valueL1, errL1 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetMainNetworkId(), false, nil)
+	valueL2, errL2 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)
+	if errL1 != nil || errL2 != nil {
+		log.Errorf("failed to get wstETH TokenNotWithdrawn, errL1: %v, errL2: %v", errL1, errL2)
+		return &pb.GetWstEthTokenNotWithdrawnResponse{
+			Code: uint32(pb.ErrorCode_ERROR_DEFAULT),
+			Msg:  "failed to get from DB",
+		}, nil
+	}
+	return &pb.GetWstEthTokenNotWithdrawnResponse{
+		Code: uint32(pb.ErrorCode_ERROR_OK),
+		Data: []string{valueL1.String(), valueL2.String()},
+	}, nil
 }

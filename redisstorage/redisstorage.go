@@ -278,7 +278,7 @@ func (s *redisStorageImpl) TryLock(ctx context.Context, lockKey string) (bool, e
 		return false, errors.New("redis client is nil")
 	}
 	success, err := s.client.SetNX(ctx, s.addKeyPrefix(lockKey), true, lockExpire).Result()
-	return success, errors.Wrap(err, "TryLock error")
+	return success, errors.Wrap(err, "SetNX error")
 }
 
 func (s *redisStorageImpl) ReleaseLock(ctx context.Context, lockKey string) error {

@@ -15,11 +15,14 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server/tokenlogoinfo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/jackc/pgx/v4"
+	"github.com/pkg/errors"
 )
 
 const (
-	num1 = 1
+	num1               = 1
+	wstETHRedisLockKey = "wst_eth_l2_token_not_withdrawn_lock_"
 )
 
 var (
@@ -27,17 +30,13 @@ var (
 )
 
 func (s *ClientSynchronizer) beforeProcessDeposit(deposit *etherman.Deposit) {
-	// If the deposit is USDC LxLy message, extract the user address from the metadata
-	if deposit.LeafType == uint8(utils.LeafTypeMessage) && utils.IsUSDCContractAddress(deposit.OriginalAddress) {
-		deposit.DestContractAddress = deposit.DestinationAddress
-		deposit.DestinationAddress, _ = utils.DecodeUSDCBridgeMetadata(deposit.Metadata)
-	}
+	messagebridge.ReplaceDepositDestAddresses(deposit)
 }
 
 func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depositID uint64, dbTx pgx.Tx) error {
 	// Add the deposit to Redis for L1
 	if deposit.NetworkID == 0 {
-		err := s.redisStorage.AddBlockDeposit(context.Background(), deposit)
+		err := s.redisStorage.AddBlockDeposit(s.ctx, deposit)
 		if err != nil {
 			log.Errorf("networkID: %d, failed to add block deposit to Redis, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
 			rollbackErr := s.storage.Rollback(s.ctx, dbTx)
@@ -50,10 +49,22 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 		}
 	}
 
+	err := s.processWstETHDeposit(deposit, dbTx)
+	if err != nil {
+		log.Errorf("networkID: %d, failed to process wstETH deposit, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+				s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
+			return rollbackErr
+		}
+		return err
+	}
+
 	// Original address is needed for message allow list check, but it may be changed when we replace USDC info
 	origAddress := deposit.OriginalAddress
 	// Replace the USDC info here so that the metrics can report the correct token info
-	utils.ReplaceUSDCDepositInfo(deposit, true)
+	messagebridge.ReplaceDepositInfo(deposit, true)
 
 	// Notify FE about a new deposit
 	go func() {
@@ -62,7 +73,7 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 			return
 		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			if !utils.IsUSDCContractAddress(origAddress) {
+			if !messagebridge.IsAllowedContractAddress(origAddress) {
 				log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 				return
 			}
@@ -108,6 +119,7 @@ func (s *ClientSynchronizer) afterProcessDeposit(deposit *etherman.Deposit, depo
 	metrics.RecordOrder(uint32(deposit.NetworkID), uint32(deposit.DestinationNetwork), uint32(deposit.LeafType), uint32(deposit.OriginalNetwork), deposit.OriginalAddress, deposit.Amount)
 	return nil
 }
+
 func (s *ClientSynchronizer) filterLargeTransaction(ctx context.Context, transaction *pb.Transaction, chainId uint) {
 	if transaction.LogoInfo == nil {
 		log.Infof("failed to get logo info, so skip filter large transaction, tx: %v", transaction.GetTxHash())
@@ -170,7 +182,37 @@ func (s *ClientSynchronizer) getEstimateTimeForDepositCreated(networkId uint) ui
 	return uint32(pushtask.GetAvgCommitDuration(s.ctx, s.redisStorage))
 }
 
-func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
+func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim, dbTx pgx.Tx) error {
+	originNetwork := uint(0)
+	if !claim.MainnetFlag {
+		originNetwork = uint(claim.RollupIndex + 1)
+	}
+
+	// Retrieve deposit transaction info
+	deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
+	if err != nil {
+		log.Errorf("networkID: %d, get deposit error, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+				s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
+			return rollbackErr
+		}
+		return err
+	}
+
+	err = s.processWstETHClaim(deposit, dbTx)
+	if err != nil {
+		log.Errorf("networkID: %d, processWstETHClaim error, BlockNumber: %d, Deposit: %+v, err: %s", s.networkID, deposit.BlockNumber, deposit, err)
+		rollbackErr := s.storage.Rollback(s.ctx, dbTx)
+		if rollbackErr != nil {
+			log.Errorf("networkID: %d, error rolling back state to store block. BlockNumber: %v, rollbackErr: %v, err: %s",
+				s.networkID, deposit.BlockNumber, rollbackErr, err.Error())
+			return rollbackErr
+		}
+		return err
+	}
+
 	// Notify FE that the tx has been claimed
 	go func() {
 		if s.messagePushProducer == nil {
@@ -178,19 +220,8 @@ func (s *ClientSynchronizer) afterProcessClaim(claim *etherman.Claim) error {
 			return
 		}
 
-		originNetwork := uint(0)
-		if !claim.MainnetFlag {
-			originNetwork = uint(claim.RollupIndex + 1)
-		}
-
-		// Retrieve deposit transaction info
-		deposit, err := s.storage.GetDeposit(s.ctx, claim.Index, originNetwork, nil)
-		if err != nil {
-			log.Errorf("push message: GetDeposit error: %v", err)
-			return
-		}
 		if deposit.LeafType != uint8(utils.LeafTypeAsset) {
-			if !utils.IsUSDCContractAddress(deposit.OriginalAddress) {
+			if !messagebridge.IsAllowedContractAddress(deposit.OriginalAddress) {
 				log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 				return
 			}
@@ -233,4 +264,53 @@ func (s *ClientSynchronizer) recordLatestBlockNum() {
 		}
 		metrics.RecordLatestBlockNum(uint32(s.networkID), header.Number.Uint64())
 	}
+}
+
+// processWstETHDeposit increases the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
+func (s *ClientSynchronizer) processWstETHDeposit(deposit *etherman.Deposit, dbTx pgx.Tx) error {
+	amount := deposit.Amount
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor == nil || !processor.CheckContractAddress(deposit.OriginalAddress) {
+		return nil
+	}
+	_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	return s.processWstETHCommon(deposit, func(value *big.Int) {
+		value.Add(value, amount)
+	}, dbTx)
+}
+
+// processWstETHClaim decrease the l2TokenNotWithdrawn value for wstETH bridge, used for reconciliation purpose
+func (s *ClientSynchronizer) processWstETHClaim(deposit *etherman.Deposit, dbTx pgx.Tx) error {
+	amount := deposit.Amount
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor == nil || !processor.CheckContractAddress(deposit.OriginalAddress) {
+		return nil
+	}
+	_, amount = processor.DecodeMetadataFn(deposit.Metadata)
+	return s.processWstETHCommon(deposit, func(value *big.Int) {
+		value.Sub(value, amount)
+	}, dbTx)
+}
+
+func (s *ClientSynchronizer) processWstETHCommon(deposit *etherman.Deposit, valueUpdateFn func(*big.Int), dbTx pgx.Tx) error {
+	processor := messagebridge.GetProcessorByType(messagebridge.WstETH)
+	if processor == nil {
+		return nil
+	}
+	// Check if this deposit is for wstETH
+	if !processor.CheckContractAddress(deposit.OriginalAddress) {
+		return nil
+	}
+
+	// Update DB using the token original address
+	tokenAddr := processor.GetTokenAddressList()[0]
+	value, err := s.storage.GetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, true, dbTx)
+	if err != nil {
+		return errors.Wrap(err, "GetBridgeBalance from DB err")
+	}
+	// Update the value
+	valueUpdateFn(value)
+	log.Debugf("setting wstETH bridgeBalance to %v, network_id = %v", value.String(), deposit.NetworkID)
+	err = s.storage.SetBridgeBalance(s.ctx, tokenAddr, deposit.NetworkID, value, dbTx)
+	return errors.Wrap(err, "SetBridgeBalance to DB err")
 }

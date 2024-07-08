@@ -11,6 +11,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
@@ -274,7 +275,7 @@ func (ins *CommittedBatchHandler) pushMsgForDeposit(deposit *etherman.Deposit, l
 			log.Errorf("kafka push producer is nil, so can't push tx status change msg!")
 			return
 		}
-		if deposit.LeafType != uint8(utils.LeafTypeAsset) && !utils.IsUSDCContractAddress(deposit.OriginalAddress) {
+		if deposit.LeafType != uint8(utils.LeafTypeAsset) && !messagebridge.IsAllowedContractAddress(deposit.OriginalAddress) {
 			log.Infof("transaction is not asset, so skip push update change, hash: %v", deposit.TxHash)
 			return
 		}

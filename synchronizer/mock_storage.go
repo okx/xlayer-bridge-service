@@ -4,8 +4,12 @@ package synchronizer
 
 import (
 	context "context"
+	big "math/big"
+
+	common "github.com/ethereum/go-ethereum/common"
 
 	etherman "github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
+
 	mock "github.com/stretchr/testify/mock"
 
 	pgx "github.com/jackc/pgx/v4"
@@ -218,6 +222,32 @@ func (_m *storageMock) Commit(ctx context.Context, dbTx pgx.Tx) error {
 	return r0
 }
 
+// GetBridgeBalance provides a mock function with given fields: ctx, originalTokenAddr, networkID, forUpdate, dbTx
+func (_m *storageMock) GetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, forUpdate bool, dbTx pgx.Tx) (*big.Int, error) {
+	ret := _m.Called(ctx, originalTokenAddr, networkID, forUpdate, dbTx)
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, uint, bool, pgx.Tx) (*big.Int, error)); ok {
+		return rf(ctx, originalTokenAddr, networkID, forUpdate, dbTx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, uint, bool, pgx.Tx) *big.Int); ok {
+		r0 = rf(ctx, originalTokenAddr, networkID, forUpdate, dbTx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, uint, bool, pgx.Tx) error); ok {
+		r1 = rf(ctx, originalTokenAddr, networkID, forUpdate, dbTx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetDeposit provides a mock function with given fields: ctx, depositCounterUser, networkID, dbTx
 func (_m *storageMock) GetDeposit(ctx context.Context, depositCounterUser uint, networkID uint, dbTx pgx.Tx) (*etherman.Deposit, error) {
 	ret := _m.Called(ctx, depositCounterUser, networkID, dbTx)
@@ -391,6 +421,20 @@ func (_m *storageMock) Rollback(ctx context.Context, dbTx pgx.Tx) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx) error); ok {
 		r0 = rf(ctx, dbTx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetBridgeBalance provides a mock function with given fields: ctx, originalTokenAddr, networkID, balance, dbTx
+func (_m *storageMock) SetBridgeBalance(ctx context.Context, originalTokenAddr common.Address, networkID uint, balance *big.Int, dbTx pgx.Tx) error {
+	ret := _m.Called(ctx, originalTokenAddr, networkID, balance, dbTx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, uint, *big.Int, pgx.Tx) error); ok {
+		r0 = rf(ctx, originalTokenAddr, networkID, balance, dbTx)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -141,6 +141,12 @@ service BridgeService {
             get: "/large-transactions",
         };
     }
+
+    rpc GetWstEthTokenNotWithdrawn(GetWstEthTokenNotWithdrawnRequest) returns (GetWstEthTokenNotWithdrawnResponse) {
+        option (google.api.http) = {
+            get: "/wsteth/token-not-withdrawn",
+        };
+    }
 }
 
 // TokenWrapped message
@@ -522,4 +528,15 @@ message LargeTxsResponse {
     string error_message = 4;
     string detailMsg = 5;
     repeated LargeTxInfo data = 6;
+}
+
+message GetWstEthTokenNotWithdrawnRequest {}
+
+message GetWstEthTokenNotWithdrawnResponse {
+    uint32 code = 1;
+    string msg = 2;
+    string error_code = 3;
+    string error_message = 4;
+    string detailMsg = 5;
+    repeated string data = 6; // Big integer
 }
