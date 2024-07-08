@@ -1,6 +1,7 @@
 package apolloconfig
 
 import (
+	"encoding"
 	"encoding/json"
 	"fmt"
 
@@ -71,6 +72,10 @@ func NewJsonEntry[T any](key string, defaultValue T, opts ...entryOption[T]) Ent
 	return newEntry(key, defaultValue, getJson[T], opts...)
 }
 
+func NewTextUnmarshalerEntry[T encoding.TextUnmarshaler](key string, defaultValue T, opts ...entryOption[T]) Entry[T] {
+	return newEntry(key, defaultValue, getTextUnmarshaler[T], opts...)
+}
+
 func (e *entryImpl[T]) String() string {
 	return fmt.Sprintf("%v", e.Get())
 }
@@ -121,6 +126,16 @@ func getString(namespace, key string, result *string) error {
 	}
 	*result = s
 	return nil
+}
+
+func getTextUnmarshaler[T encoding.TextUnmarshaler](namespace, key string, result *T) error {
+	var s string
+	err := getStringFn(namespace, key, &s)
+	if err != nil {
+		return err
+	}
+	err = (*result).UnmarshalText([]byte(s))
+	return err
 }
 
 func getJson[T any](namespace, key string, result *T) error {

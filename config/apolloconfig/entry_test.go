@@ -3,6 +3,7 @@ package apolloconfig
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,7 +123,7 @@ func TestGetStringSlice(t *testing.T) {
 	}
 }
 
-func TestJsonStruct(t *testing.T) {
+func TestGetJsonStruct(t *testing.T) {
 	type S1 struct {
 		A int    `json:"a"`
 		B string `json:"b"`
@@ -160,7 +161,7 @@ func TestJsonStruct(t *testing.T) {
 	}
 }
 
-func TestJsonMap(t *testing.T) {
+func TestGetJsonMap(t *testing.T) {
 	testCases := []struct {
 		inputString  string
 		outputResult map[string]string
@@ -184,6 +185,34 @@ func TestJsonMap(t *testing.T) {
 		} else {
 			require.NoErrorf(t, err, "Case #%v", i)
 			require.Equalf(t, c.outputResult, res, "Case #%v", i)
+		}
+	}
+}
+
+func TestGetTextUnmarshaler(t *testing.T) {
+	testCases := []struct {
+		inputString  string
+		outputResult common.Address
+		outputHasErr bool
+	}{
+		{"0x167985f547e5087DA14084b80762104d36c08756", common.HexToAddress("0x167985f547e5087DA14084b80762104d36c08756"), false},
+		{"[]", common.Address{}, true},
+		{"", common.Address{}, true},
+		{`"0x167985f547e5087DA14084b80762104d36c08756"`, common.Address{}, true},
+	}
+
+	for i, c := range testCases {
+		getStringFn = func(_ string, _ string, result *string) error {
+			*result = c.inputString
+			return nil
+		}
+		var res = &common.Address{}
+		err := getTextUnmarshaler("", "", &res)
+		if c.outputHasErr {
+			require.Errorf(t, err, "Case #%v", i)
+		} else {
+			require.NoErrorf(t, err, "Case #%v", i)
+			require.Equalf(t, c.outputResult, *res, "Case #%v", i)
 		}
 	}
 }

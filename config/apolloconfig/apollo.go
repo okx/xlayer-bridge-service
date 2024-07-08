@@ -78,65 +78,66 @@ func handleStruct(v reflect.Value) error {
 
 	// Iterate and handle each field
 	for i := 0; i < v.NumField(); i++ {
-		origField := v.Field(i)
-		field := reflect.Indirect(origField)
+		field := v.Field(i)
 		structField := v.Type().Field(i)
-
-		// Get the config key from the field tag
-		key := structField.Tag.Get(tagName)
-		if key != "" && key != "-" {
-			if !field.CanSet() {
-				logger.Errorf("Load apollo: field %v cannot be set", structField.Name)
-				continue
-			}
-
-			// If config key is not empty, use it to query from Apollo server
-			// Process differently for each type
-			if field.CanAddr() && field.Addr().Type().Implements(textUnmarshalerType) {
-				loadTextUnmarshaler(field, key)
-			} else if field.Kind() == reflect.String {
-				field.SetString(NewStringEntry(key, field.String()).Get())
-			} else {
-				loadJson(field, key)
-			}
-		}
-
-		if field.Kind() == reflect.Struct {
-			err := handleStruct(field)
-			if err != nil {
-				logger.Errorf("Load apollo: field %v of type %v error: %v", structField.Name, structField.Type, err)
-			}
+		err := handleObject(field, structField.Tag.Get(tagName))
+		if err != nil {
+			logger.Errorf("Load apollo: field %v of type %v error: %v", structField.Name, structField.Type, err)
 		}
 	}
 
 	return nil
 }
 
-func loadJson(v reflect.Value, key string) {
-	s := NewStringEntry(key, "").Get()
-	if s == "" {
-		return
+func handleObject(v reflect.Value, key string) error {
+	field := reflect.Indirect(v)
+
+	if key != "" && key != "-" {
+		val, err := NewStringEntry(key, "").GetWithErr()
+		if err != nil {
+			return err
+		}
+		err = decodeStringToValue(val, field)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Create a clone so we won't change the original values unexpectedly
-	temp := reflect.New(v.Type()).Interface()
-	err := json.Unmarshal([]byte(s), &temp)
-	if err != nil {
-		return
-	}
-	v.Set(reflect.ValueOf(temp).Elem())
+	return nil
 }
 
-func loadTextUnmarshaler(v reflect.Value, key string) {
-	s, err := NewStringEntry(key, "").GetWithErr()
-	if err != nil {
-		return
-	}
-	temp := reflect.New(v.Type()).Interface().(encoding.TextUnmarshaler)
-	err = temp.UnmarshalText([]byte(s))
-	if err != nil {
-		return
+func decodeStringToValue(val string, v reflect.Value) error {
+	if !v.CanSet() {
+		return errors.New("cannot set value")
 	}
 
-	v.Set(reflect.Indirect(reflect.ValueOf(temp)))
+	if v.CanAddr() && v.Addr().Type().Implements(textUnmarshalerType) {
+		temp := reflect.New(v.Type()).Interface().(encoding.TextUnmarshaler)
+		err := temp.UnmarshalText([]byte(val))
+		if err != nil {
+			return errors.Wrap(err, "UnmarshalText error")
+		}
+		v.Set(reflect.Indirect(reflect.ValueOf(temp)))
+	} else if v.Kind() == reflect.String {
+		v.SetString(val)
+	} else {
+		// Decode json value (including struct, map, int, float, array, etc.)
+		// Create a clone so we won't change the original values unexpectedly
+		temp := reflect.New(v.Type()).Interface()
+		err := json.Unmarshal([]byte(val), &temp)
+		if err != nil {
+			return errors.Wrap(err, "json unmarshal error")
+		}
+		v.Set(reflect.ValueOf(temp).Elem())
+	}
+
+	// Inner fields' values on Apollo have higher priorities
+	// So we need to re-load the inner fields if this is a struct
+	if v.Kind() == reflect.Struct {
+		err := handleStruct(v)
+		if err != nil {
+			return errors.Wrap(err, "handleStruct error")
+		}
+	}
+	return nil
 }
