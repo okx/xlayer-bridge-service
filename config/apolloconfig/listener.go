@@ -37,10 +37,6 @@ func (l *ConfigChangeListener) OnChange(event *storage.ChangeEvent) {
 	getLogger().Debugf("ConfigChangeListener#OnChange received: %v", toJson(event))
 
 	for key, change := range event.Changes {
-		// Only handle ADDED and MODIFIED type
-		if change.ChangeType == storage.DELETED {
-			continue
-		}
 		for _, handler := range l.changeHandlers[key] {
 			handler.handle(change, key)
 		}
@@ -63,9 +59,10 @@ func (l *ConfigChangeListener) RegisterHandler(key string, opts ...handlerOpt) {
 
 // changeHandler contains the information for handling the config change for one config, in a specific context
 type changeHandler struct {
-	obj        any
-	callbackFn func(key string, change *storage.ConfigChange)
-	locker     sync.Locker
+	obj      any
+	beforeFn func(key string, change *storage.ConfigChange)
+	afterFn  func(key string, change *storage.ConfigChange, obj any)
+	locker   sync.Locker
 }
 
 func (h *changeHandler) handle(change *storage.ConfigChange, key string) {
@@ -74,15 +71,20 @@ func (h *changeHandler) handle(change *storage.ConfigChange, key string) {
 		defer h.locker.Unlock()
 	}
 
-	if h.obj != nil {
+	if h.beforeFn != nil {
+		h.beforeFn(key, change)
+	}
+
+	if h.obj != nil && change.ChangeType != storage.DELETED {
+		// Only update the object if change is ADDED or MODIFIED
 		err := decodeStringToObject(change.NewValue.(string), h.obj)
 		if err != nil {
 			getLogger().WithFields("key", key).Errorf("changeHandler#handle decodeStringToObject error: %v", err)
 		}
 	}
 
-	if h.callbackFn != nil {
-		h.callbackFn(key, change)
+	if h.afterFn != nil {
+		h.afterFn(key, change, h.obj)
 	}
 }
 
@@ -97,10 +99,17 @@ func withConfigObj[T any](obj *T) handlerOpt {
 	}
 }
 
-// WithCallbackFn assigns a callback function that will be called when a config key is changed
-func WithCallbackFn(callbackFn func(string, *storage.ConfigChange)) handlerOpt {
+// WithBeforeFn assigns a function to be called before the config object is updated
+func WithBeforeFn(beforeFn func(string, *storage.ConfigChange)) handlerOpt {
 	return func(handler *changeHandler) {
-		handler.callbackFn = callbackFn
+		handler.beforeFn = beforeFn
+	}
+}
+
+// WithAfterFn assigns a function to be called after the config object is updated
+func WithAfterFn(afterFn func(string, *storage.ConfigChange, any)) handlerOpt {
+	return func(handler *changeHandler) {
+		handler.afterFn = afterFn
 	}
 }
 

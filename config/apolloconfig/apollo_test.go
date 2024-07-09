@@ -52,7 +52,6 @@ func TestLoad(t *testing.T) {
 		},
 	}
 
-	enabled = true
 	getString = func(key string) (string, error) {
 		s, ok := resultMapping[key]
 		if !ok {

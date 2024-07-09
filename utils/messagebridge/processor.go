@@ -2,6 +2,7 @@ package messagebridge
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
@@ -18,12 +19,14 @@ const (
 var (
 	emptyAddress = common.Address{}
 	processorMap = make(map[ProcessorType]*Processor)
+	mutexMap     = make(map[ProcessorType]*sync.RWMutex)
 )
 
 // Processor hosts the processing functions for an LxLy bridge using the message bridge feature
 // Each Processor object should be used for one type of bridged token only
 // Current supported tokens: USDC, wstETH
 type Processor struct {
+	pType                  ProcessorType
 	contractToTokenMapping map[common.Address]common.Address
 	// DecodeMetadata decodes the metadata of the message bridge, returns the actual destination address and bridged amount
 	DecodeMetadataFn func(metadata []byte) (common.Address, *big.Int)
@@ -31,6 +34,10 @@ type Processor struct {
 
 // GetContractAddressList returns the list of contract addresses that need to be processed through this struct
 func (u *Processor) GetContractAddressList() []common.Address {
+	mutex := getMutex(u.pType)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	result := make([]common.Address, 0)
 	for addr := range u.contractToTokenMapping {
 		result = append(result, addr)
@@ -40,6 +47,10 @@ func (u *Processor) GetContractAddressList() []common.Address {
 
 // GetTokenAddressList returns the list of original token addresses
 func (u *Processor) GetTokenAddressList() []common.Address {
+	mutex := getMutex(u.pType)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	result := make([]common.Address, 0)
 	for _, addr := range u.contractToTokenMapping {
 		result = append(result, addr)
@@ -49,6 +60,10 @@ func (u *Processor) GetTokenAddressList() []common.Address {
 
 // CheckContractAddress returns true if the input address is in the contract address list of this bridge
 func (u *Processor) CheckContractAddress(address common.Address) bool {
+	mutex := getMutex(u.pType)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	if _, ok := u.contractToTokenMapping[address]; ok {
 		return true
 	}
@@ -57,6 +72,10 @@ func (u *Processor) CheckContractAddress(address common.Address) bool {
 
 // GetTokenFromContract return the token address from the bridge contract address, for displaying
 func (u *Processor) GetTokenFromContract(contractAddress common.Address) (common.Address, bool) {
+	mutex := getMutex(u.pType)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
 	if token, ok := u.contractToTokenMapping[contractAddress]; ok {
 		return token, true
 	}
@@ -130,4 +149,13 @@ func ReplaceDepositInfo(deposit *etherman.Deposit, overwriteOrigNetworkID bool) 
 		return
 	}
 	processor.ReplaceDepositInfo(deposit, overwriteOrigNetworkID)
+}
+
+func getMutex(tp ProcessorType) *sync.RWMutex {
+	mutex := mutexMap[tp]
+	if mutex == nil {
+		mutex = &sync.RWMutex{}
+		mutexMap[tp] = mutex
+	}
+	return mutex
 }

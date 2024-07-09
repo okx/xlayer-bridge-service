@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
+	"github.com/apolloconfig/agollo/v4/storage"
 )
 
 type Client struct {
@@ -36,6 +38,10 @@ func InitClient(c Config) {
 			Timeout: c.Timeout.Duration,
 		},
 	}
+	apolloconfig.RegisterChangeHandler(
+		"IPRestriction",
+		&client.cfg,
+		apolloconfig.WithAfterFn(func(string, *storage.ConfigChange, any) { client.httpClient.Timeout = client.cfg.Timeout.Duration }))
 }
 
 func GetClient() *Client {

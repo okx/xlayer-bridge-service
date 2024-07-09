@@ -28,7 +28,6 @@ func TestConfigChangeListener(t *testing.T) {
 		"sub":         `{"C":0.55, "E": "e1"}`,
 	}
 
-	enabled = true
 	getString = func(key string) (string, error) {
 		s, ok := configMapping[key]
 		if !ok {
@@ -47,7 +46,10 @@ func TestConfigChangeListener(t *testing.T) {
 	}
 
 	cnt := make(map[string]int)
-	callback := func(key string, _ *storage.ConfigChange) {
+	before := func(key string, _ *storage.ConfigChange) {
+		cnt[key]++
+	}
+	after := func(key string, _ *storage.ConfigChange, _ any) {
 		cnt[key]++
 	}
 
@@ -58,11 +60,11 @@ func TestConfigChangeListener(t *testing.T) {
 
 	var stringField = s.A
 	mutex := &sync.Mutex{}
-	RegisterChangeHandler("stringField", &stringField, WithCallbackFn(callback), WithLocker(mutex))
-	RegisterChangeHandler("stringField", &s.A, WithCallbackFn(callback), WithLocker(mutex))
-	RegisterChangeHandler("sub", &s.B, WithCallbackFn(callback), WithLocker(mutex))
-	RegisterChangeHandler("e", &s.B.E, WithCallbackFn(callback), WithLocker(mutex))
-	RegisterChangeHandler("mp", &s.B.D, WithCallbackFn(callback), WithLocker(mutex))
+	RegisterChangeHandler("stringField", &stringField, WithAfterFn(after), WithLocker(mutex))
+	RegisterChangeHandler("stringField", &s.A, WithBeforeFn(before), WithLocker(mutex))
+	RegisterChangeHandler("sub", &s.B, WithAfterFn(after), WithLocker(mutex))
+	RegisterChangeHandler("e", &s.B.E, WithAfterFn(after), WithLocker(mutex))
+	RegisterChangeHandler("mp", &s.B.D, WithBeforeFn(before), WithLocker(mutex))
 
 	listener := GetDefaultListener()
 	listener.OnChange(&storage.ChangeEvent{
