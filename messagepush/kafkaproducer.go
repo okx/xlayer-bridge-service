@@ -48,9 +48,9 @@ type KafkaProducer interface {
 
 type kafkaProducerImpl struct {
 	producer       sarama.SyncProducer
-	defaultTopic   apolloconfig.Entry[string]
-	defaultPushKey apolloconfig.Entry[string]
-	bizCode        apolloconfig.Entry[string]
+	defaultTopic   string
+	defaultPushKey string
+	bizCode        string
 }
 
 func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
@@ -87,12 +87,16 @@ func NewKafkaProducer(cfg Config) (KafkaProducer, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NewKafkaProducer: NewSyncProducer error")
 	}
-	return &kafkaProducerImpl{
+	p := &kafkaProducerImpl{
 		producer:       producer,
-		defaultTopic:   apolloconfig.NewStringEntry("MessagePushProducer.Topic", cfg.Topic),
-		defaultPushKey: apolloconfig.NewStringEntry("MessagePushProducer.PushKey", cfg.PushKey),
-		bizCode:        apolloconfig.NewStringEntry("MessagePushProducer.BizCode", BizCodeBridgeOrder),
-	}, nil
+		defaultTopic:   cfg.Topic,
+		defaultPushKey: cfg.PushKey,
+		bizCode:        BizCodeBridgeOrder,
+	}
+	apolloconfig.RegisterChangeHandler("MessagePushProducer.Topic", &p.defaultTopic)
+	apolloconfig.RegisterChangeHandler("MessagePushProducer.PushKey", &p.defaultPushKey)
+	apolloconfig.RegisterChangeHandler("MessagePushProducer.BizCode", &p.bizCode)
+	return p, nil
 }
 
 // Produce send a message to the Kafka topic
@@ -104,8 +108,8 @@ func (p *kafkaProducerImpl) Produce(msg interface{}, optFns ...produceOptFunc) e
 		return nil
 	}
 	opts := &produceOptions{
-		topic:   p.defaultTopic.Get(),
-		pushKey: p.defaultPushKey.Get(),
+		topic:   p.defaultTopic,
+		pushKey: p.defaultPushKey,
 	}
 	for _, f := range optFns {
 		f(opts)
@@ -159,7 +163,7 @@ func (p *kafkaProducerImpl) PushTransactionUpdate(tx *pb.Transaction, optFns ...
 	}
 
 	msg := &PushMessage{
-		BizCode:       p.bizCode.Get(),
+		BizCode:       p.bizCode,
 		WalletAddress: tx.GetDestAddr(),
 		RequestID:     utils.GenerateTraceID(),
 		PushContent:   fmt.Sprintf("[%v]", string(b)),

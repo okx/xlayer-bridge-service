@@ -10,7 +10,6 @@ import (
 	"time"
 
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
@@ -58,13 +57,11 @@ type ClaimTxManager struct {
 	// Producer to push the transaction status change to front end
 	messagePushProducer messagepush.KafkaProducer
 	redisStorage        redisstorage.RedisStorage
-	monitorTxsLimit     apolloconfig.Entry[uint]
+	monitorTxsLimit     uint
 }
 
 // NewClaimTxManager creates a new claim transaction manager.
-func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint,
-	l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, producer messagepush.KafkaProducer,
-	redisStorage redisstorage.RedisStorage, rollupID uint) (*ClaimTxManager, error) {
+func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint, l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, rollupID uint) (*ClaimTxManager, error) {
 	ctx := context.Background()
 	client, err := utils.NewClient(ctx, l2NodeURL, l2BridgeAddr)
 	if err != nil {
@@ -77,21 +74,18 @@ func NewClaimTxManager(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot
 	ctx, cancel := context.WithCancel(ctx)
 	auth, err := client.GetSignerFromKeystore(ctx, cfg.PrivateKey)
 	return &ClaimTxManager{
-		ctx:                 ctx,
-		cancel:              cancel,
-		l2Node:              client,
-		l2NetworkID:         l2NetworkID,
-		bridgeService:       bridgeService,
-		cfg:                 cfg,
-		chExitRootEvent:     chExitRootEvent,
-		chSynced:            chSynced,
-		storage:             storage.(storageInterface),
-		auth:                auth,
-		rollupID:            rollupID,
-		nonceCache:          cache,
-		messagePushProducer: producer,
-		redisStorage:        redisStorage,
-		monitorTxsLimit:     apolloconfig.NewIntEntry("claimtxman.monitorTxsLimit", uint(128)), //nolint:gomnd
+		ctx:             ctx,
+		cancel:          cancel,
+		l2Node:          client,
+		l2NetworkID:     l2NetworkID,
+		bridgeService:   bridgeService,
+		cfg:             cfg,
+		chExitRootEvent: chExitRootEvent,
+		chSynced:        chSynced,
+		storage:         storage.(storageInterface),
+		auth:            auth,
+		rollupID:        rollupID,
+		nonceCache:      cache,
 	}, err
 }
 

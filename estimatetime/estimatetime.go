@@ -45,8 +45,8 @@ func GetDefaultCalculator() Calculator {
 type calculatorImpl struct {
 	storage              DBStorage
 	estimateTime         []uint32 // In minutes
-	defaultEstTimeConfig apolloconfig.Entry[[]uint32]
-	sampleLimit          apolloconfig.Entry[uint]
+	defaultEstTimeConfig []uint32
+	sampleLimit          uint
 }
 
 func NewCalculator(storage interface{}) (Calculator, error) {
@@ -56,10 +56,12 @@ func NewCalculator(storage interface{}) (Calculator, error) {
 	c := &calculatorImpl{
 		storage:              storage.(DBStorage),
 		estimateTime:         make([]uint32, estTimeSize),
-		defaultEstTimeConfig: apolloconfig.NewIntSliceEntry[uint32](estTimeConfigKey, []uint32{defaultL1EstimateTime, defaultL2EstimateTime}),
-		sampleLimit:          apolloconfig.NewIntEntry[uint](sampleLimitConfigKey, defaultSampleLimit),
+		defaultEstTimeConfig: []uint32{defaultL1EstimateTime, defaultL2EstimateTime},
+		sampleLimit:          defaultSampleLimit,
 	}
-	def := c.defaultEstTimeConfig.Get()
+	apolloconfig.RegisterChangeHandler("estimateTime.defaultTime", &c.defaultEstTimeConfig)
+	apolloconfig.RegisterChangeHandler("estimateTime.sampleLimit", &c.sampleLimit)
+	def := c.defaultEstTimeConfig
 	for i := 0; i < estTimeSize; i++ {
 		c.estimateTime[i] = def[i]
 	}
@@ -93,7 +95,7 @@ func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
 	if networkID > 1 {
 		return fmt.Errorf("invalid networkID %v", networkID)
 	}
-	deposits, err := c.storage.GetLatestReadyDeposits(ctx, networkID, c.sampleLimit.Get(), nil)
+	deposits, err := c.storage.GetLatestReadyDeposits(ctx, networkID, c.sampleLimit, nil)
 	if err != nil {
 		log.Errorf("GetLatestReadyDeposits err:%v", err)
 		return err
@@ -121,7 +123,7 @@ func (c *calculatorImpl) refresh(ctx context.Context, networkID uint) error {
 	}
 	newTime := uint32(math.Ceil(sum / float64(len(fMinutes))))
 	log.Debugf("Re-calculate estimate time, networkID[%v], fMinutes[%v], newTime[%v]", networkID, fMinutes, newTime)
-	defaultTime := c.defaultEstTimeConfig.Get()[networkID]
+	defaultTime := c.defaultEstTimeConfig[networkID]
 	if newTime > defaultTime {
 		newTime = defaultTime
 	}

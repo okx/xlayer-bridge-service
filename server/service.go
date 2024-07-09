@@ -7,7 +7,6 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/localcache"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
@@ -26,8 +25,8 @@ type bridgeService struct {
 	storage          bridgeServiceStorage
 	networkIDs       map[uint]uint8
 	height           uint8
-	defaultPageLimit apolloconfig.Entry[uint32]
-	maxPageLimit     apolloconfig.Entry[uint32]
+	defaultPageLimit uint32
+	maxPageLimit     uint32
 	version          string
 	cache            *lru.Cache[string, [][]byte]
 	pb.UnimplementedBridgeServiceServer
@@ -41,16 +40,10 @@ type bridgeService struct {
 }
 
 // NewBridgeService creates new bridge service.
-func NewBridgeService(cfg Config, height uint8, networks []uint, l2Clients []*utils.Client, l2Auths []*bind.TransactOpts, storage interface{}, rollupID uint) *bridgeService {
+func NewBridgeService(cfg Config, height uint8, networks []uint, storage interface{}, rollupID uint) *bridgeService {
 	var networkIDs = make(map[uint]uint8)
-	var nodeClients = make(map[uint]*utils.Client, len(networks))
-	var authMap = make(map[uint]*bind.TransactOpts, len(networks))
 	for i, network := range networks {
 		networkIDs[network] = uint8(i)
-		if i > 0 {
-			nodeClients[network] = l2Clients[i-1]
-			authMap[network] = l2Auths[i-1]
-		}
 	}
 	cache, err := lru.New[string, [][]byte](cfg.CacheSize)
 	if err != nil {
@@ -61,10 +54,8 @@ func NewBridgeService(cfg Config, height uint8, networks []uint, l2Clients []*ut
 		storage:          storage.(bridgeServiceStorage),
 		height:           height,
 		networkIDs:       networkIDs,
-		nodeClients:      nodeClients,
-		auths:            authMap,
-		defaultPageLimit: apolloconfig.NewIntEntry("BridgeServer.DefaultPageLimit", cfg.DefaultPageLimit),
-		maxPageLimit:     apolloconfig.NewIntEntry("BridgeServer.MaxPageLimit", cfg.MaxPageLimit),
+		defaultPageLimit: cfg.DefaultPageLimit,
+		maxPageLimit:     cfg.MaxPageLimit,
 		version:          cfg.BridgeVersion,
 		cache:            cache,
 	}
@@ -263,10 +254,10 @@ func (s *bridgeService) CheckAPI(ctx context.Context, req *pb.CheckAPIRequest) (
 func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesRequest) (*pb.GetBridgesResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 	totalCount, err := s.storage.GetDepositCount(ctx, req.DestAddr, nil)
 	if err != nil {
@@ -318,10 +309,10 @@ func (s *bridgeService) GetBridges(ctx context.Context, req *pb.GetBridgesReques
 func (s *bridgeService) GetClaims(ctx context.Context, req *pb.GetClaimsRequest) (*pb.GetClaimsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 	totalCount, err := s.storage.GetClaimCount(ctx, req.DestAddr, nil)
 	if err != nil {

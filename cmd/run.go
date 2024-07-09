@@ -21,7 +21,6 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/jsonrpc/client"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/urfave/cli/v2"
 )
 
@@ -101,7 +100,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 	rollupID := l1Etherman.GetRollupID()
-	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, []*utils.Client{nil}, []*bind.TransactOpts{nil}, apiStorage, rollupID)
+	bridgeService := server.NewBridgeService(c.BridgeServer, c.BridgeController.Height, networkIDs, apiStorage, rollupID)
 	err = server.RunServer(c.BridgeServer, bridgeService)
 	if err != nil {
 		log.Error(err)
@@ -122,7 +121,7 @@ func start(ctx *cli.Context) error {
 		for i := 0; i < len(c.Etherman.L2URLs); i++ {
 			// we should match the orders of L2URLs between etherman and claimtxman
 			// since we are using the networkIDs in the same order
-			claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, chSynced, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2PolygonBridgeAddresses[i], bridgeService, storage, nil, nil, rollupID)
+			claimTxManager, err := claimtxman.NewClaimTxManager(c.ClaimTxManager, chExitRootEvent, chSynced, c.Etherman.L2URLs[i], networkIDs[i+1], c.NetworkConfig.L2PolygonBridgeAddresses[i], bridgeService, storage, rollupID)
 			if err != nil {
 				log.Fatalf("error creating claim tx manager for L2 %s. Error: %v", c.Etherman.L2URLs[i], err)
 			}

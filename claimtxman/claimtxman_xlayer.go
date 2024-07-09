@@ -8,10 +8,13 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl/pb"
 	ctmtypes "github.com/0xPolygonHermez/zkevm-bridge-service/claimtxman/types"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/etherman"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/log"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/messagepush"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/metrics"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/pushtask"
+	"github.com/0xPolygonHermez/zkevm-bridge-service/redisstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-node/pool"
@@ -22,6 +25,26 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 )
+
+const (
+	defaultMonitorTxsLimit = 128
+)
+
+// NewClaimTxManagerXLayer creates a new claim transaction manager.
+func NewClaimTxManagerXLayer(cfg Config, chExitRootEvent chan *etherman.GlobalExitRoot, chSynced chan uint, l2NodeURL string, l2NetworkID uint,
+	l2BridgeAddr common.Address, bridgeService bridgeServiceInterface, storage interface{}, producer messagepush.KafkaProducer,
+	redisStorage redisstorage.RedisStorage, rollupID uint) (*ClaimTxManager, error) {
+	tm, err := NewClaimTxManager(cfg, chExitRootEvent, chSynced, l2NodeURL, l2NetworkID, l2BridgeAddr, bridgeService, storage, rollupID)
+	if err != nil {
+		return tm, err
+	}
+	tm.messagePushProducer = producer
+	tm.redisStorage = redisStorage
+	tm.monitorTxsLimit = defaultMonitorTxsLimit
+	apolloconfig.RegisterChangeHandler("claimtxman.monitorTxsLimit", &tm.monitorTxsLimit)
+	apolloconfig.RegisterChangeHandler("ClaimTxManager", &tm.cfg)
+	return tm, nil
+}
 
 // StartXLayer will start the tx management, reading txs from storage,
 // send then to the blockchain and keep monitoring them until they
@@ -423,7 +446,7 @@ func (tm *ClaimTxManager) monitorTxsXLayer(ctx context.Context) error {
 	mLog.Infof("monitorTxs begin")
 
 	statusesFilter := []ctmtypes.MonitoredTxStatus{ctmtypes.MonitoredTxStatusCreated}
-	mTxs, err := tm.storage.GetClaimTxsByStatusWithLimit(ctx, statusesFilter, tm.monitorTxsLimit.Get(), 0, dbTx)
+	mTxs, err := tm.storage.GetClaimTxsByStatusWithLimit(ctx, statusesFilter, tm.monitorTxsLimit, 0, dbTx)
 	if err != nil {
 		mLog.Errorf("failed to get created monitored txs: %v", err)
 		rollbackErr := tm.storage.Rollback(tm.ctx, dbTx)

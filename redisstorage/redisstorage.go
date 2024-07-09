@@ -51,8 +51,8 @@ const (
 // redisStorageImpl implements RedisStorage interface
 type redisStorageImpl struct {
 	client             RedisClient
-	enableCoinPriceCfg apolloconfig.Entry[bool]
-	keyPrefix          apolloconfig.Entry[string]
+	enableCoinPriceCfg bool
+	keyPrefix          string
 }
 
 func NewRedisStorage(cfg Config) (RedisStorage, error) {
@@ -79,14 +79,18 @@ func NewRedisStorage(cfg Config) (RedisStorage, error) {
 		return nil, errors.Wrap(err, "cannot connect to redis server")
 	}
 	log.Debugf("redis health check done, result: %v", res)
-	return &redisStorageImpl{client: client,
-		enableCoinPriceCfg: apolloconfig.NewBoolEntry("CoinPrice.Enabled", cfg.EnablePrice),
-		keyPrefix:          apolloconfig.NewStringEntry("Redis.KeyPrefix", cfg.KeyPrefix),
-	}, nil
+	s := &redisStorageImpl{client: client,
+		enableCoinPriceCfg: cfg.EnablePrice,
+		keyPrefix:          cfg.KeyPrefix,
+	}
+	apolloconfig.RegisterChangeHandler("CoinPrice.Enabled", &s.enableCoinPriceCfg)
+	apolloconfig.RegisterChangeHandler("Redis.KeyPrefix", &s.keyPrefix)
+
+	return s, nil
 }
 
 func (s *redisStorageImpl) addKeyPrefix(key string) string {
-	return s.keyPrefix.Get() + key
+	return s.keyPrefix + key
 }
 
 func (s *redisStorageImpl) SetCoinPrice(ctx context.Context, prices []*pb.SymbolPrice) error {
@@ -174,7 +178,7 @@ func (s *redisStorageImpl) GetCoinPrice(ctx context.Context, symbols []*pb.Symbo
 	log.Debugf("GetCoinPrice size[%v]", len(symbols))
 	var priceList []*pb.SymbolPrice
 	var err error
-	if s.enableCoinPriceCfg.Get() {
+	if s.enableCoinPriceCfg {
 		priceList, err = s.getCoinPrice(ctx, symbols)
 		if err != nil {
 			return nil, err

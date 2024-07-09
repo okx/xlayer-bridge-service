@@ -10,9 +10,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/0xPolygonHermez/zkevm-bridge-service/config/apolloconfig"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/models/tokenlogo"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/nacos"
 	"github.com/0xPolygonHermez/zkevm-node/log"
+	"github.com/apolloconfig/agollo/v4/storage"
 )
 
 const (
@@ -48,6 +50,10 @@ func InitClient(c Config) {
 			Timeout: c.Timeout.Duration,
 		},
 	}
+	apolloconfig.RegisterChangeHandler(
+		"TokenLogoServiceConfig",
+		&client.cfg,
+		apolloconfig.WithAfterFn(func(string, *storage.ConfigChange, any) { client.httpClient.Timeout = client.cfg.Timeout.Duration }))
 }
 
 func (c *Client) GetTokenLogoInfos(tokenAddArr []*tokenlogo.QueryLogoParam) (map[string]tokenlogo.LogoInfo, error) {
