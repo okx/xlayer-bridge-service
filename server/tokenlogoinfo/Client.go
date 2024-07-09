@@ -53,7 +53,7 @@ func InitClient(c Config) {
 	apolloconfig.RegisterChangeHandler(
 		"TokenLogoServiceConfig",
 		&client.cfg,
-		apolloconfig.WithAfterFn(func(string, *storage.ConfigChange) { client.httpClient.Timeout = client.cfg.Timeout.Duration }))
+		apolloconfig.WithAfterFn(func(string, *storage.ConfigChange, any) { client.httpClient.Timeout = client.cfg.Timeout.Duration }))
 }
 
 func (c *Client) GetTokenLogoInfos(tokenAddArr []*tokenlogo.QueryLogoParam) (map[string]tokenlogo.LogoInfo, error) {
