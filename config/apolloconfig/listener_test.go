@@ -1,6 +1,7 @@
 package apolloconfig
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/apolloconfig/agollo/v4/storage"
@@ -28,13 +29,12 @@ func TestConfigChangeListener(t *testing.T) {
 	}
 
 	enabled = true
-	getStringFn = func(_, key string, result *string) error {
+	getString = func(key string) (string, error) {
 		s, ok := configMapping[key]
 		if !ok {
-			return errors.New("key not found")
+			return "", errors.New("key not found")
 		}
-		*result = s
-		return nil
+		return s, nil
 	}
 
 	expected := StructTest{
@@ -57,11 +57,12 @@ func TestConfigChangeListener(t *testing.T) {
 	require.Equal(t, expected, s)
 
 	var stringField = s.A
-	RegisterChangeHandler("stringField", WithConfigObj(&stringField), WithCallbackFn(callback))
-	RegisterChangeHandler("stringField", WithConfigObj(&s.A), WithCallbackFn(callback))
-	RegisterChangeHandler("sub", WithConfigObj(&s.B), WithCallbackFn(callback))
-	RegisterChangeHandler("e", WithConfigObj(&s.B.E), WithCallbackFn(callback))
-	RegisterChangeHandler("mp", WithConfigObj(&s.B.D), WithCallbackFn(callback))
+	mutex := &sync.Mutex{}
+	RegisterChangeHandler("stringField", &stringField, WithCallbackFn(callback), WithLocker(mutex))
+	RegisterChangeHandler("stringField", &s.A, WithCallbackFn(callback), WithLocker(mutex))
+	RegisterChangeHandler("sub", &s.B, WithCallbackFn(callback), WithLocker(mutex))
+	RegisterChangeHandler("e", &s.B.E, WithCallbackFn(callback), WithLocker(mutex))
+	RegisterChangeHandler("mp", &s.B.D, WithCallbackFn(callback), WithLocker(mutex))
 
 	listener := GetDefaultListener()
 	listener.OnChange(&storage.ChangeEvent{
@@ -126,5 +127,5 @@ func TestConfigChangeListener(t *testing.T) {
 	})
 	expected.B.D = map[string]bool{"z": false}
 	require.Equal(t, expected, s)
-	require.Equal(t, 1, cnt["mp"])
+	require.Equal(t, 2, cnt["mp"])
 }

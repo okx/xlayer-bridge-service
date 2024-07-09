@@ -105,8 +105,8 @@ func (t *L1BlockNumTask) doTask(ctx context.Context) {
 	}(blockNum)
 
 	// Minus 64 to get the target query block num
-	oldBlockNum -= utils.Min(utils.L1TargetBlockConfirmations.Get(), oldBlockNum)
-	blockNum -= utils.Min(utils.L1TargetBlockConfirmations.Get(), blockNum)
+	oldBlockNum -= utils.Min(utils.L1TargetBlockConfirmations, oldBlockNum)
+	blockNum -= utils.Min(utils.L1TargetBlockConfirmations, blockNum)
 	if blockNum <= oldBlockNum {
 		return
 	}

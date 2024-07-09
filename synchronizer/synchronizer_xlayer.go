@@ -21,13 +21,16 @@ import (
 )
 
 const (
-	num1               = 1
-	wstETHRedisLockKey = "wst_eth_l2_token_not_withdrawn_lock_"
+	num1 = 1
 )
 
 var (
-	largeTxUsdLimit = apolloconfig.NewIntEntry[uint64]("Synchronizer.LargeTxUsdLimit", 100000) //nolint:gomnd
+	largeTxUsdLimit = 100000 //nolint:gomnd
 )
+
+func init() {
+	apolloconfig.RegisterChangeHandler("Synchronizer.LargeTxUsdLimit", &largeTxUsdLimit)
+}
 
 func (s *ClientSynchronizer) beforeProcessDeposit(deposit *etherman.Deposit) {
 	messagebridge.ReplaceDepositDestAddresses(deposit)
@@ -142,7 +145,7 @@ func (s *ClientSynchronizer) filterLargeTransaction(ctx context.Context, transac
 	tokenDecimal := new(big.Float).SetPrec(uint(transaction.GetLogoInfo().Decimal)).SetFloat64(math.Pow10(int(transaction.GetLogoInfo().Decimal)))
 	tokenAmount, _ := new(big.Float).Quo(originNum, tokenDecimal).Float64()
 	usdAmount := priceInfos[0].Price * tokenAmount
-	if usdAmount < float64(largeTxUsdLimit.Get()) {
+	if usdAmount < float64(largeTxUsdLimit) {
 		log.Infof("tx usd amount less than limit, so skip, tx usd amount: %v, tx: %v", usdAmount, transaction.GetTxHash())
 		return
 	}

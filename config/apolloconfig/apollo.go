@@ -3,6 +3,7 @@ package apolloconfig
 import (
 	"encoding"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -49,6 +50,7 @@ func Init(c Config) error {
 		return errors.Wrap(err, "start apollo client error")
 	}
 
+	client.AddChangeListener(GetDefaultListener())
 	defaultClient = client
 	disableEntryDebugLog = c.DisableEntryDebugLog
 	return nil
@@ -93,7 +95,7 @@ func handleObject(v reflect.Value, key string) error {
 	field := reflect.Indirect(v)
 
 	if key != "" && key != "-" {
-		val, err := NewStringEntry(key, "").GetWithErr()
+		val, err := getString(key)
 		if err != nil {
 			return err
 		}
@@ -140,4 +142,20 @@ func decodeStringToValue(val string, v reflect.Value) error {
 		}
 	}
 	return nil
+}
+
+var getString = func(key string) (string, error) {
+	client := GetClient()
+	if client == nil {
+		return "", errors.New("apollo client is nil")
+	}
+	v, err := client.GetConfig(defaultNamespace).GetCache().Get(key)
+	if err != nil {
+		return "", err
+	}
+	s, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("value is not string, type: %T", v)
+	}
+	return s, nil
 }

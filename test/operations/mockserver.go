@@ -7,8 +7,6 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/bridgectrl"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/db/pgstorage"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/server"
-	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
 // RunMockServer runs mock server
@@ -46,6 +44,6 @@ func RunMockServer(dbType string, height uint8, networks []uint) (*bridgectrl.Br
 		MaxPageLimit:     100,    //nolint:gomnd
 		BridgeVersion:    "v1",
 	}
-	bridgeService := server.NewBridgeService(cfg, btCfg.Height, networks, []*utils.Client{nil}, []*bind.TransactOpts{nil}, store, rollupID)
+	bridgeService := server.NewBridgeService(cfg, btCfg.Height, networks, store, rollupID)
 	return bt, store, server.RunServer(cfg, bridgeService)
 }

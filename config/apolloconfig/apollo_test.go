@@ -53,13 +53,12 @@ func TestLoad(t *testing.T) {
 	}
 
 	enabled = true
-	getStringFn = func(_, key string, result *string) error {
+	getString = func(key string) (string, error) {
 		s, ok := resultMapping[key]
 		if !ok {
-			return errors.New("key not found")
+			return "", errors.New("key not found")
 		}
-		*result = s
-		return nil
+		return s, nil
 	}
 
 	var output StructTest

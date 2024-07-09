@@ -26,12 +26,15 @@ func GetDefaultListener() *ConfigChangeListener {
 	return listener
 }
 
-func RegisterChangeHandler(key string, opts ...handlerOpt) {
+func RegisterChangeHandler[T any](key string, obj *T, opts ...handlerOpt) {
+	if obj != nil {
+		opts = append(opts, withConfigObj(obj))
+	}
 	GetDefaultListener().RegisterHandler(key, opts...)
 }
 
 func (l *ConfigChangeListener) OnChange(event *storage.ChangeEvent) {
-	getLogger().Debugf("ConfigChangeListener#OnChange received: %+v", event)
+	getLogger().Debugf("ConfigChangeListener#OnChange received: %v", toJson(event))
 
 	for key, change := range event.Changes {
 		// Only handle ADDED and MODIFIED type
@@ -85,10 +88,10 @@ func (h *changeHandler) handle(change *storage.ConfigChange, key string) {
 
 type handlerOpt func(handler *changeHandler)
 
-// WithConfigObj assigns an object to be updated when a specific config key is changed.
+// withConfigObj assigns an object to be updated when a specific config key is changed.
 // The logic for updating can be found in decodeStringToValue function
 // obj must be a pointer
-func WithConfigObj[T any](obj *T) handlerOpt {
+func withConfigObj[T any](obj *T) handlerOpt {
 	return func(handler *changeHandler) {
 		handler.obj = obj
 	}

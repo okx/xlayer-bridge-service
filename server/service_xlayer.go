@@ -21,6 +21,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/gerror"
 	"github.com/0xPolygonHermez/zkevm-bridge-service/utils/messagebridge"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
@@ -31,8 +32,31 @@ const (
 )
 
 var (
-	minReadyTimeLimitForWaitClaimSeconds = apolloconfig.NewIntEntry[int64]("api.minReadyTimeLimitForWaitClaim", 24*60*1000) //nolint:gomnd
+	minReadyTimeLimitForWaitClaimSeconds int64 = 24 * 60 * 1000 //nolint:gomnd
 )
+
+func init() {
+	apolloconfig.RegisterChangeHandler("api.minReadyTimeLimitForWaitClaim", &minReadyTimeLimitForWaitClaimSeconds)
+}
+
+// NewBridgeServiceXLayer creates new bridge service.
+func NewBridgeServiceXLayer(cfg Config, height uint8, networks []uint, l2Clients []*utils.Client, l2Auths []*bind.TransactOpts, storage interface{}, rollupID uint) *bridgeService {
+	s := NewBridgeService(cfg, height, networks, storage, rollupID)
+
+	var nodeClients = make(map[uint]*utils.Client, len(networks))
+	var authMap = make(map[uint]*bind.TransactOpts, len(networks))
+	for i, network := range networks {
+		if i > 0 {
+			nodeClients[network] = l2Clients[i-1]
+			authMap[network] = l2Auths[i-1]
+		}
+	}
+	s.nodeClients = nodeClients
+	s.auths = authMap
+	apolloconfig.RegisterChangeHandler("BridgeServer.DefaultPageLimit", &s.defaultPageLimit)
+	apolloconfig.RegisterChangeHandler("BridgeServer.MaxPageLimit", &s.maxPageLimit)
+	return s
+}
 
 func (s *bridgeService) WithRedisStorage(storage redisstorage.RedisStorage) *bridgeService {
 	s.redisStorage = storage
@@ -129,10 +153,10 @@ func (s *bridgeService) GetMainCoins(ctx context.Context, req *pb.GetMainCoinsRe
 func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 
 	deposits, err := s.storage.GetPendingTransactions(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
@@ -178,7 +202,7 @@ func (s *bridgeService) GetPendingTransactions(ctx context.Context, req *pb.GetP
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations.Get() {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
 			} else {
@@ -228,10 +252,10 @@ func (s *bridgeService) setDurationForL2Deposit(ctx context.Context, l2AvgCommit
 func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 
 	deposits, err := s.storage.GetDepositsXLayer(ctx, req.DestAddr, uint(limit+1), uint(req.Offset), messagebridge.GetContractAddressList(), nil)
@@ -291,7 +315,7 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 			// For L1->L2, when ready_for_claim is false, but there have been more than 64 block confirmations,
 			// should also display the status as "L2 executing" (pending auto claim)
 			if deposit.NetworkID == 0 {
-				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations.Get() {
+				if l1BlockNum-deposit.BlockNumber >= utils.L1TargetBlockConfirmations {
 					transaction.Status = uint32(pb.TransactionStatus_TX_PENDING_AUTO_CLAIM)
 				}
 			} else {
@@ -325,10 +349,10 @@ func (s *bridgeService) GetAllTransactions(ctx context.Context, req *pb.GetAllTr
 func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.GetNotReadyTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 
 	deposits, err := s.storage.GetNotReadyTransactions(ctx, uint(limit+1), uint(req.Offset), nil)
@@ -363,10 +387,10 @@ func (s *bridgeService) GetNotReadyTransactions(ctx context.Context, req *pb.Get
 func (s *bridgeService) GetMonitoredTxsByStatus(ctx context.Context, req *pb.GetMonitoredTxsByStatusRequest) (*pb.CommonMonitoredTxsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 
 	mTxs, err := s.storage.GetClaimTxsByStatusWithLimit(ctx, []ctmtypes.MonitoredTxStatus{ctmtypes.MonitoredTxStatus(req.Status)}, uint(limit+1), uint(req.Offset), nil)
@@ -502,13 +526,13 @@ func (s *bridgeService) ManualClaim(ctx context.Context, req *pb.ManualClaimRequ
 func (s *bridgeService) GetReadyPendingTransactions(ctx context.Context, req *pb.GetReadyPendingTransactionsRequest) (*pb.CommonTransactionsResponse, error) {
 	limit := req.Limit
 	if limit == 0 {
-		limit = s.defaultPageLimit.Get()
+		limit = s.defaultPageLimit
 	}
-	if limit > s.maxPageLimit.Get() {
-		limit = s.maxPageLimit.Get()
+	if limit > s.maxPageLimit {
+		limit = s.maxPageLimit
 	}
 
-	minReadyTime := time.Now().Add(time.Duration(-minReadyTimeLimitForWaitClaimSeconds.Get()) * time.Second)
+	minReadyTime := time.Now().Add(time.Duration(-minReadyTimeLimitForWaitClaimSeconds) * time.Second)
 
 	deposits, err := s.storage.GetReadyPendingTransactions(ctx, uint(req.NetworkId), uint(limit+1), uint(req.Offset), minReadyTime, nil)
 	if err != nil {

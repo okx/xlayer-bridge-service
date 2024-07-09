@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"math/rand"
 )
 
@@ -18,4 +19,9 @@ func generateRandomString(length int) string {
 func GenerateRandomHash() [sha256.Size]byte {
 	rs := generateRandomString(10) //nolint:gomnd
 	return sha256.Sum256([]byte(rs))
+}
+
+func ToJson(x any) string {
+	b, _ := json.Marshal(x)
+	return string(b)
 }
