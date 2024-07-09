@@ -49,9 +49,6 @@ func TestConfigChangeListener(t *testing.T) {
 	before := func(key string, _ *storage.ConfigChange) {
 		cnt[key]++
 	}
-	after := func(key string, _ *storage.ConfigChange, _ any) {
-		cnt[key]++
-	}
 
 	var s StructTest
 	err := Load(&s)
@@ -60,12 +57,20 @@ func TestConfigChangeListener(t *testing.T) {
 
 	var stringField = s.A
 	mutex := &sync.Mutex{}
-	RegisterChangeHandler("stringField", &stringField, WithAfterFn(after), WithLocker(mutex))
+	RegisterChangeHandler("stringField", &stringField, WithBeforeFn(before), WithLocker(mutex))
 	RegisterChangeHandler("stringField", &s.A, WithBeforeFn(before), WithLocker(mutex))
-	RegisterChangeHandler("sub", &s.B, WithAfterFn(after), WithLocker(mutex))
-	RegisterChangeHandler("e", &s.B.E, WithAfterFn(after), WithLocker(mutex))
+	RegisterChangeHandler("sub", &s.B, WithBeforeFn(before), WithLocker(mutex),
+		WithAfterFn(func(_ string, _ *storage.ConfigChange, obj any) {
+			b, ok := obj.(*SubStruct)
+			require.True(t, ok)
+			require.Equal(t, expected.B, *b)
+		}))
+	RegisterChangeHandler("e", &s.B.E, WithBeforeFn(before), WithLocker(mutex))
 	RegisterChangeHandler("mp", &s.B.D, WithBeforeFn(before), WithLocker(mutex))
 
+	expected.A = "bbb"
+	expected.B.C = 1.5
+	expected.B.E = "e2"
 	listener := GetDefaultListener()
 	listener.OnChange(&storage.ChangeEvent{
 		Changes: map[string]*storage.ConfigChange{
@@ -79,14 +84,13 @@ func TestConfigChangeListener(t *testing.T) {
 			},
 		},
 	})
-	expected.A = "bbb"
-	expected.B.C = 1.5
-	expected.B.E = "e2"
 	require.Equal(t, expected, s)
 	require.Equal(t, "bbb", stringField)
 	require.Equal(t, 2, cnt["stringField"])
 	require.Equal(t, 1, cnt["sub"])
 
+	expected.A = "ccc"
+	expected.B.E = "e3"
 	listener.OnChange(&storage.ChangeEvent{
 		Changes: map[string]*storage.ConfigChange{
 			"stringField": {
@@ -99,8 +103,6 @@ func TestConfigChangeListener(t *testing.T) {
 			},
 		},
 	})
-	expected.A = "ccc"
-	expected.B.E = "e3"
 	require.Equal(t, expected, s)
 	require.Equal(t, "ccc", stringField)
 	require.Equal(t, 4, cnt["stringField"])
@@ -119,6 +121,7 @@ func TestConfigChangeListener(t *testing.T) {
 	require.Equal(t, expected, s)
 	require.Equal(t, 1, cnt["mp"])
 
+	expected.B.D = map[string]bool{"z": false}
 	listener.OnChange(&storage.ChangeEvent{
 		Changes: map[string]*storage.ConfigChange{
 			"mp": {
@@ -127,7 +130,6 @@ func TestConfigChangeListener(t *testing.T) {
 			},
 		},
 	})
-	expected.B.D = map[string]bool{"z": false}
 	require.Equal(t, expected, s)
 	require.Equal(t, 2, cnt["mp"])
 }
