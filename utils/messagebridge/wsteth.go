@@ -25,6 +25,8 @@ func InitWstETHProcessor(wstETHContractAddresses, wstETHTokenAddresses []common.
 	if len(contractToTokenMapping) > 0 {
 		processorMap[WstETH] = &Processor{
 			contractToTokenMapping: contractToTokenMapping,
+			contractAddressList:    wstETHContractAddresses,
+			tokenAddressList:       wstETHTokenAddresses,
 			DecodeMetadataFn: func(metadata []byte) (common.Address, *big.Int) {
 				// Metadata structure:
 				// - Destination address: 32 bytes
