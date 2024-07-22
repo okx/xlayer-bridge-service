@@ -579,7 +579,6 @@ func (s *bridgeService) GetWstEthTokenNotWithdrawn(ctx context.Context, req *pb.
 			Msg:  "internal: wstETH processor is not inited",
 		}, nil
 	}
-	// Always use L1 token address for storage
 	tokenAddr := processor.GetTokenAddressList()[0]
 	valueL1, errL1 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetMainNetworkId(), false, nil)
 	valueL2, errL2 := s.storage.GetBridgeBalance(ctx, tokenAddr, utils.GetRollupNetworkId(), false, nil)

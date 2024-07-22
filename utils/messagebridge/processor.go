@@ -25,7 +25,6 @@ var (
 // Current supported tokens: USDC, wstETH
 type Processor struct {
 	contractToTokenMapping map[common.Address]common.Address
-	contractAddressList    []common.Address
 	tokenAddressList       []common.Address
 	// DecodeMetadata decodes the metadata of the message bridge, returns the actual destination address and bridged amount
 	DecodeMetadataFn func(metadata []byte) (common.Address, *big.Int)
