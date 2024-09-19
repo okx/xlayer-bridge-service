@@ -93,6 +93,7 @@ func startServer(ctx *cli.Context, opts ...runOptionFunc) error {
 
 	messagebridge.InitUSDCLxLyProcessor(c.BusinessConfig.USDCContractAddresses, c.BusinessConfig.USDCTokenAddresses)
 	messagebridge.InitWstETHProcessor(c.BusinessConfig.WstETHContractAddresses, c.BusinessConfig.WstETHTokenAddresses)
+	messagebridge.InitEURCProcessor(c.BusinessConfig.EURCContractAddresses, c.BusinessConfig.EURCTokenAddresses)
 
 	l1ChainId := c.Etherman.L1ChainId
 	l2ChainIds := c.Etherman.L2ChainIds
