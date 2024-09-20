@@ -12,6 +12,6 @@ type Config struct {
 	USDCTokenAddresses      []common.Address `mapstructure:"USDCTokenAddresses"`
 	WstETHContractAddresses []common.Address `mapstructure:"WstETHContractAddresses"`
 	WstETHTokenAddresses    []common.Address `mapstructure:"WstETHTokenAddresses"`
-	EURCContractAddresses   []common.Address `mapstructure:"EURContractAddresses"`
-	EURCTokenAddresses      []common.Address `mapstructure:"EURTokenAddresses"`
+	EURCContractAddresses   []common.Address `mapstructure:"EURCContractAddresses"`
+	EURCTokenAddresses      []common.Address `mapstructure:"EURCTokenAddresses"`
 }
