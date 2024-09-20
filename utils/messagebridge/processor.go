@@ -13,6 +13,7 @@ type ProcessorType int
 const (
 	USDC ProcessorType = iota
 	WstETH
+	EURC
 )
 
 var (
