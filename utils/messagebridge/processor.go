@@ -120,7 +120,7 @@ func ReplaceDepositDestAddresses(deposit *etherman.Deposit) {
 }
 
 func ReplaceDepositInfo(deposit *etherman.Deposit, overwriteOrigNetworkID bool) {
-	processor := getProcessor(deposit.OriginalAddress, deposit.DestinationAddress)
+	processor := getProcessor(deposit.OriginalAddress, deposit.DestContractAddress)
 	if processor == nil {
 		return
 	}
