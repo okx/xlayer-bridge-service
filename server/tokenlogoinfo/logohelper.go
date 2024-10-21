@@ -14,6 +14,7 @@ import (
 
 func FillLogoInfos(ctx context.Context, redisStorage redisstorage.RedisStorage, transactionMap map[string][]*pb.Transaction) {
 	noCacheTokenMap := make(map[uint32][]string)
+	log.Infof("fill logo info %v ", transactionMap)
 	for k, v := range transactionMap {
 		chainId := utils.GetChainIdByNetworkId(uint(v[0].OriginalNetwork))
 		logoInfo, err := redisStorage.GetTokenLogoInfo(ctx, k)
@@ -30,6 +31,7 @@ func FillLogoInfos(ctx context.Context, redisStorage redisstorage.RedisStorage, 
 		}
 	}
 	if len(noCacheTokenMap) == 0 {
+		log.Infof("no token need to use rpc to get logo")
 		return
 	}
 	logoParams := buildQueryLogoParams(noCacheTokenMap)
